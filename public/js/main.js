@@ -1338,16 +1338,25 @@ async function fetchCurrentAvatar() {
         const res = await fetch('/api/user/current', { credentials: 'include' });
         if (res.ok) {
             const user = await res.json();
-            if (user.avatar && profile.avatar !== user.avatar) {
-                profile.avatar = user.avatar;
-                // 更新首页左下角头像
-                const avatarIcon = document.getElementById('avatarIcon');
-                if (avatarIcon) avatarIcon.src = user.avatar;
-                // 触发自定义事件，让其他监听器（如形象设置页）更新
-                window.dispatchEvent(new CustomEvent('profileUpdated', { detail: { avatar: user.avatar } }));
+            if (user.avatar) {
+                // 1. 更新 localStorage 中的头像
+                let localProfile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+                if (localProfile.avatar !== user.avatar) {
+                    localProfile.avatar = user.avatar;
+                    localStorage.setItem('user_profile', JSON.stringify(localProfile));
+
+                    // 2. 更新左下角头像显示
+                    const avatarIcon = document.getElementById('avatarIcon');
+                    if (avatarIcon) avatarIcon.src = user.avatar;
+
+                    // 3. 触发自定义事件，让其他页面监听更新
+                    window.dispatchEvent(new CustomEvent('profileUpdated', { detail: localProfile }));
+                }
             }
         }
-    } catch (e) { console.warn('获取头像失败', e); }
+    } catch (e) {
+        console.warn('获取头像失败', e);
+    }
 }
 
 // --- 10. 统一启动 ---

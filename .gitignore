@@ -1,5 +1,4 @@
 node_modules/
-data/anime.json
 public/avatars/
 .env
 .DS_Store

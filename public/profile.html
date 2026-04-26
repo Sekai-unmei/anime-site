@@ -124,6 +124,25 @@
             width: 100%;
         }
 
+        /* 名片卡片响应式 */
+        .result-content>div[style*="background:#111"] {
+            width: 90% !important;
+            margin: 0 auto !important;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        @media (max-width: 768px) {
+            .result-content img {
+                width: 80px !important;
+                height: 80px !important;
+            }
+
+            .result-content h2 {
+                font-size: 1.2rem;
+            }
+        }
+
         .name-display {
             font-size: 2rem;
             text-shadow: 0 0 30px rgba(255, 255, 255, 0.9);

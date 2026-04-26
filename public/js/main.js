@@ -512,37 +512,62 @@ function moveCamera(tx, ty) {
 function initDragSystem() {
     const stage = document.getElementById('archive-stage');
     const camera = document.getElementById('camera');
-    let startX, startY, startCamX, startCamY;
+    if (!stage || !camera) return;
+
+    let startX = 0, startY = 0;        // 记录按下的屏幕坐标
+    let startCamX = 0, startCamY = 0;   // 记录按下时的相机坐标
+    let isDragging = false;
+    let dragStartPoint = null;          // 用于判断移动距离是否超过阈值
+    const dragThreshold = 8;            // 移动超过 8px 才认为是拖拽
 
     function onPointerDown(e) {
         e.preventDefault();
-        isDragging = true;
         const point = e.touches ? e.touches[0] : e;
-        lastMouseX = point.clientX;
-        lastMouseY = point.clientY;
+        startX = point.clientX;
+        startY = point.clientY;
         startCamX = camX;
         startCamY = camY;
+        dragStartPoint = { x: startX, y: startY };
+        isDragging = false;
         camera.style.transition = 'none';
     }
+
     function onPointerMove(e) {
-        if (!isDragging) return;
-        e.preventDefault();
         const point = e.touches ? e.touches[0] : e;
-        const dx = point.clientX - lastMouseX;
-        const dy = point.clientY - lastMouseY;
-        camX = startCamX + dx;
-        camY = startCamY + dy;
-        camera.style.transform = `translate(${camX}px, ${camY}px)`;
+        const dx = point.clientX - startX;
+        const dy = point.clientY - startY;
+
+        // 判断是否超过拖拽阈值
+        if (dragStartPoint && !isDragging) {
+            const dist = Math.hypot(point.clientX - dragStartPoint.x, point.clientY - dragStartPoint.y);
+            if (dist > dragThreshold) {
+                isDragging = true;
+            }
+        }
+
+        if (isDragging) {
+            e.preventDefault();
+            camX = startCamX + dx;
+            camY = startCamY + dy;
+            camera.style.transform = `translate(${camX}px, ${camY}px)`;
+        }
     }
-    function onPointerUp() {
+
+    function onPointerUp(e) {
+        // 拖拽结束后重置标志
         isDragging = false;
         camera.style.transition = 'transform 0.6s ease-out';
+        dragStartPoint = null;
     }
+
+    // 鼠标事件
     stage.addEventListener('mousedown', onPointerDown);
     window.addEventListener('mousemove', onPointerMove);
     window.addEventListener('mouseup', onPointerUp);
-    stage.addEventListener('touchstart', onPointerDown);
-    window.addEventListener('touchmove', onPointerMove);
+
+    // 触摸事件（移动端）
+    stage.addEventListener('touchstart', onPointerDown, { passive: false });
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
     window.addEventListener('touchend', onPointerUp);
 }
 // --- 7. 节点缓存与增量更新 ---

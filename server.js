@@ -252,13 +252,20 @@ function getAnimeById(id) {
 }
 
 // ========== 首页路由（登录检查） ==========
-// 首页路由（登录检查）
 app.get('/', (req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     if (req.session && req.session.user) {
-        res.sendFile(path.join(__dirname, 'public/index.html'));
+        const users = loadUsers();
+        if (users[req.session.user]) {
+            // 有效登录用户
+            res.sendFile(path.join(__dirname, 'public/index.html'));
+        } else {
+            // session 中的用户无效，销毁 session
+            req.session.destroy();
+            res.sendFile(path.join(__dirname, 'public/login.html'));
+        }
     } else {
-        res.sendFile(path.join(__dirname, 'public/login.html'));
+        res.sendFile(path.join(__dirname, 'public/index.html'));
     }
 });
 

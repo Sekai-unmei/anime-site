@@ -461,6 +461,7 @@ function createNode(txt, x, y, cls, onClick) {
     div.style.top = y + 'px';
     div.innerHTML = `<span>${txt}</span>`;
     div.onclick = onClick;
+    div.addEventListener('click', () => console.log('节点被点击了:', txt));
     camera.appendChild(div);
     return div;
 }
@@ -514,14 +515,14 @@ function initDragSystem() {
     const camera = document.getElementById('camera');
     if (!stage || !camera) return;
 
-    let startX = 0, startY = 0;        // 记录按下的屏幕坐标
-    let startCamX = 0, startCamY = 0;   // 记录按下时的相机坐标
+    let startX = 0, startY = 0;
+    let startCamX = 0, startCamY = 0;
     let isDragging = false;
-    let dragStartPoint = null;          // 用于判断移动距离是否超过阈值
-    const dragThreshold = 8;            // 移动超过 8px 才认为是拖拽
+    let dragThreshold = 8;
+    let dragStartPoint = null;
 
     function onPointerDown(e) {
-        e.preventDefault();
+        // 注意：不要调用 preventDefault 在这里，否则可能阻止点击
         const point = e.touches ? e.touches[0] : e;
         startX = point.clientX;
         startY = point.clientY;
@@ -537,11 +538,12 @@ function initDragSystem() {
         const dx = point.clientX - startX;
         const dy = point.clientY - startY;
 
-        // 判断是否超过拖拽阈值
         if (dragStartPoint && !isDragging) {
             const dist = Math.hypot(point.clientX - dragStartPoint.x, point.clientY - dragStartPoint.y);
             if (dist > dragThreshold) {
                 isDragging = true;
+                // 只有成为拖拽时才阻止默认事件，避免影响滚动等
+                e.preventDefault();
             }
         }
 
@@ -554,18 +556,17 @@ function initDragSystem() {
     }
 
     function onPointerUp(e) {
-        // 拖拽结束后重置标志
+        if (!isDragging) {
+            // 没有拖拽，可能是点击，这里什么也不做，让 click 事件自然触发
+        }
         isDragging = false;
         camera.style.transition = 'transform 0.6s ease-out';
         dragStartPoint = null;
     }
 
-    // 鼠标事件
     stage.addEventListener('mousedown', onPointerDown);
     window.addEventListener('mousemove', onPointerMove);
     window.addEventListener('mouseup', onPointerUp);
-
-    // 触摸事件（移动端）
     stage.addEventListener('touchstart', onPointerDown, { passive: false });
     window.addEventListener('touchmove', onPointerMove, { passive: false });
     window.addEventListener('touchend', onPointerUp);

@@ -252,6 +252,7 @@ function getAnimeById(id) {
 }
 
 // ========== 首页路由（登录检查） ==========
+// 首页路由（登录检查）
 app.get('/', (req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     if (req.session && req.session.user) {

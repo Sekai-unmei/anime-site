@@ -512,28 +512,39 @@ function moveCamera(tx, ty) {
 function initDragSystem() {
     const stage = document.getElementById('archive-stage');
     const camera = document.getElementById('camera');
-    stage.onmousedown = (e) => {
-        if (['archive-stage', 'camera', 'link-svg'].includes(e.target.id) || e.target.tagName === 'svg') {
-            isDragging = true;
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-            camera.style.transition = 'none';
-        }
-    };
-    window.onmousemove = (e) => {
+    let startX, startY, startCamX, startCamY;
+
+    function onPointerDown(e) {
+        e.preventDefault();
+        isDragging = true;
+        const point = e.touches ? e.touches[0] : e;
+        lastMouseX = point.clientX;
+        lastMouseY = point.clientY;
+        startCamX = camX;
+        startCamY = camY;
+        camera.style.transition = 'none';
+    }
+    function onPointerMove(e) {
         if (!isDragging) return;
-        camX += e.clientX - lastMouseX;
-        camY += e.clientY - lastMouseY;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
+        e.preventDefault();
+        const point = e.touches ? e.touches[0] : e;
+        const dx = point.clientX - lastMouseX;
+        const dy = point.clientY - lastMouseY;
+        camX = startCamX + dx;
+        camY = startCamY + dy;
         camera.style.transform = `translate(${camX}px, ${camY}px)`;
-    };
-    window.onmouseup = () => {
+    }
+    function onPointerUp() {
         isDragging = false;
         camera.style.transition = 'transform 0.6s ease-out';
-    };
+    }
+    stage.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+    stage.addEventListener('touchstart', onPointerDown);
+    window.addEventListener('touchmove', onPointerMove);
+    window.addEventListener('touchend', onPointerUp);
 }
-
 // --- 7. 节点缓存与增量更新 ---
 let lastState = '';
 let currentFrameBounds = null;

@@ -329,6 +329,26 @@
         .drag-panel button:hover {
             transform: scale(1.02);
         }
+
+        /* 移动端操作提示 */
+        .swipe-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            border: 1px solid #ffd700;
+            border-radius: 30px;
+            padding: 8px 16px;
+            color: #ffd700;
+            font-size: 0.8rem;
+            z-index: 20000;
+            pointer-events: none;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
     </style>
 </head>
 
@@ -955,6 +975,23 @@
         function initCanvasEvents() {
             canvas.addEventListener('click', onCanvasClick);
             canvas.addEventListener('wheel', onWheel);
+            // 添加触摸滑动支持
+            let touchStartY = 0;
+            canvas.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                if (!touchStartY) return;
+                e.preventDefault();
+                const deltaY = touchStartY - e.touches[0].clientY;
+                if (Math.abs(deltaY) > 20) {
+                    // 模拟滚轮事件
+                    const fakeEvent = { deltaY: deltaY > 0 ? 100 : -100, preventDefault: () => { } };
+                    onWheel(fakeEvent);
+                    touchStartY = e.touches[0].clientY;
+                }
+            });
+            canvas.addEventListener('touchend', () => { touchStartY = 0; });
             window.addEventListener('resize', () => resizeCanvas());
             startGlowAnimation();
             initParticles();
@@ -1097,6 +1134,19 @@
         }
 
         function showMainUI() {
+            // 显示滑动提示（仅第一次）
+            if (!localStorage.getItem('swipeHintShown')) {
+                const hint = document.createElement('div');
+                hint.className = 'swipe-hint';
+                hint.innerText = '👆 上下滑动切换菜单';
+                document.body.appendChild(hint);
+                setTimeout(() => { hint.style.opacity = '1'; }, 100);
+                setTimeout(() => {
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.remove(), 500);
+                }, 3000);
+                localStorage.setItem('swipeHintShown', 'true');
+            }
             const overlay = document.getElementById('introOverlay');
             if (overlay) overlay.remove();
             const mainContainer = document.getElementById('mainContainer');

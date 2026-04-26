@@ -462,6 +462,10 @@ function createNode(txt, x, y, cls, onClick) {
     div.innerHTML = `<span>${txt}</span>`;
     div.onclick = onClick;
     div.addEventListener('click', () => console.log('节点被点击了:', txt));
+    div.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        onClick();
+    }, { passive: false });
     camera.appendChild(div);
     return div;
 }
@@ -1310,14 +1314,36 @@ function showSection(id) {
     if (isArchive) renderArchive('root');
 }
 
+async function checkLoginAndRedirect() {
+    try {
+        const res = await fetch('/api/user/current', { credentials: 'include' });
+        if (res.status === 401) {
+            window.location.href = '/login.html';
+            return false;
+        }
+        const data = await res.json();
+        if (!data.email) {
+            window.location.href = '/login.html';
+            return false;
+        }
+        return true;
+    } catch (err) {
+        window.location.href = '/login.html';
+        return false;
+    }
+}
 
 
 // --- 10. 统一启动 ---
-function initAll() {
+async function initAll() {
+    // 登录检查（必须最先执行）
+    const isLoggedIn = await checkLoginAndRedirect();
+    if (!isLoggedIn) return;
+
+    // 原有的初始化代码（不变）
     if (typeof initEnvironment === 'function') initEnvironment();
     if (typeof initDragSystem === 'function') initDragSystem();
 
-    // 新增：自定义时钟和搜索框
     updateCustomClock();
     setInterval(updateCustomClock, 1000);
     initSearchBox();
@@ -1338,7 +1364,6 @@ function initAll() {
             panel.appendChild(div);
         });
     }
-    // 注意：原来的 searchBox 监听器已经删除，不要在这里再出现
 
     const confirmBtn = document.getElementById('confirm-btn');
     if (confirmBtn) {

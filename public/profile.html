@@ -752,7 +752,9 @@
                             credentials: 'include',
                             body: formData
                         });
-
+                        // 在 fetch 成功后，更新头像预览
+                        const avatarPreview = document.getElementById('avatarPreview');
+                        if (avatarPreview) avatarPreview.src = data.avatarUrl;
                         const data = await res.json();
 
                         if (data.success) {
@@ -1131,18 +1133,42 @@
             const contentDiv = document.createElement('div');
             contentDiv.className = 'result-content';
             switch (item) {
-                case '名字': contentDiv.innerHTML = `<div class="name-display" style="color:${profile.nameColor}">${profile.name || '未设置'}</div>`; break;
-                case '称号': contentDiv.innerHTML = `<div class="name-display" style="color:${profile.nameColor}">${profile.title || '未设置'}</div>`; break;
-                case '简介': contentDiv.innerHTML = `<div style="white-space:pre-wrap; line-height:1.6; font-size:1.2rem; color:${profile.bioColor}">${profile.bio || '未填写'}</div>`; break;
-                case '外观设置': contentDiv.innerHTML = `<div>外观已应用，可在首页查看效果</div>`; break;
-                case '位置': const loc = [profile.planet, profile.country, profile.region].filter(s => s).join(' · ') || '未填写'; contentDiv.innerHTML = `<div class="name-display">📍 ${loc}</div>`; break;
-                case '名片': const locationStr = [profile.planet, profile.country, profile.region].filter(s => s).join(' · ') || '未填写'; contentDiv.innerHTML = `<div style="background:#111; border-radius:20px; padding:30px; max-width:500px; margin:0 auto; text-align:center; border:1px solid ${profile.avatarBorderColor}"><img src="${profile.avatar}" style="width:100px; height:100px; border-radius:50%; border:3px solid ${profile.avatarBorderColor}; margin-bottom:20px;" onerror="this.src='/avatars/default.png'"><h2 style="color:${profile.nameColor}">${profile.name || '未填写'}</h2><p style="color:${profile.nameColor}">称号：${profile.title || '未填写'}</p><p style="color:${profile.bioColor}">简介：${profile.bio || '未填写'}</p><p style="color:#aaa">位置：${locationStr}</p></div>`; break;
-                case '返回': contentDiv.innerHTML = `<div>点击返回按钮退出设置</div>`; break;
-                default: contentDiv.innerHTML = `<div>请选择设置项</div>`;
+                case '名字':
+                    contentDiv.innerHTML = `<div class="name-display" style="color:${profile.nameColor}">${profile.name || '未设置'}</div>`;
+                    break;
+                case '称号':
+                    contentDiv.innerHTML = `<div class="name-display" style="color:${profile.nameColor}">${profile.title || '未设置'}</div>`;
+                    break;
+                case '简介':
+                    contentDiv.innerHTML = `<div style="white-space:pre-wrap; line-height:1.6; font-size:1.2rem; color:${profile.bioColor}">${profile.bio || '未填写'}</div>`;
+                    break;
+                case '外观设置':
+                    contentDiv.innerHTML = `<div>外观已应用，可在首页查看效果</div>`;
+                    break;
+                case '位置':
+                    const loc = [profile.planet, profile.country, profile.region].filter(s => s).join(' · ') || '未填写';
+                    contentDiv.innerHTML = `<div class="name-display">📍 ${loc}</div>`;
+                    break;
+                case '名片':
+                    const locationStr = [profile.planet, profile.country, profile.region].filter(s => s).join(' · ') || '未填写';
+                    contentDiv.innerHTML = `
+                <div style="background:#111; border-radius:20px; padding:20px; max-width:90vw; width:auto; margin:0 auto; text-align:center; border:1px solid ${profile.avatarBorderColor}; word-break:break-word;">
+                    <img src="${profile.avatar}" style="width:100px; height:100px; border-radius:50%; border:3px solid ${profile.avatarBorderColor}; margin-bottom:20px; object-fit:cover;" onerror="this.src='/avatars/default.png'">
+                    <h2 style="color:${profile.nameColor}; font-size:1.3rem; margin:10px 0;">${profile.name || '未填写'}</h2>
+                    <p style="color:${profile.nameColor}; margin:5px 0;">称号：${profile.title || '未填写'}</p>
+                    <p style="color:${profile.bioColor}; margin:5px 0;">简介：${profile.bio || '未填写'}</p>
+                    <p style="color:#aaa; margin:5px 0;">位置：${locationStr}</p>
+                </div>
+            `;
+                    break;
+                case '返回':
+                    contentDiv.innerHTML = `<div>点击返回按钮退出设置</div>`;
+                    break;
+                default:
+                    contentDiv.innerHTML = `<div>请选择设置项</div>`;
             }
             panel.appendChild(contentDiv);
         }
-
         async function checkAndPlayIntro() {
             try {
                 const res = await fetch('/api/check-profile-intro');

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动漫资料库</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    <nav class="nav-bar">
+        <a onclick="showSection('home')">首页</a>
+        <a onclick="showSection('archive')">动漫查询库</a>
+        <a href="/seats.html">争夺“圣杯”之物</a>
+        <a href="/profile.html">形象设置</a>
+        <a href="#" id="logout-link">断开连接</a>
+    </nav>
+    <div id="info-panel" class="top-left">
+        <div id="time">00:00:00</div>
+        <div id="calendar-subtitle" style="color: #888; font-size: 0.85rem; margin-bottom: 15px;"></div>
+        <div class="info-row">
+            <span class="label">COORDINATES</span>
+            <span id="geo-display" class="value">星际同步中...</span>
+        </div>
+        <div class="info-row" style="cursor: pointer;" onclick="toggleWeather()">
+            <span class="label">METEOROLOGY</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="weather-brief" class="value" style="font-size: 1.1rem;">接入中...</span>
+                <span id="weather-arrow" style="color: gold; transition: 0.3s; font-size: 0.8rem;">▼</span>
+            </div>
+        </div>
+        <div id="weather-more"></div>
+        <div id="identity-tag" class="value" style="margin-top: 20px;">【 观测者 】</div>
+    </div>
+
+    <div id="search-panel" class="search-area">
+        <input type="text" class="search-box" placeholder="动漫观看顺序">
+    </div>
+
+    <div id="archive-stage">
+        <div id="camera">
+            <svg id="link-svg"
+                style="position:absolute; top:0; left:0; width:3000px; height:3000px; pointer-events:none;"></svg>
+        </div>
+    </div>
+
+    <button id="confirm-btn">确认选择</button>
+    <div id="poem-panel" class="poem-right"></div>
+
+    <!-- 左下角头像菜单 -->
+    <div id="userAvatarMenu" style="position: fixed; left: 20px; bottom: 20px; z-index: 1000; cursor: pointer;">
+        <img id="avatarIcon" src="/avatars/default.png"
+            style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #ffd700; object-fit: cover;">
+    </div>
+
+    <!-- 侧边导航栏（默认隐藏） -->
+    <div id="sideMenu"
+        style="position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); z-index: 2000; transition: left 0.3s; border-right: 1px solid #ffd700;">
+        <div style="padding: 20px;">
+            <h3 style="color:#ffd700;">导航</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li><a href="#" id="msgMenuItem"
+                        style="color:#fff; text-decoration: none; display: block; padding: 10px;">💬 消息</a></li>
+                <!-- 可添加更多菜单项 -->
+            </ul>
+        </div>
+    </div>
+    <!-- 修复：补全 <script 标签 -->
+    <script src="/js/main.js"></script>
+    <script>
+        window.onload = () => { if (typeof initAll === 'function') initAll(); };
+        function toggleWeather() {
+            const m = document.getElementById('weather-more');
+            const a = document.getElementById('weather-arrow');
+            if (m.style.maxHeight === "0px" || !m.style.maxHeight) {
+                m.style.maxHeight = m.scrollHeight + "px";
+                a.style.transform = "rotate(180deg)";
+            } else {
+                m.style.maxHeight = "0px";
+                a.style.transform = "rotate(0deg)";
+            }
+        }
+
+        document.getElementById('logout-link').addEventListener('click', function (e) {
+            e.preventDefault();
+            // 创建遮罩层，阻止用户操作
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = 0;
+            overlay.style.left = 0;
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            overlay.style.zIndex = 9999;
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.color = 'white';
+            overlay.style.fontSize = '1.5rem';
+            overlay.innerHTML = '正在退出...';
+            document.body.appendChild(overlay);
+
+            const audio = new Audio('/audio/形象设置-退出.m4a');
+            audio.play().catch(e => console.log);
+            audio.onended = function () {
+                window.location.href = '/logout';
+            };
+            // 防止音频加载失败或极短时卡住，设置最大延迟 3 秒
+            setTimeout(function () {
+                if (!audio.ended) window.location.href = '/logout';
+            }, 3000);
+        });
+
+        // 更新头像显示
+        function updateAvatarIcon() {
+            const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+            const avatar = profile.avatar || '/avatars/default.png';
+            const avatarIcon = document.getElementById('avatarIcon');
+            if (avatarIcon) avatarIcon.src = avatar;
+        }
+
+        // 监听 profileUpdated 事件
+        window.addEventListener('profileUpdated', () => updateAvatarIcon());
+        updateAvatarIcon();
+
+        // 头像点击展开/收起菜单
+        const avatarIcon = document.getElementById('avatarIcon');
+        const sideMenu = document.getElementById('sideMenu');
+        if (avatarIcon) {
+            avatarIcon.addEventListener('click', () => {
+                const isOpen = sideMenu.style.left === '0px';
+                sideMenu.style.left = isOpen ? '-280px' : '0px';
+            });
+        }
+        // 点击其他地方关闭菜单（可选）
+        document.addEventListener('click', (e) => {
+            if (!sideMenu.contains(e.target) && e.target !== avatarIcon && sideMenu.style.left === '0px') {
+                sideMenu.style.left = '-280px';
+            }
+        });
+        // 消息菜单项点击（后续聊天功能预留）
+        const msgMenuItem = document.getElementById('msgMenuItem');
+        if (msgMenuItem) {
+            msgMenuItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('消息功能开发中');
+                // 后续可以跳转到聊天页面
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>评分排行榜 - 动漫资料库</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0a0a0a;
+            color: #fff;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd700;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #ffd700;
+            text-decoration: none;
+            border: 1px solid #ffd700;
+            padding: 8px 20px;
+            border-radius: 30px;
+            transition: 0.3s;
+        }
+
+        .back-link:hover {
+            background: #ffd700;
+            color: #000;
+        }
+
+        .anime-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .anime-card {
+            background: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .anime-card:hover {
+            transform: scale(1.02);
+        }
+
+        .anime-card img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+        }
+
+        .anime-info {
+            padding: 12px;
+        }
+
+        .anime-title {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .rating-stats {
+            font-size: 0.8rem;
+            color: #ccc;
+            margin-top: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .rating-badge {
+            background: #222;
+            border-radius: 12px;
+            padding: 2px 8px;
+            display: inline-block;
+        }
+
+        .rating-badge span {
+            color: #ffd700;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #888;
+            font-size: 1.2rem;
+            margin: 50px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/recommend.html" class="back-link">← 返回</a>
+        <h1>⭐ 动漫评分排行榜 ⭐</h1>
+        <div id="rating-list" class="anime-grid">加载中...</div>
+    </div>
+
+    <script>
+        async function loadRatingStats() {
+            try {
+                const res = await fetch('/api/anime/ratings-stats');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const allStats = await res.json();
+                // 只显示至少有一票的动漫
+                const stats = allStats.filter(anime => anime.totalVotes > 0);
+                const container = document.getElementById('rating-list');
+                if (!stats.length) {
+                    container.innerHTML = '<div class="no-data">暂无评分数据，快去评分吧</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                stats.forEach(anime => {
+                    const ratings = anime.ratings;
+                    const totalVotes = anime.totalVotes;
+                    const card = document.createElement('div');
+                    card.className = 'anime-card';
+                    card.innerHTML = `
+                    <img src="${escapeHtml(anime.image_url)}" alt="${escapeHtml(anime.title)}" onerror="this.src='/images/default.jpg'">
+                    <div class="anime-info">
+                        <div class="anime-title">${escapeHtml(anime.title)}</div>
+                        <div class="rating-stats">
+                            <div class="rating-badge">夯(神作) ${ratings["神作"] || 0}</div>
+                            <div class="rating-badge">顶级(好看) ${ratings["好看"] || 0}</div>
+                            <div class="rating-badge">人上人(普通) ${ratings["普通"] || 0}</div>
+                            <div class="rating-badge">NPC (无聊) ${ratings["无聊"] || 0}</div>
+                            <div class="rating-badge">拉完了 (狗屎) ${ratings["狗屎"] || 0}</div>
+                        </div>
+                        <div class="rating-stats" style="margin-top: 5px; color:#aaa;">总票数：${totalVotes}</div>
+                    </div>
+                `;
+                    card.addEventListener('click', () => {
+                        window.location.href = `/anime/${anime.id}`;
+                    });
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                console.error('加载评分数据失败', err);
+                document.getElementById('rating-list').innerHTML = '<div class="no-data">无法获取评分数据，请稍后重试</div>';
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>]/g, function (m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        loadRatingStats();
+    </script>
+</body>
+
+</html>

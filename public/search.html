@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>观测结果 - 动漫资料库</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0a0a0a;
+            color: #fff;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffd700;
+            margin-bottom: 30px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #ffd700;
+            text-decoration: none;
+            border: 1px solid #ffd700;
+            padding: 8px 20px;
+            border-radius: 30px;
+            transition: 0.3s;
+        }
+
+        .back-link:hover {
+            background: #ffd700;
+            color: #000;
+        }
+
+        .filter-summary {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #ccc;
+            border-left: 4px solid #ffd700;
+        }
+
+        .anime-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .anime-card {
+            background: #1a1a1a;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .anime-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .anime-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .anime-info {
+            padding: 15px;
+        }
+
+        .anime-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .anime-desc {
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.4;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #ffd700;
+            border-radius: 8px;
+            padding: 12px;
+            max-width: 260px;
+            pointer-events: auto;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        .tooltip-title {
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 6px;
+            text-align: center;
+            color: #ffd700;
+            word-break: break-all;
+        }
+
+        .tooltip-desc {
+            font-size: 0.8rem;
+            color: #ccc;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .tooltip-recommend {
+            font-size: 0.8rem;
+            color: #ffaa66;
+            text-align: right;
+        }
+
+        .no-result {
+            text-align: center;
+            color: #888;
+            font-size: 1.2rem;
+            margin: 50px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← 返回首页</a>
+        <h1>🔮 观测结果</h1>
+        <div id="filter-summary" class="filter-summary">加载中...</div>
+        <div id="anime-grid" class="anime-grid"></div>
+        <div id="no-result" class="no-result" style="display: none;">没有找到符合条件的动漫</div>
+    </div>
+
+    <div id="tooltip" class="tooltip"></div>
+
+    <script>
+        const tooltip = document.getElementById('tooltip');
+        let hideTimeout = null;
+
+        function truncate(str, maxLen) {
+            if (!str) return '';
+            return str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
+        }
+
+        // 解析 URL 参数：keyword, tag, year, month
+        const urlParams = new URLSearchParams(window.location.search);
+        const keyword = urlParams.get('keyword') || '';
+        const tag = urlParams.get('tag') || '';
+        const year = urlParams.get('year') || '';
+        const month = urlParams.get('month') || '';
+
+        // 构建筛选摘要
+        let summary = '';
+        if (keyword) summary += `搜索: ${keyword} `;
+        if (tag) summary += `类型: ${tag} `;
+        if (year) summary += `年份: ${year} `;
+        if (month) summary += `月份: ${month} `;
+        if (!summary) summary = '未选择任何条件';
+        document.getElementById('filter-summary').innerHTML = summary;
+
+        async function loadSearchResult() {
+            // 没有任何筛选条件
+            if (!keyword && !tag && !year && !month) {
+                document.getElementById('no-result').style.display = 'block';
+                document.getElementById('no-result').innerHTML = '请输入搜索关键词或选择筛选条件';
+                return;
+            }
+
+            try {
+                let url = `/api/anime/list?page=1&limit=100`;
+                if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+                if (tag) url += `&tag=${encodeURIComponent(tag)}`;
+                if (year) url += `&year=${encodeURIComponent(year)}`;
+                if (month) url += `&month=${encodeURIComponent(month)}`;
+
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.data.length === 0) {
+                    document.getElementById('no-result').style.display = 'block';
+                    document.getElementById('no-result').innerHTML = '此番还尚未入库，请通知管理员哦-';
+                    document.getElementById('anime-grid').innerHTML = '';
+                } else {
+                    document.getElementById('no-result').style.display = 'none';
+                    renderAnime(data.data);
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('no-result').style.display = 'block';
+                document.getElementById('no-result').innerHTML = '此番还尚未入库，请通知管理员哦-';
+            }
+        }
+
+        function renderAnime(animes) {
+            const container = document.getElementById('anime-grid');
+            container.innerHTML = '';
+            animes.forEach(anime => {
+                const card = document.createElement('div');
+                card.className = 'anime-card';
+                card.innerHTML = `
+                    <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
+                    <div class="anime-info">
+                        <div class="anime-title">${truncate(anime.title, 10)}</div>
+                        <div class="anime-desc">${truncate(anime.description || '', 30)}</div>
+                    </div>
+                `;
+                const img = card.querySelector('img');
+                img.addEventListener('mouseenter', (e) => showTooltip(e, anime));
+                img.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300); });
+                card.addEventListener('click', () => {
+                    window.location.href = `/anime/${anime.id}`;
+                });
+                container.appendChild(card);
+            });
+        }
+
+        function showTooltip(event, anime) {
+            clearTimeout(hideTimeout);
+            const rect = event.target.getBoundingClientRect();
+            const shortTitle = truncate(anime.title, 10);
+            const shortDesc = truncate(anime.description || '', 30);
+            tooltip.innerHTML = `
+                <div class="tooltip-title">${shortTitle}</div>
+                <div class="tooltip-desc">${shortDesc}</div>
+                <div class="tooltip-recommend">推荐指数：${anime.recommend_text || '暂无'}</div>
+            `;
+            tooltip.style.visibility = 'hidden';
+            tooltip.classList.add('show');
+            const tooltipRect = tooltip.getBoundingClientRect();
+
+            let left = rect.right;
+            if (left + tooltipRect.width > window.innerWidth) {
+                left = rect.left - tooltipRect.width;
+            }
+            left = Math.max(0, Math.min(left, window.innerWidth - tooltipRect.width));
+
+            let top = rect.top + window.scrollY;
+            if (top + tooltipRect.height > window.scrollY + window.innerHeight) {
+                top = rect.top + window.scrollY - tooltipRect.height;
+                if (top < window.scrollY) {
+                    top = rect.bottom + window.scrollY;
+                    if (top + tooltipRect.height > window.scrollY + window.innerHeight) {
+                        top = window.scrollY + window.innerHeight - tooltipRect.height - 10;
+                    }
+                }
+            }
+            top = Math.max(window.scrollY + 10, top);
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+            tooltip.style.visibility = 'visible';
+        }
+
+        tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+        tooltip.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+
+        loadSearchResult();
+    </script>
+</body>
+
+</html>

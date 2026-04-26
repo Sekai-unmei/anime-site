@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>争夺“圣杯”之物 - 动漫资料库</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: #000;
+            overflow-x: hidden;
+            font-family: "Microsoft YaHei", "PingFang SC", serif;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .home-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            color: #ffd700;
+            text-decoration: none;
+            border: 1px solid #ffd700;
+            padding: 8px 16px;
+            border-radius: 30px;
+            transition: 0.3s;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        .home-link:hover {
+            background: #ffd700;
+            color: #000;
+            box-shadow: 0 0 10px gold;
+        }
+
+        .divine-light {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            height: 100%;
+            clip-path: polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%);
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.5s ease, background 0.5s ease;
+        }
+
+        .rings-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 950px;
+            height: 950px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .ring.normal {
+            border: 4px solid gold;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+        }
+
+        .ring.dark {
+            border: 2px solid #800;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+            background: radial-gradient(circle, rgba(80, 0, 0, 0.3), transparent);
+            animation: darkPulse 2s infinite alternate;
+        }
+
+        @keyframes darkPulse {
+            0% {
+                box-shadow: 0 0 10px #800;
+                border-color: #800;
+            }
+
+            100% {
+                box-shadow: 0 0 40px #f00;
+                border-color: #f00;
+            }
+        }
+
+        .particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        .gold-particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, gold, #ffcc00);
+            border-radius: 50%;
+            box-shadow: 0 0 10px gold;
+            animation: fallDown 2s linear forwards;
+        }
+
+        .dark-particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, #800, #200);
+            border-radius: 50%;
+            box-shadow: 0 0 8px red;
+            animation: fallDown 2s linear forwards;
+        }
+
+        .arrow-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: radial-gradient(circle, #ffd700, #ffaa00);
+            border-radius: 50%;
+            box-shadow: 0 0 5px gold;
+            animation: arrowBurst 0.8s ease-out forwards;
+        }
+
+        .dark-arrow-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: radial-gradient(circle, #f00, #800);
+            border-radius: 50%;
+            box-shadow: 0 0 5px red;
+            animation: arrowBurst 0.8s ease-out forwards;
+        }
+
+        @keyframes arrowBurst {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.9;
+            }
+
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes fallDown {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 0.9;
+            }
+
+            100% {
+                transform: translateY(250px) scale(0);
+                opacity: 0;
+            }
+        }
+
+        .content {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 20;
+            width: 85%;
+            max-width: 650px;
+            pointer-events: none;
+            background: transparent;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .title {
+            font-size: 3.8rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+            transition: color 0.3s, text-shadow 0.3s;
+        }
+
+        .subtitle {
+            font-size: 2rem;
+            margin-bottom: 25px;
+            font-family: monospace;
+            letter-spacing: 4px;
+        }
+
+        .subtitle .question {
+            display: inline-block;
+            position: relative;
+            transition: color 0.3s, text-shadow 0.3s;
+        }
+
+        .mosaic-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 25;
+            opacity: 0.9;
+        }
+
+        .description {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-top: 25px;
+            font-family: monospace;
+            background: linear-gradient(135deg, #6cf, #0066cc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .white-particle {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 8px white;
+            animation: floatUpWhite 1.5s linear forwards;
+            pointer-events: none;
+            z-index: 27;
+        }
+
+        @keyframes floatUpWhite {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: translate(0, -180px) scale(0);
+                opacity: 0;
+            }
+        }
+
+        .arrow {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 70px;
+            height: 70px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 30;
+            transition: 0.3s;
+            font-size: 1.8rem;
+            font-weight: bold;
+            user-select: none;
+            opacity: 0;
+            transition: opacity 0.3s ease, background 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        .arrow:hover {
+            background: gold;
+            color: #000;
+            box-shadow: 0 0 20px gold;
+        }
+
+        .arrow-left {
+            left: 25px;
+        }
+
+        .arrow-right {
+            right: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2.2rem;
+            }
+
+            .subtitle {
+                font-size: 1.2rem;
+            }
+
+            .description {
+                font-size: 0.9rem;
+            }
+
+            .arrow {
+                width: 55px;
+                height: 55px;
+                font-size: 1.2rem;
+            }
+
+            .home-link {
+                top: 10px;
+                left: 10px;
+                padding: 4px 12px;
+                font-size: 0.8rem;
+            }
+
+            .divine-light {
+                width: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <a href="/" class="home-link">← 首页</a>
+    <div class="divine-light"></div>
+    <div class="rings-container">
+        <div class="ring" id="ringOuter" style="width: 280px; height: 280px;"></div>
+        <div class="ring" id="ringInner" style="width: 200px; height: 200px;"></div>
+    </div>
+    <div class="particle-container" id="particleContainer"></div>
+    <canvas id="mosaicCanvas" class="mosaic-canvas"></canvas>
+    <div class="content">
+        <div class="title" id="seatTitle">叶jing</div>
+        <div class="subtitle" id="seatSubtitle">[???]</div>
+        <div class="description" id="seatDesc">这次也无法改变这样的命运吗...</div>
+    </div>
+    <div class="arrow arrow-left" id="prevBtn">‹</div>
+    <div class="arrow arrow-right" id="nextBtn">›</div>
+
+    <script>
+        // 席位数据
+        const seats = [
+            {
+                title: "叶jing",
+                subtitle: "[???]",
+                description: "这次也无法改变这样的命运吗...",
+                mosaicEnabled: true,
+                glitchEnabled: true,
+                theme: {
+                    lightColor: "radial-gradient(ellipse at top, rgba(255,215,0,0.6) 0%, transparent 75%)",
+                    ringType: "normal",
+                    ringBorderColor: "gold",
+                    ringShadow: "0 0 25px rgba(255,215,0,0.8)",
+                    titleColor: "#ffd700",
+                    titleShadow: "0 0 20px gold",
+                    questionColor: "#f00",
+                    questionShadow: "0 0 10px red",
+                    descGradient: "linear-gradient(135deg, #6cf, #0066cc)",
+                    particleClass: "gold-particle",
+                    arrowBg: "rgba(0,0,0,0.6)",
+                    arrowBorderColor: "gold",
+                    arrowColor: "gold",
+                    arrowLeftSymbol: "‹",
+                    arrowRightSymbol: "›",
+                    mosaicRedBase: 139,
+                    arrowParticleClass: "arrow-particle",
+                }
+            },
+            {
+                title: "Watcher",
+                subtitle: "[维持]",
+                description: "一切;只为世界的稳定!",
+                mosaicEnabled: true,
+                glitchEnabled: false,
+                theme: {
+                    lightColor: "radial-gradient(ellipse at top, rgba(255,0,0,0.7) 0%, rgba(80,0,0,0.4) 75%)",
+                    ringType: "dark",
+                    ringBorderColor: "#800",
+                    ringShadow: "0 0 30px red",
+                    titleColor: "#a33",
+                    titleShadow: "none",
+                    questionColor: "#f66",
+                    questionShadow: "0 0 8px red",
+                    descGradient: "linear-gradient(135deg, #a33, #300)",
+                    particleClass: "dark-particle",
+                    arrowBg: "rgba(50,0,0,0.8)",
+                    arrowBorderColor: "#800",
+                    arrowColor: "#f00",
+                    arrowLeftSymbol: "左",
+                    arrowRightSymbol: "右",
+                    mosaicRedBase: 200,
+                    arrowParticleClass: "dark-arrow-particle",
+                }
+            }
+        ];
+
+        let currentSeatIndex = 0, isAnimating = false;
+        let glitchInterval = null, whiteParticleInterval = null, subtitleMosaicInterval = null, bottomParticleInterval = null, ringAnimationFrame = null;
+        let ringDirection = 1;
+        let outerIsMain = true;
+        const outerRing = document.getElementById('ringOuter'), innerRing = document.getElementById('ringInner');
+        const canvas = document.getElementById('mosaicCanvas'), ctx = canvas.getContext('2d');
+        const beam = document.querySelector('.divine-light'), contentDiv = document.querySelector('.content'), arrows = document.querySelectorAll('.arrow');
+        let originalDesc = "";
+        let currentTheme = null;
+        // 左右箭头独立定时器
+        let leftArrowTimer = null, rightArrowTimer = null;
+
+        // 背景音乐（Web Audio 合成，无需外部文件）
+        let audioCtx = null, musicSource = null, isMusicPlaying = false;
+        function startBackgroundMusic() {
+            if (audioCtx) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const gain = audioCtx.createGain();
+                gain.gain.value = 0.25;
+                gain.connect(audioCtx.destination);
+                const bufferSize = audioCtx.sampleRate * 4;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    const t = i / audioCtx.sampleRate;
+                    data[i] = Math.sin(t * 60) * 0.3 + Math.sin(t * 120) * 0.15;
+                }
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.loop = true;
+                source.connect(gain);
+                source.start();
+                musicSource = source;
+                isMusicPlaying = true;
+            } catch (e) { console.warn("音频初始化失败", e); }
+        }
+        function enableMusic() {
+            if (!isMusicPlaying && audioCtx === null) startBackgroundMusic();
+            document.removeEventListener('click', enableMusic);
+            document.removeEventListener('keydown', enableMusic);
+        }
+        document.addEventListener('click', enableMusic);
+        document.addEventListener('keydown', enableMusic);
+
+        function applyTheme(theme) {
+            beam.style.background = theme.lightColor;
+            if (theme.ringType === 'dark') {
+                innerRing.style.display = 'none';
+                outerRing.className = 'ring dark';
+                outerRing.style.borderColor = theme.ringBorderColor;
+                outerRing.style.boxShadow = theme.ringShadow;
+            } else {
+                innerRing.style.display = 'block';
+                outerRing.className = 'ring normal';
+                innerRing.className = 'ring normal';
+                outerRing.style.borderColor = theme.ringBorderColor;
+                innerRing.style.borderColor = theme.ringBorderColor;
+                outerRing.style.boxShadow = theme.ringShadow;
+                innerRing.style.boxShadow = theme.ringShadow;
+            }
+            const titleEl = document.getElementById('seatTitle');
+            titleEl.style.color = theme.titleColor;
+            titleEl.style.textShadow = theme.titleShadow;
+            const questionSpans = document.querySelectorAll('.subtitle .question');
+            questionSpans.forEach(span => {
+                span.style.color = theme.questionColor;
+                span.style.textShadow = theme.questionShadow;
+            });
+            const descEl = document.getElementById('seatDesc');
+            descEl.style.background = theme.descGradient;
+            descEl.style.webkitBackgroundClip = 'text';
+            descEl.style.backgroundClip = 'text';
+            const leftArrow = document.getElementById('prevBtn');
+            const rightArrow = document.getElementById('nextBtn');
+            leftArrow.style.background = theme.arrowBg;
+            leftArrow.style.border = `2px solid ${theme.arrowBorderColor}`;
+            leftArrow.style.color = theme.arrowColor;
+            leftArrow.innerHTML = theme.arrowLeftSymbol;
+            rightArrow.style.background = theme.arrowBg;
+            rightArrow.style.border = `2px solid ${theme.arrowBorderColor}`;
+            rightArrow.style.color = theme.arrowColor;
+            rightArrow.innerHTML = theme.arrowRightSymbol;
+        }
+
+        function startRingAnimation() {
+            if (ringAnimationFrame) cancelAnimationFrame(ringAnimationFrame);
+            const outerMax = 720, outerMin = 460;
+            const innerMin = 360, innerMax = 620;
+            let step = 0;
+            const totalSteps = 140;
+            function animate() {
+                step++;
+                if (step >= totalSteps) {
+                    step = 0;
+                    ringDirection *= -1;
+                    outerIsMain = !outerIsMain;
+                }
+                const progress = step / totalSteps;
+                const ease = 1 - Math.pow(1 - progress, 2);
+                let targetOuterW, targetOuterH, targetInnerW, targetInnerH;
+                if (ringDirection === 1) {
+                    targetOuterW = outerMax - (outerMax - outerMin) * ease;
+                    targetOuterH = outerMax - (outerMax - outerMin) * ease;
+                    targetInnerW = innerMin + (innerMax - innerMin) * ease;
+                    targetInnerH = innerMin + (innerMax - innerMin) * ease;
+                } else {
+                    targetOuterW = outerMin + (outerMax - outerMin) * ease;
+                    targetOuterH = outerMin + (outerMax - outerMin) * ease;
+                    targetInnerW = innerMax - (innerMax - innerMin) * ease;
+                    targetInnerH = innerMax - (innerMax - innerMin) * ease;
+                }
+                outerRing.style.width = targetOuterW + 'px'; outerRing.style.height = targetOuterH + 'px';
+                innerRing.style.width = targetInnerW + 'px'; innerRing.style.height = targetInnerH + 'px';
+                ringAnimationFrame = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        function startBottomParticles() {
+            if (bottomParticleInterval) clearInterval(bottomParticleInterval);
+            bottomParticleInterval = setInterval(() => {
+                const container = document.getElementById('particleContainer');
+                const ring = outerRing;
+                const rect = ring.getBoundingClientRect();
+                if (rect.width === 0) return;
+                const x = rect.left + Math.random() * rect.width;
+                const y = rect.bottom;
+                const particle = document.createElement('div');
+                particle.className = currentTheme.particleClass;
+                const duration = 2 + Math.random();
+                particle.style.animation = `fallDown ${duration}s linear forwards`;
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), duration * 1000);
+            }, 120);
+        }
+        function stopBottomParticles() {
+            if (bottomParticleInterval) clearInterval(bottomParticleInterval);
+            document.getElementById('particleContainer').innerHTML = '';
+        }
+
+        function startWhiteParticles() {
+            if (whiteParticleInterval) clearInterval(whiteParticleInterval);
+            whiteParticleInterval = setInterval(() => {
+                const ring = outerRing;
+                const rect = ring.getBoundingClientRect();
+                if (rect.width === 0) return;
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const radius = rect.width / 2;
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.sqrt(Math.random()) * radius;
+                const x = centerX + Math.cos(angle) * r;
+                const y = centerY + Math.sin(angle) * r;
+                const particle = document.createElement('div');
+                particle.className = 'white-particle';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 1500);
+            }, 80);
+        }
+        function stopWhiteParticles() {
+            if (whiteParticleInterval) clearInterval(whiteParticleInterval);
+            document.querySelectorAll('.white-particle').forEach(p => p.remove());
+        }
+
+        function drawSubtitleMosaic() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const questionSpans = document.querySelectorAll('.subtitle .question');
+            if (questionSpans.length === 0) return;
+            const size = 9;
+            const countPerQuestion = 35;
+            const redBase = currentTheme.mosaicRedBase;
+            questionSpans.forEach(span => {
+                const rect = span.getBoundingClientRect();
+                if (rect.width === 0) return;
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                for (let i = 0; i < countPerQuestion; i++) {
+                    let dx = (Math.random() - 0.5) * 160;
+                    let dy = (Math.random() - 0.5) * 30;
+                    let absX = Math.abs(dx);
+                    let prob = 1 - (absX / 80);
+                    if (Math.random() > prob) continue;
+                    const x = centerX + dx;
+                    const y = centerY + dy;
+                    if (x < 0 || x > window.innerWidth || y < 0 || y > window.innerHeight) continue;
+                    const red = redBase + Math.random() * 55;
+                    const alpha = 0.4 + Math.random() * 0.5 * prob;
+                    ctx.fillStyle = `rgba(${red}, 0, 0, ${alpha})`;
+                    ctx.fillRect(x - size / 2, y - size / 2, size, size);
+                }
+            });
+        }
+
+        function waitForElementAndStartMosaic(callback) {
+            let retry = 0;
+            const check = () => {
+                const q = document.querySelector('.subtitle .question');
+                if (q) {
+                    const rect = q.getBoundingClientRect();
+                    if (rect.width > 5 && rect.height > 5) {
+                        callback();
+                        return;
+                    }
+                }
+                retry++;
+                if (retry < 60) requestAnimationFrame(check);
+                else callback();
+            };
+            check();
+        }
+        function startSubtitleMosaic() {
+            if (subtitleMosaicInterval) clearInterval(subtitleMosaicInterval);
+            subtitleMosaicInterval = setInterval(drawSubtitleMosaic, 100);
+        }
+        function stopMosaics() {
+            if (subtitleMosaicInterval) clearInterval(subtitleMosaicInterval);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function startGlitch() {
+            if (glitchInterval) clearInterval(glitchInterval);
+            const descDiv = document.getElementById('seatDesc');
+            originalDesc = seats[currentSeatIndex].description;
+            glitchInterval = setInterval(() => {
+                let text = originalDesc, result = '';
+                for (let i = 0; i < text.length; i++) {
+                    if (Math.random() < 0.25) {
+                        const r = Math.random();
+                        if (r < 0.4) result += String.fromCharCode(0x4e00 + Math.random() * 0x9fff);
+                        else if (r < 0.7) result += ' ';
+                        else result += text[Math.floor(Math.random() * text.length)];
+                    } else result += text[i];
+                }
+                descDiv.innerText = result || originalDesc;
+            }, 400);
+        }
+        function stopGlitch() {
+            if (glitchInterval) clearInterval(glitchInterval);
+            document.getElementById('seatDesc').innerText = originalDesc;
+        }
+
+        // 箭头粒子（独立定时器）
+        function startArrowParticles(arrowElement, theme, side) {
+            if (side === 'left' && leftArrowTimer) clearInterval(leftArrowTimer);
+            if (side === 'right' && rightArrowTimer) clearInterval(rightArrowTimer);
+            const interval = setInterval(() => {
+                const rect = arrowElement.getBoundingClientRect();
+                if (rect.width === 0) return;
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                for (let i = 0; i < 6; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 3;
+                    const vx = Math.cos(angle) * speed;
+                    const vy = Math.sin(angle) * speed;
+                    const p = document.createElement('div');
+                    p.className = theme.arrowParticleClass;
+                    p.style.left = cx + 'px';
+                    p.style.top = cy + 'px';
+                    p.style.setProperty('--tx', vx * 50 + 'px');
+                    p.style.setProperty('--ty', vy * 50 + 'px');
+                    document.body.appendChild(p);
+                    setTimeout(() => p.remove(), 800);
+                }
+            }, 200);
+            if (side === 'left') leftArrowTimer = interval;
+            else rightArrowTimer = interval;
+        }
+        function stopArrowParticles(side) {
+            if (side === 'left' && leftArrowTimer) {
+                clearInterval(leftArrowTimer);
+                leftArrowTimer = null;
+            } else if (side === 'right' && rightArrowTimer) {
+                clearInterval(rightArrowTimer);
+                rightArrowTimer = null;
+            }
+        }
+
+        function playEntranceAnimation(callback) {
+            beam.style.opacity = '0'; outerRing.style.opacity = '0'; innerRing.style.opacity = '0';
+            contentDiv.style.opacity = '0'; arrows.forEach(a => a.style.opacity = '0');
+            setTimeout(() => {
+                beam.style.opacity = '1';
+                startBottomParticles();
+            }, 100);
+            setTimeout(() => { outerRing.style.opacity = '1'; }, 600);
+            setTimeout(() => { innerRing.style.opacity = '1'; }, 900);
+            setTimeout(() => {
+                contentDiv.style.opacity = '1';
+                arrows.forEach(a => a.style.opacity = '1');
+                if (callback) callback();
+            }, 1200);
+        }
+        function playExitAnimation(callback) {
+            outerRing.style.opacity = '0'; innerRing.style.opacity = '0'; contentDiv.style.opacity = '0';
+            arrows.forEach(a => a.style.opacity = '0');
+            stopMosaics(); stopGlitch(); stopWhiteParticles(); stopBottomParticles();
+            stopArrowParticles('left'); stopArrowParticles('right');
+            beam.style.opacity = '0';
+            document.getElementById('particleContainer').innerHTML = '';
+            setTimeout(() => { if (callback) callback(); }, 600);
+        }
+
+        async function switchSeat(index) {
+            if (isAnimating) return;
+            isAnimating = true;
+            await new Promise(r => playExitAnimation(r));
+            currentSeatIndex = (index + seats.length) % seats.length;
+            const seat = seats[currentSeatIndex];
+            currentTheme = seat.theme;
+            applyTheme(currentTheme);
+            document.getElementById('seatTitle').innerText = seat.title;
+            document.getElementById('seatSubtitle').innerHTML = seat.subtitle.replace(/\?/g, '<span class="question">?</span>');
+            document.getElementById('seatDesc').innerText = seat.description;
+            originalDesc = seat.description;
+            await new Promise(r => playEntranceAnimation(r));
+            if (seat.mosaicEnabled) waitForElementAndStartMosaic(() => startSubtitleMosaic());
+            if (seat.glitchEnabled) startGlitch();
+            startWhiteParticles();
+            const leftArrow = document.getElementById('prevBtn');
+            const rightArrow = document.getElementById('nextBtn');
+            leftArrow.onmouseenter = () => startArrowParticles(leftArrow, currentTheme, 'left');
+            leftArrow.onmouseleave = () => stopArrowParticles('left');
+            rightArrow.onmouseenter = () => startArrowParticles(rightArrow, currentTheme, 'right');
+            rightArrow.onmouseleave = () => stopArrowParticles('right');
+            isAnimating = false;
+        }
+
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (subtitleMosaicInterval) drawSubtitleMosaic();
+        });
+        resizeCanvas();
+
+        startRingAnimation();
+        currentTheme = seats[0].theme;
+        applyTheme(currentTheme);
+        playEntranceAnimation(() => {
+            const seat = seats[0];
+            document.getElementById('seatSubtitle').innerHTML = seat.subtitle.replace(/\?/g, '<span class="question">?</span>');
+            waitForElementAndStartMosaic(() => startSubtitleMosaic());
+            startGlitch();
+            startWhiteParticles();
+        });
+        const leftArrow = document.getElementById('prevBtn');
+        const rightArrow = document.getElementById('nextBtn');
+        leftArrow.onmouseenter = () => startArrowParticles(leftArrow, currentTheme, 'left');
+        leftArrow.onmouseleave = () => stopArrowParticles('left');
+        rightArrow.onmouseenter = () => startArrowParticles(rightArrow, currentTheme, 'right');
+        rightArrow.onmouseleave = () => stopArrowParticles('right');
+        document.getElementById('prevBtn').addEventListener('click', () => switchSeat(currentSeatIndex - 1));
+        document.getElementById('nextBtn').addEventListener('click', () => switchSeat(currentSeatIndex + 1));
+    </script>
+</body>
+
+</html>

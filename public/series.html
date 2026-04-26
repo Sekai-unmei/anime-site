@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>系列详情 - JOJO的奇妙冒险</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            color: #fff;
+            font-family: system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .overall-card {
+            background: #111;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 40px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            border: 1px solid #333;
+        }
+
+        .overall-card img {
+            width: 180px;
+            height: 260px;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+
+        .overall-info h2 {
+            font-size: 2rem;
+            margin-bottom: 12px;
+            color: #ffd966;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section h3 {
+            font-size: 1.8rem;
+            border-left: 5px solid #ffd966;
+            padding-left: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+        }
+
+        .anime-card {
+            width: 200px;
+            background: #1a1a1a;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .anime-card:hover {
+            transform: scale(1.02);
+        }
+
+        .anime-card img {
+            width: 100%;
+            height: 280px;
+            object-fit: cover;
+        }
+
+        .anime-card p {
+            text-align: center;
+            padding: 10px;
+            font-weight: bold;
+        }
+
+        .back-btn {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 10px 24px;
+            background: #ffd966;
+            color: #000;
+            border-radius: 40px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="overall-card" id="overall"></div>
+
+        <div class="section" id="mainline">
+            <h3>🔹 主线</h3>
+            <div class="card-grid" id="mainlineGrid"></div>
+        </div>
+
+        <div class="section" id="son">
+            <h3>🧬 儿子（承太郎）</h3>
+            <div class="card-grid" id="sonGrid"></div>
+        </div>
+
+        <div class="section" id="daughter">
+            <h3>🌸 女儿（徐伦）</h3>
+            <div class="card-grid" id="daughterGrid"></div>
+        </div>
+
+        <div class="section" id="extra">
+            <h3>✨ 番外・飙马野郎</h3>
+            <div class="card-grid" id="extraGrid"></div>
+        </div>
+
+        <a href="/" class="back-btn">← 返回首页</a>
+    </div>
+
+    <script>
+        const SERIES_TITLE = "jojo的奇妙冒险";  // 与数据中 series_title 匹配
+        // 预定义分组ID（基于你提供的示例）
+        const GROUP_IDS = {
+            overall: 178,           // 整体评价卡
+            mainline: [179, 180, 181, 183],
+            son: [182],
+            daughter: [184, 185, 186],
+            extra: [187]
+        };
+
+        async function loadAnimeData() {
+            const res = await fetch(`/api/anime/series?title=${encodeURIComponent(SERIES_TITLE)}`);
+            const all = await res.json(); // 返回该系列所有动漫
+            const map = new Map();
+            all.forEach(anime => map.set(anime.id, anime));
+
+            // 渲染整体评价
+            const overall = map.get(GROUP_IDS.overall);
+            if (overall) {
+                document.getElementById('overall').innerHTML = `
+                <img src="${overall.image_url}" alt="${overall.title}">
+                <div class="overall-info">
+                    <h2>📖 整体评价 · ${overall.title}</h2>
+                    <p>${overall.description || '暂无简介'}</p>
+                    <p>⭐ 推荐度：${overall.rating} &nbsp; | &nbsp; 🏷️ ${overall.genre?.join(' · ')}</p>
+                </div>
+            `;
+            }
+
+            // 通用渲染函数
+            const renderGroup = (ids, containerId) => {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                container.innerHTML = '';
+                ids.forEach(id => {
+                    const anime = map.get(id);
+                    if (!anime) return;
+                    const card = document.createElement('div');
+                    card.className = 'anime-card';
+                    card.innerHTML = `
+                    <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/placeholder.png'">
+                    <p>${anime.title}</p>
+                `;
+                    card.addEventListener('click', () => {
+                        window.location.href = `/anime/${anime.id}`;
+                    });
+                    container.appendChild(card);
+                });
+            };
+
+            renderGroup(GROUP_IDS.mainline, 'mainlineGrid');
+            renderGroup(GROUP_IDS.son, 'sonGrid');
+            renderGroup(GROUP_IDS.daughter, 'daughterGrid');
+            renderGroup(GROUP_IDS.extra, 'extraGrid');
+        }
+
+        loadAnimeData();
+    </script>
+</body>
+
+</html>

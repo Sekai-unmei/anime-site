@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>访问被拒</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .modal {
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 40px 60px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(5px);
+            z-index: 10;
+            max-width: 80%;
+            margin-bottom: 80px;
+        }
+
+        .modal p {
+            color: #ffd700;
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            font-weight: bold;
+            text-shadow: 0 0 10px gold;
+            line-height: 1.5;
+        }
+
+        .back-button {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.3s;
+            z-index: 10;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        .back-button:hover {
+            background: #ffd700;
+            color: #000;
+            box-shadow: 0 0 20px gold;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .button-container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="particleCanvas"></canvas>
+    <div class="modal">
+        <p>尔等之辈 莫要前去<br>那里<br>并非汝等的栖身之地也</p>
+    </div>
+    <div class="button-container">
+        <a href="/login.html" class="back-button">返回登录</a>
+    </div>
+    <script>
+        // 播放音频
+        const audio = new Audio('/audio/拒绝2.m4a');
+        audio.play().catch(e => console.log('音频播放失败:', e));
+
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor(x, y, vx, vy, size, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.size = size;
+                this.color = color;
+                this.alpha = 1;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= 0.02;
+                return this.alpha > 0;
+            }
+            draw() {
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            if (Math.random() < 0.4) {
+                const modal = document.querySelector('.modal');
+                const rect = modal.getBoundingClientRect();
+                const side = Math.floor(Math.random() * 4);
+                let x, y;
+                const margin = 20;
+                if (side === 0) {
+                    x = rect.left + Math.random() * rect.width;
+                    y = rect.top - margin;
+                } else if (side === 1) {
+                    x = rect.right + margin;
+                    y = rect.top + Math.random() * rect.height;
+                } else if (side === 2) {
+                    x = rect.left + Math.random() * rect.width;
+                    y = rect.bottom + margin;
+                } else {
+                    x = rect.left - margin;
+                    y = rect.top + Math.random() * rect.height;
+                }
+                const angle = Math.atan2(y - (rect.top + rect.height / 2), x - (rect.left + rect.width / 2));
+                const speed = 1 + Math.random() * 2.5;
+                const vx = Math.cos(angle) * speed;
+                const vy = Math.sin(angle) * speed;
+                const size = 2 + Math.random() * 5;
+                const color = `hsl(${Math.random() * 60 + 30}, 100%, 60%)`;
+                particles.push(new Particle(x, y, vx, vy, size, color));
+            }
+            for (let i = 0; i < particles.length; i++) {
+                const alive = particles[i].update();
+                if (!alive) {
+                    particles.splice(i, 1);
+                    i--;
+                } else {
+                    particles[i].draw();
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+
+</html>

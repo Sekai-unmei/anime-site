@@ -1333,6 +1333,22 @@ async function checkLoginAndRedirect() {
     }
 }
 
+async function fetchCurrentAvatar() {
+    try {
+        const res = await fetch('/api/user/current', { credentials: 'include' });
+        if (res.ok) {
+            const user = await res.json();
+            if (user.avatar && profile.avatar !== user.avatar) {
+                profile.avatar = user.avatar;
+                // 更新首页左下角头像
+                const avatarIcon = document.getElementById('avatarIcon');
+                if (avatarIcon) avatarIcon.src = user.avatar;
+                // 触发自定义事件，让其他监听器（如形象设置页）更新
+                window.dispatchEvent(new CustomEvent('profileUpdated', { detail: { avatar: user.avatar } }));
+            }
+        }
+    } catch (e) { console.warn('获取头像失败', e); }
+}
 
 // --- 10. 统一启动 ---
 async function initAll() {

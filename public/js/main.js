@@ -1340,6 +1340,9 @@ async function initAll() {
     const isLoggedIn = await checkLoginAndRedirect();
     if (!isLoggedIn) return;
 
+    // 先加载服务器端用户信息（等待完成）
+    await fetchCurrentAvatar();
+
     // 原有的初始化代码（不变）
     if (typeof initEnvironment === 'function') initEnvironment();
     if (typeof initDragSystem === 'function') initDragSystem();

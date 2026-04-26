@@ -459,17 +459,31 @@
                 const res = await fetch('/api/user/current', { credentials: 'include' });
                 if (res.ok) {
                     const user = await res.json();
+                    let needUpdate = false;
+                    // 同步所有字段
                     if (user.avatar && profile.avatar !== user.avatar) {
                         profile.avatar = user.avatar;
-                        saveProfile({ avatar: user.avatar });
+                        needUpdate = true;
+                    }
+                    if (user.username && profile.name !== user.username) {
+                        profile.name = user.username;
+                        needUpdate = true;
+                    }
+                    if (user.bio && profile.bio !== user.bio) {
+                        profile.bio = user.bio;
+                        needUpdate = true;
+                    }
+                    // 还可能包括 title、planet 等，视需要添加
+                    if (needUpdate) {
+                        saveProfile(profile);  // 更新 localStorage 并触发事件
                         renderResultPanel();
-                        const avatarImg = document.getElementById('avatarPreview');
-                        if (avatarImg) avatarImg.src = user.avatar;
+                        // 刷新外观设置模态框里的头像预览（如果打开）
+                        const avatarPreview = document.getElementById('avatarPreview');
+                        if (avatarPreview) avatarPreview.src = profile.avatar;
                     }
                 }
-            } catch (e) { console.warn('获取头像失败', e); }
+            } catch (e) { console.warn('获取服务器用户信息失败', e); }
         }
-
         let currentCropModal = null;
 
         function uploadAvatar() {

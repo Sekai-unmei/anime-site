@@ -30,6 +30,7 @@ let animeData = [];
 let userProfiles = {};
 const DATA_FILE = path.join(__dirname, 'data/anime.json');
 
+
 function loadData() {
     try {
         if (fs.existsSync(DATA_FILE)) {
@@ -67,10 +68,19 @@ function getRatings(anime) {
     return anime.ratings;
 }
 
+
+
 console.time("加载动漫数据");
 loadData();
 console.timeEnd("加载动漫数据");
 
+function areFriends(user1, user2) {
+    const friends = loadFriends();
+    return friends.some(f =>
+        (f.user === user1 && f.friend === user2 || f.user === user2 && f.friend === user1) &&
+        f.status === 'accepted'
+    );
+}
 // ========== 文件上传（头像） ==========
 const multer = require('multer');
 const AVATAR_DIR = path.join(__dirname, 'public/avatars');
@@ -786,6 +796,10 @@ app.post('/api/messages/send', (req, res) => {
     const { to, text } = req.body;
     if (!to || !text) return res.status(400).json({ error: "缺少参数" });
     const from = req.session.user;
+    // 好友校验
+    if (!areFriends(from, to)) {
+        return res.status(403).json({ error: "不是好友，无法发送消息" });
+    }
     const key = [from, to].sort().join('_');
     let messages = loadMessages();
     if (!messages[key]) messages[key] = [];
@@ -815,10 +829,13 @@ app.get('/api/messages/history', (req, res) => {
     const { friend } = req.query;
     if (!friend) return res.status(400).json({ error: "缺少好友邮箱" });
     const me = req.session.user;
+    // 添加好友校验
+    if (!areFriends(me, friend)) {
+        return res.status(403).json({ error: "不是好友，无法查看聊天记录" });
+    }
     const key = [me, friend].sort().join('_');
     const messages = loadMessages();
     const history = messages[key] || [];
-    // 标记已读（可选）
     res.json(history);
 });
 

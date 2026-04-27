@@ -716,7 +716,53 @@
                 loadNotificationList();
             });
         }
-
+        function showQuickReplyModal(animeId, commentId, replierEmail, originalReplyText) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #1a1a1a;
+        border: 1px solid #ffd700;
+        border-radius: 20px;
+        padding: 20px;
+        width: 80%;
+        max-width: 400px;
+        z-index: 100000;
+        box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    `;
+            modal.innerHTML = `
+        <h4 style="color:#ffd700;">回复 ${escapeHtml(replierEmail)}</h4>
+        <div style="margin-bottom: 10px; padding: 8px; background: #222; border-radius: 8px; color: #aaa; font-size: 0.85rem;">
+            原回复：${escapeHtml(originalReplyText) || '(无内容)'}
+        </div>
+        <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
+            <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
+            <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
+        </div>
+    `;
+            document.body.appendChild(modal);
+            document.getElementById('quickReplySend').onclick = async () => {
+                const text = document.getElementById('quickReplyText').value.trim();
+                if (!text) return showToast('请输入回复内容');
+                const res = await authFetch(`/api/anime/${animeId}/comment`, {
+                    method: 'POST',
+                    body: { parentId: commentId, text }
+                });
+                if (res.ok) {
+                    showToast('回复已发送');
+                    modal.remove();
+                    loadNotificationList();
+                } else showToast('回复失败');
+            };
+            document.getElementById('quickReplyCancel').onclick = () => modal.remove();
+            document.getElementById('quickReplyJump').onclick = () => {
+                window.location.href = `/anime/${animeId}`;
+            };
+        }
         async function loadNotificationList() {
             const container = document.getElementById('notificationList');
             if (!container) return;
@@ -757,11 +803,55 @@
                 await fetch('/api/notifications/mark-read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ ids: [id] }) });
             } catch (e) { }
         }
+        function showCustomModal(options) {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200000;
+        `;
+                const box = document.createElement('div');
+                box.style.cssText = `
+            background: #1a1a1a;
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 20px;
+            max-width: 90%;
+            width: 300px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255,215,0,0.3);
+        `;
+                box.innerHTML = `
+            <div style="color:#ffd700; font-size:1.2rem; margin-bottom:15px;">${options.title || '提示'}</div>
+            <div style="color:#fff; margin-bottom:20px;">${options.message}</div>
+            <div style="display:flex; gap:15px; justify-content:center;">
+                ${options.showCancel !== false ? `<button id="modalCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>` : ''}
+                <button id="modalConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">${options.confirmText || '确定'}</button>
+            </div>
+        `;
+                modal.appendChild(box);
+                document.body.appendChild(modal);
+                const confirmBtn = box.querySelector('#modalConfirm');
+                const cancelBtn = box.querySelector('#modalCancel');
+                confirmBtn.onclick = () => { modal.remove(); resolve(true); };
+                if (cancelBtn) cancelBtn.onclick = () => { modal.remove(); resolve(false); };
+                modal.onclick = (e) => { if (e.target === modal) { modal.remove(); resolve(false); } };
+            });
+        }
 
         async function handleFriendRequest(fromEmail) {
             const confirmed = await showCustomModal({
-                title: '删除好友',
-                message: `确定要删除好友 ${currentChatFriend} 吗？`
+                title: '好友请求',
+                message: `确定要添加 ${fromEmail} 为好友吗？`,
+                confirmText: '同意'
             });
             if (confirmed) {
                 const res = await fetch('/api/friends/accept', {
@@ -778,7 +868,6 @@
                 } else showToast('操作失败');
             }
         }
-
         async function loadFriendsList() {
             const container = document.getElementById('friendsList');
             if (!container) return;
@@ -787,9 +876,8 @@
             const notes = await notesRes.json();
             try {
                 const res = await fetch('/api/friends/list', { credentials: 'include' });
-                if (!res.ok) throw new Error();
                 const data = await res.json();
-                if (!data.length) { container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无好友</div>'; return; }
+                if (!data.length) { container.innerHTML = '<div>暂无好友</div>'; return; }
                 container.innerHTML = '';
                 data.forEach(friend => {
                     const note = notes[friend.email] || '';
@@ -797,10 +885,10 @@
                     const div = document.createElement('div');
                     div.className = 'msg-item';
                     div.innerHTML = `
-            <img src="${friend.avatar || '/avatars/default.png'}" class="friend-avatar" onerror="this.src='/avatars/default.png'">
-            <span class="friend-name">${escapeHtml(displayName)}</span>
-            <button class="edit-note-btn" data-email="${friend.email}" style="float:right; background:transparent; border:none; color:#ffd700; cursor:pointer;">✏️</button>
-        `;
+                <img src="${friend.avatar}" class="friend-avatar" onerror="this.src='/avatars/default.png'">
+                <span class="friend-name">${escapeHtml(displayName)}</span>
+                <button class="edit-note-btn" data-email="${friend.email}" style="float:right; background:transparent; border:none; color:#ffd700; cursor:pointer;">✏️</button>
+            `;
                     div.querySelector('.edit-note-btn').onclick = async (e) => {
                         e.stopPropagation();
                         const newNote = prompt('请输入备注名（留空为删除备注）', note);
@@ -815,7 +903,7 @@
                     div.addEventListener('click', () => openChatWithFriend(friend.email));
                     container.appendChild(div);
                 });
-            } catch (err) { console.error(err); container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>'; }
+            } catch (err) { container.innerHTML = '<div>加载失败</div>'; }
         }
 
         function updateBadge(unreadCount) {
@@ -854,12 +942,14 @@
 
         function openChatWithFriend(friendEmail) {
             currentChatFriend = friendEmail;
+            lastMessageCount = 0;           // ✅ 重置消息计数
             document.getElementById('chatFriendName').innerText = friendEmail;
             document.getElementById('chatModal').style.display = 'flex';
             loadChatHistory();
             if (chatInterval) clearInterval(chatInterval);
             chatInterval = setInterval(loadChatHistory, 3000);
         }
+
 
         async function loadChatHistory() {
             if (!currentChatFriend) return;
@@ -868,7 +958,13 @@
             const history = await res.json();
             const container = document.getElementById('chatMessages');
             const prevScroll = container.scrollTop;
+            // 如果消息数量没有变化，则不刷新
+            if (history.length === lastMessageCount) return;
+            lastMessageCount = history.length;
+
+            const shouldScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
             container.innerHTML = '';
+
             history.forEach(async msg => {
                 const isMe = msg.from === currentUserEmail;
                 const avatar = isMe ? (await getUserAvatar(currentUserEmail)) : (await getUserAvatar(msg.from));
@@ -890,6 +986,7 @@
                 container.appendChild(div);
             });
             if (prevScroll > container.scrollHeight - 300) container.scrollTop = container.scrollHeight;
+            if (shouldScroll) container.scrollTop = container.scrollHeight;
         }
 
         async function sendMessage() {
@@ -920,18 +1017,23 @@
         });
         document.getElementById('deleteFriendBtn')?.addEventListener('click', async () => {
             if (!currentChatFriend) return;
-            if (confirm(`确定要删除好友 ${currentChatFriend} 吗？`)) {
+            const confirmed = await showCustomModal({
+                title: '删除好友',
+                message: `确定要删除好友 ${currentChatFriend} 吗？`,
+                confirmText: '删除'
+            });
+            if (confirmed) {
                 const res = await authFetch('/api/friends/delete', { method: 'POST', body: { friend: currentChatFriend } });
                 const data = await res.json();
                 if (data.success) {
                     showToast('已删除好友');
                     document.getElementById('chatModal').style.display = 'none';
                     loadFriendsList();
-                } else showToast('删除失败');
+                } else {
+                    showToast('删除失败');
+                }
             }
         });
-        document.getElementById('muteFriendBtn')?.addEventListener('click', () => showToast('消息免打扰功能开发中'));
-        document.getElementById('blockFriendBtn')?.addEventListener('click', () => showToast('拉黑功能开发中'));
 
         function requestNotificationPermission() {
             if ('Notification' in window && Notification.permission !== 'denied') Notification.requestPermission();

@@ -297,7 +297,7 @@
     </div>
 
     <script>
-        // --- Toast 函数 ---
+        // ====== 添加 showToast 函数 ======
         function showToast(message, duration = 2000) {
             const existingToast = document.querySelector('.toast-message');
             if (existingToast) existingToast.remove();
@@ -305,14 +305,15 @@
             toast.className = 'toast-message';
             toast.textContent = message;
             document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), duration);
+            setTimeout(() => {
+                if (toast.parentNode) toast.remove();
+            }, duration);
         }
 
         let animeId = window.location.pathname.split('/').pop();
         let currentAnime = null;
         let currentUserEmail = null;
 
-        // 获取当前用户邮箱（用于判断评论是否可删、评分高亮）
         async function fetchCurrentUser() {
             try {
                 const res = await fetch('/api/user/current', { credentials: 'include' });
@@ -327,7 +328,6 @@
             }
         }
 
-        // 通用 fetch 封装
         async function authFetch(url, options = {}) {
             options.credentials = 'include';
             if (options.body && typeof options.body === 'object') {
@@ -372,12 +372,10 @@
             });
         }
 
-        // 评分按钮渲染（高亮当前用户的评分）
         async function renderRatingButtons() {
             const ratings = ['神作', '好看', '普通', '无聊', '狗屎'];
             const container = document.getElementById('ratingPanel');
             container.innerHTML = '<strong>评分：</strong> ';
-            // 获取当前用户评分
             let userRating = null;
             if (currentUserEmail && currentAnime.user_ratings && currentAnime.user_ratings[currentUserEmail]) {
                 userRating = currentAnime.user_ratings[currentUserEmail];
@@ -395,16 +393,11 @@
         async function rateAnime(ratingType, btnElement) {
             const isActive = btnElement.classList.contains('active');
             if (isActive) {
-                // 取消评分
                 try {
-                    const res = await authFetch('/api/anime/unrate', {
-                        method: 'POST',
-                        body: { id: animeId }
-                    });
+                    const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: animeId } });
                     const data = await res.json();
                     if (data.success) {
                         showToast(`已取消 ${ratingType} 评分`);
-                        // 重新加载动漫数据以刷新评分计数和高亮
                         await loadAnime();
                     } else {
                         showToast(data.error || '取消评分失败');
@@ -413,11 +406,7 @@
                     showToast('网络错误');
                 }
             } else {
-                // 提交评分
-                const res = await authFetch('/api/anime/rate', {
-                    method: 'POST',
-                    body: { id: animeId, ratingType }
-                });
+                const res = await authFetch('/api/anime/rate', { method: 'POST', body: { id: animeId, ratingType } });
                 if (res.ok) {
                     showToast(`已评为 ${ratingType}`);
                     await loadAnime();
@@ -428,7 +417,6 @@
             }
         }
 
-        // 评论渲染（支持删除）
         function renderComments() {
             const container = document.getElementById('commentSection');
             if (!currentAnime.comments) currentAnime.comments = [];
@@ -461,13 +449,12 @@
                 ${deleteBtn}
             </div>
             <div class="comment-text">${escapeHtml(comment.text)}</div>
-          <div class="reply-btn" data-id="${comment.id}">💬 回复</div>
+            <div class="reply-btn" data-id="${comment.id}">💬 回复</div>
             <div id="reply-form-${comment.id}" class="reply-form">
                 <textarea rows="2" placeholder="回复..."></textarea>
                 <button class="comment-submit" onclick="submitReply('${comment.id}')">提交回复</button>
             </div>
         `;
-            // 删除事件
             if (isOwner) {
                 const delBtn = div.querySelector('.delete-comment');
                 delBtn.addEventListener('click', (e) => {
@@ -475,18 +462,15 @@
                     deleteComment(comment.id);
                 });
             }
-            // 回复按钮
             const replyBtn = div.querySelector('.reply-btn');
             replyBtn.onclick = (e) => {
                 e.stopPropagation();
                 const form = document.getElementById(`reply-form-${comment.id}`);
                 form.style.display = form.style.display === 'block' ? 'none' : 'block';
             };
-            // 头像和用户名点击查看用户信息
             div.querySelectorAll('.comment-avatar, .comment-username').forEach(el => {
                 el.addEventListener('click', () => showUserInfo(el.dataset.email));
             });
-            // 子回复递归
             if (comment.replies && comment.replies.length) {
                 const repliesDiv = document.createElement('div');
                 repliesDiv.className = 'replies';
@@ -499,9 +483,7 @@
         }
 
         async function deleteComment(commentId) {
-            const res = await authFetch(`/api/anime/${animeId}/comment/${commentId}`, {
-                method: 'DELETE'
-            });
+            const res = await authFetch(`/api/anime/${animeId}/comment/${commentId}`, { method: 'DELETE' });
             if (res.ok) {
                 showToast('评论已删除');
                 loadAnime();
@@ -515,10 +497,7 @@
             const textarea = document.getElementById('newCommentText');
             const text = textarea.value.trim();
             if (!text) return;
-            const res = await authFetch(`/api/anime/${animeId}/comment`, {
-                method: 'POST',
-                body: { text }
-            });
+            const res = await authFetch(`/api/anime/${animeId}/comment`, { method: 'POST', body: { text } });
             if (res.ok) {
                 textarea.value = '';
                 loadAnime();
@@ -533,10 +512,7 @@
             const textarea = formDiv.querySelector('textarea');
             const text = textarea.value.trim();
             if (!text) return;
-            const res = await authFetch(`/api/anime/${animeId}/comment`, {
-                method: 'POST',
-                body: { parentId, text }
-            });
+            const res = await authFetch(`/api/anime/${animeId}/comment`, { method: 'POST', body: { parentId, text } });
             if (res.ok) {
                 textarea.value = '';
                 formDiv.style.display = 'none';
@@ -546,7 +522,6 @@
             }
         }
 
-        // 用户信息弹窗
         const modal = document.getElementById('userModal');
         async function showUserInfo(email) {
             try {
@@ -569,10 +544,7 @@
         window.closeModal = closeModal;
 
         async function addFriend(toEmail) {
-            const res = await authFetch('/api/friends/request', {
-                method: 'POST',
-                body: { toEmail }
-            });
+            const res = await authFetch('/api/friends/request', { method: 'POST', body: { toEmail } });
             const data = await res.json();
             if (data.success) {
                 showToast('好友请求已发送');
@@ -581,7 +553,6 @@
             }
         }
 
-        // 初始化
         (async () => {
             await fetchCurrentUser();
             await loadAnime();

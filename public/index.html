@@ -6,9 +6,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>动漫资料库</title>
     <link rel="stylesheet" href="/style.css">
+    <style>
+        /* Toast 提示（内嵌，确保生效） */
+        .toast-message {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid #ffd700;
+            border-radius: 40px;
+            padding: 12px 24px;
+            color: #ffd700;
+            font-size: 1rem;
+            font-weight: bold;
+            z-index: 100000;
+            white-space: nowrap;
+            animation: fadeInOut 2s ease forwards;
+            pointer-events: none;
+        }
+
+        @keyframes fadeInOut {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+
+            15% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            85% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+        }
+    </style>
 </head>
 
 <body>
+    <!-- 你的原有导航栏、内容等保持不变 -->
     <nav class="nav-bar">
         <a onclick="showSection('home')">首页</a>
         <a onclick="showSection('archive')">动漫查询库</a>
@@ -65,7 +109,6 @@
                 <li><a href="#" id="reportMenuItem"
                         style="color:#fff; text-decoration: none; display: block; padding: 10px;">🐞 报错(bug)/意见箱</a>
                 </li>
-                <!-- 可添加更多菜单项 -->
             </ul>
         </div>
     </div>
@@ -110,6 +153,19 @@
 
     <script src="/js/main.js"></script>
     <script>
+        // 定义 Toast 函数（必须在最前面）
+        function showToast(message, duration = 2000) {
+            const existingToast = document.querySelector('.toast-message');
+            if (existingToast) existingToast.remove();
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                if (toast.parentNode) toast.remove();
+            }, duration);
+        }
+
         window.onload = () => { if (typeof initAll === 'function') initAll(); };
         function toggleWeather() {
             const m = document.getElementById('weather-more');
@@ -140,15 +196,10 @@
             overlay.style.fontSize = '1.5rem';
             overlay.innerHTML = '正在退出...';
             document.body.appendChild(overlay);
-
             const audio = new Audio('/audio/形象设置-退出.m4a');
             audio.play().catch(e => console.log);
-            audio.onended = function () {
-                window.location.href = '/logout';
-            };
-            setTimeout(function () {
-                if (!audio.ended) window.location.href = '/logout';
-            }, 3000);
+            audio.onended = function () { window.location.href = '/logout'; };
+            setTimeout(function () { if (!audio.ended) window.location.href = '/logout'; }, 3000);
         });
 
         function updateAvatarIcon() {
@@ -192,7 +243,6 @@
         const closeReportBtn = document.getElementById('closeReportBtn');
         const reportMenuItem = document.getElementById('reportMenuItem');
 
-        // 预览图片
         reportImage.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (file) {
@@ -206,7 +256,6 @@
             }
         });
 
-        // 打开模态框
         if (reportMenuItem) {
             reportMenuItem.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -214,7 +263,6 @@
             });
         }
 
-        // 关闭模态框
         function closeModal() {
             reportModal.style.display = 'none';
             reportType.value = 'bug';
@@ -227,7 +275,6 @@
             if (e.target === reportModal) closeModal();
         });
 
-        // 压缩图片函数
         function compressImage(file, maxWidth = 800, quality = 0.7) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -259,28 +306,23 @@
             });
         }
 
-        // 提交反馈
         submitReportBtn.addEventListener('click', async () => {
             const type = reportType.value;
             const description = reportDesc.value.trim();
             if (!description) {
-                alert('请填写问题描述');
+                showToast('请填写问题描述');
                 return;
             }
             const file = reportImage.files[0];
             let imageBase64 = null;
             if (file) {
                 if (file.size > 2 * 1024 * 1024) {
-                    alert('图片不能超过 2MB');
+                    showToast('图片不能超过 2MB');
                     return;
                 }
                 imageBase64 = await compressImage(file);
             }
-            const payload = {
-                type,
-                description,
-                imageBase64: imageBase64 || null
-            };
+            const payload = { type, description, imageBase64: imageBase64 || null };
             try {
                 const res = await fetch('/api/report', {
                     method: 'POST',
@@ -290,14 +332,14 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert('反馈已提交，感谢您的支持！');
+                    showToast('反馈已提交，感谢您的支持！');
                     closeModal();
                 } else {
-                    alert('提交失败：' + (data.error || '请稍后重试'));
+                    showToast('提交失败：' + (data.error || '请稍后重试'));
                 }
             } catch (err) {
                 console.error(err);
-                alert('网络错误，请重试');
+                showToast('网络错误，请重试');
             }
         });
     </script>

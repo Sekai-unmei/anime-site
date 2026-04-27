@@ -267,6 +267,11 @@
                         id="soundCheckbox" checked></div>
                 <div style="margin-top:15px;"><label style="color:#fff;">桌面通知</label><input type="checkbox"
                         id="desktopNotifyCheckbox"></div>
+                <div style="margin-top:15px;">
+                    <button id="feedbackBtn"
+                        style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">💬
+                        意见反馈</button>
+                </div>
             </div>
         </div>
     </div>
@@ -279,7 +284,7 @@
             style="margin-left:10px; background:transparent; border:none; cursor:pointer;">✖</button>
     </div>
 
-    <!-- 反馈模态框（原有） -->
+    <!-- 反馈模态框 -->
     <div id="reportModal"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10001; backdrop-filter: blur(5px); align-items: center; justify-content: center;">
         <div
@@ -338,6 +343,7 @@
         </div>
     </div>
     <div id="chatSettingsMenu" style="display:none; position:absolute;">
+        <div id="setNoteBtn">✏️ 设置备注</div>
         <div id="deleteFriendBtn">删除好友</div>
         <div id="muteFriendBtn">消息免打扰</div>
         <div id="blockFriendBtn">拉黑</div>
@@ -468,6 +474,7 @@
         let pollInterval = null;
         let currentChatFriend = null;
         let chatInterval = null;
+        let lastMessageCount = 0;
 
         function showNotificationBar(msg) {
             const bar = document.getElementById('notificationBar');
@@ -627,16 +634,35 @@
         async function loadFriendsList() {
             const container = document.getElementById('friendsList');
             if (!container) return;
+            // 获取备注
+            const notesRes = await fetch('/api/friends/notes', { credentials: 'include' });
+            const notes = await notesRes.json();
             try {
                 const res = await fetch('/api/friends/list', { credentials: 'include' });
-                if (!res.ok) throw new Error();
                 const data = await res.json();
                 if (!data.length) { container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无好友</div>'; return; }
                 container.innerHTML = '';
                 data.forEach(friend => {
+                    const note = notes[friend.email] || '';
+                    const displayName = note || friend.username || friend.email.split('@')[0];
                     const div = document.createElement('div');
                     div.className = 'msg-item';
-                    div.innerHTML = `<img src="${friend.avatar || '/avatars/default.png'}" class="friend-avatar" onerror="this.src='/avatars/default.png'"><span class="friend-name">${friend.username || friend.email}</span>`;
+                    div.innerHTML = `
+                <img src="${friend.avatar || '/avatars/default.png'}" class="friend-avatar" onerror="this.src='/avatars/default.png'">
+                <span class="friend-name">${escapeHtml(displayName)}</span>
+                <button class="edit-note-btn" data-email="${friend.email}" style="float:right; background:transparent; border:none; color:#ffd700; cursor:pointer;">✏️</button>
+            `;
+                    div.querySelector('.edit-note-btn').onclick = async (e) => {
+                        e.stopPropagation();
+                        const newNote = prompt('请输入备注名（留空为删除备注）', note);
+                        if (newNote !== null) {
+                            const res = await authFetch('/api/friends/note', {
+                                method: 'POST',
+                                body: { friendEmail: friend.email, note: newNote || '' }
+                            });
+                            if (res.ok) loadFriendsList();
+                        }
+                    };
                     div.addEventListener('click', () => openChatWithFriend(friend.email));
                     container.appendChild(div);
                 });
@@ -645,14 +671,13 @@
 
         function openChatWithFriend(friendEmail) {
             currentChatFriend = friendEmail;
-            lastMessageCount = 0;           // ✅ 重置消息计数
+            lastMessageCount = 0;
             document.getElementById('chatFriendName').innerText = friendEmail.split('@')[0];
             document.getElementById('chatModal').style.display = 'flex';
             loadChatHistory();
             if (chatInterval) clearInterval(chatInterval);
             chatInterval = setInterval(loadChatHistory, 3000);
         }
-
 
         async function loadChatHistory() {
             if (!currentChatFriend) return;
@@ -730,6 +755,25 @@
                 });
             }, 100);
         });
+        // 设置备注
+        document.getElementById('setNoteBtn')?.addEventListener('click', async () => {
+            if (!currentChatFriend) return;
+            const notesRes = await fetch('/api/friends/notes', { credentials: 'include' });
+            const notes = await notesRes.json();
+            const currentNote = notes[currentChatFriend] || '';
+            const newNote = prompt('请输入备注名（留空为删除备注）', currentNote);
+            if (newNote !== null) {
+                const res = await authFetch('/api/friends/note', {
+                    method: 'POST',
+                    body: { friendEmail: currentChatFriend, note: newNote || '' }
+                });
+                if (res.ok) {
+                    showToast('备注已更新');
+                    loadFriendsList();
+                } else showToast('设置失败');
+            }
+        });
+        // 删除好友
         document.getElementById('deleteFriendBtn')?.addEventListener('click', async () => {
             if (!currentChatFriend) return;
             const confirmed = await showCustomModal({
@@ -749,6 +793,9 @@
                 }
             }
         });
+        document.getElementById('muteFriendBtn')?.addEventListener('click', () => showToast('消息免打扰功能开发中'));
+        document.getElementById('blockFriendBtn')?.addEventListener('click', () => showToast('拉黑功能开发中'));
+
         function updateBadge(unreadCount) {
             const badge = document.getElementById('avatarBadge');
             if (badge) badge.style.display = unreadCount > 0 ? 'block' : 'none';
@@ -832,7 +879,7 @@
             }
         });
 
-        // -------------------------- 原有反馈功能 --------------------------
+        // -------------------------- 意见反馈功能 --------------------------
         const reportModal = document.getElementById('reportModal');
         const reportType = document.getElementById('reportType');
         const reportDesc = document.getElementById('reportDesc');
@@ -840,7 +887,13 @@
         const imagePreview = document.getElementById('imagePreview');
         const submitReportBtn = document.getElementById('submitReportBtn');
         const closeReportBtn = document.getElementById('closeReportBtn');
-        const reportMenuItem = document.getElementById('reportMenuItem');
+        const feedbackBtn = document.getElementById('feedbackBtn');
+
+        if (feedbackBtn) {
+            feedbackBtn.addEventListener('click', () => {
+                if (reportModal) reportModal.style.display = 'flex';
+            });
+        }
 
         reportImage.addEventListener('change', function (e) {
             const file = e.target.files[0];
@@ -855,13 +908,6 @@
             }
         });
 
-        if (reportMenuItem) {
-            reportMenuItem.addEventListener('click', (e) => {
-                e.preventDefault();
-                reportModal.style.display = 'flex';
-            });
-        }
-
         function closeModal() {
             reportModal.style.display = 'none';
             reportType.value = 'bug';
@@ -869,8 +915,8 @@
             reportImage.value = '';
             imagePreview.innerHTML = '';
         }
-        closeReportBtn.addEventListener('click', closeModal);
-        reportModal.addEventListener('click', (e) => {
+        if (closeReportBtn) closeReportBtn.addEventListener('click', closeModal);
+        if (reportModal) reportModal.addEventListener('click', (e) => {
             if (e.target === reportModal) closeModal();
         });
 
@@ -905,31 +951,33 @@
             });
         }
 
-        submitReportBtn.addEventListener('click', async () => {
-            const type = reportType.value;
-            const description = reportDesc.value.trim();
-            if (!description) { showToast('请填写问题描述'); return; }
-            const file = reportImage.files[0];
-            let imageBase64 = null;
-            if (file) {
-                if (file.size > 2 * 1024 * 1024) { showToast('图片不能超过 2MB'); return; }
-                imageBase64 = await compressImage(file);
-            }
-            const payload = { type, description, imageBase64: imageBase64 || null };
-            try {
-                const res = await fetch('/api/report', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast('反馈已提交，感谢您的支持！');
-                    closeModal();
-                } else showToast('提交失败：' + (data.error || '请稍后重试'));
-            } catch (err) { showToast('网络错误，请重试'); }
-        });
+        if (submitReportBtn) {
+            submitReportBtn.addEventListener('click', async () => {
+                const type = reportType.value;
+                const description = reportDesc.value.trim();
+                if (!description) { showToast('请填写问题描述'); return; }
+                const file = reportImage.files[0];
+                let imageBase64 = null;
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) { showToast('图片不能超过 2MB'); return; }
+                    imageBase64 = await compressImage(file);
+                }
+                const payload = { type, description, imageBase64: imageBase64 || null };
+                try {
+                    const res = await fetch('/api/report', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast('反馈已提交，感谢您的支持！');
+                        closeModal();
+                    } else showToast('提交失败：' + (data.error || '请稍后重试'));
+                } catch (err) { showToast('网络错误，请重试'); }
+            });
+        }
     </script>
 </body>
 

@@ -16,7 +16,7 @@ app.use(session({
     saveUninitialized: true,
     cookie: { maxAge: 24 * 60 * 60 * 1000 }
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));  // 增加到 10MB
 app.use(express.static('public'));
 
 // ========== Google OAuth 客户端 ==========
@@ -716,7 +716,6 @@ app.post('/api/report', async (req, res) => {
     if (!description) {
         return res.status(400).json({ error: '描述不能为空' });
     }
-    // 类型映射
     const typeMap = {
         bug: '🐞 Bug报告',
         optimize: '✨ 优化建议',
@@ -737,7 +736,7 @@ app.post('/api/report', async (req, res) => {
     try {
         await emailTransporter.sendMail({
             from: process.env.EMAIL_USER,
-            to: process.env.EMAIL_USER, // 发送给自己
+            to: process.env.EMAIL_USER,
             subject: `【反馈】${subject}`,
             html: htmlContent
         });
@@ -747,6 +746,8 @@ app.post('/api/report', async (req, res) => {
         res.status(500).json({ error: '邮件发送失败，请稍后重试' });
     }
 });
+
+
 // ========== 启动服务器 ==========
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

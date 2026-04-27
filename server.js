@@ -152,6 +152,13 @@ function getOrCreateUserInfo(email, username = null) {
     }
     return users[email];
 }
+const NOTES_FILE = path.join(__dirname, 'data/friend_notes.json');
+if (!fs.existsSync(NOTES_FILE)) fs.writeFileSync(NOTES_FILE, JSON.stringify({}, null, 2));
+
+function loadNotes() {
+    try { return JSON.parse(fs.readFileSync(NOTES_FILE, 'utf8')); } catch (e) { return {}; }
+}
+function saveNotes(notes) { fs.writeFileSync(NOTES_FILE, JSON.stringify(notes, null, 2)); }
 
 // ========== 迁移旧评论格式 ==========
 function migrateCommentFormat() {
@@ -825,7 +832,24 @@ app.post('/api/friends/delete', (req, res) => {
     res.json({ success: true });
 });
 
-// 拉黑/免打扰可暂不实现，或扩展 friends 数组增加字段（后续可加）
+// 获取备注（或设置备注）
+app.post('/api/friends/note', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "未登录" });
+    const { friendEmail, note } = req.body;
+    let notes = loadNotes();
+    const userNotes = notes[req.session.user] || {};
+    userNotes[friendEmail] = note;
+    notes[req.session.user] = userNotes;
+    saveNotes(notes);
+    res.json({ success: true });
+});
+
+app.get('/api/friends/notes', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "未登录" });
+    const notes = loadNotes();
+    res.json(notes[req.session.user] || {});
+});
+
 // ========== 启动服务器 ==========
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

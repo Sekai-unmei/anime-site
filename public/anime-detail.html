@@ -759,8 +759,17 @@
         }
 
         async function handleFriendRequest(fromEmail) {
-            if (confirm(`接受 ${fromEmail} 的好友请求？`)) {
-                const res = await fetch('/api/friends/accept', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ requestId: fromEmail }) });
+            const confirmed = await showCustomModal({
+                title: '删除好友',
+                message: `确定要删除好友 ${currentChatFriend} 吗？`
+            });
+            if (confirmed) {
+                const res = await fetch('/api/friends/accept', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ requestId: fromEmail })
+                });
                 const data = await res.json();
                 if (data.success) {
                     showToast('已添加好友');
@@ -773,6 +782,9 @@
         async function loadFriendsList() {
             const container = document.getElementById('friendsList');
             if (!container) return;
+            // 获取备注
+            const notesRes = await fetch('/api/friends/notes', { credentials: 'include' });
+            const notes = await notesRes.json();
             try {
                 const res = await fetch('/api/friends/list', { credentials: 'include' });
                 if (!res.ok) throw new Error();
@@ -780,9 +792,26 @@
                 if (!data.length) { container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无好友</div>'; return; }
                 container.innerHTML = '';
                 data.forEach(friend => {
+                    const note = notes[friend.email] || '';
+                    const displayName = note || friend.username || friend.email.split('@')[0];
                     const div = document.createElement('div');
                     div.className = 'msg-item';
-                    div.innerHTML = `<img src="${friend.avatar || '/avatars/default.png'}" class="friend-avatar" onerror="this.src='/avatars/default.png'"><span class="friend-name">${friend.username || friend.email}</span>`;
+                    div.innerHTML = `
+            <img src="${friend.avatar || '/avatars/default.png'}" class="friend-avatar" onerror="this.src='/avatars/default.png'">
+            <span class="friend-name">${escapeHtml(displayName)}</span>
+            <button class="edit-note-btn" data-email="${friend.email}" style="float:right; background:transparent; border:none; color:#ffd700; cursor:pointer;">✏️</button>
+        `;
+                    div.querySelector('.edit-note-btn').onclick = async (e) => {
+                        e.stopPropagation();
+                        const newNote = prompt('请输入备注名（留空为删除备注）', note);
+                        if (newNote !== null) {
+                            const res = await authFetch('/api/friends/note', {
+                                method: 'POST',
+                                body: { friendEmail: friend.email, note: newNote || '' }
+                            });
+                            if (res.ok) loadFriendsList();
+                        }
+                    };
                     div.addEventListener('click', () => openChatWithFriend(friend.email));
                     container.appendChild(div);
                 });
@@ -840,17 +869,24 @@
             const container = document.getElementById('chatMessages');
             const prevScroll = container.scrollTop;
             container.innerHTML = '';
-            history.forEach(msg => {
+            history.forEach(async msg => {
                 const isMe = msg.from === currentUserEmail;
+                const avatar = isMe ? (await getUserAvatar(currentUserEmail)) : (await getUserAvatar(msg.from));
                 const div = document.createElement('div');
-                div.style.textAlign = isMe ? 'right' : 'left';
-                div.style.background = isMe ? '#2a2a2a' : '#111';
-                div.style.padding = '8px 12px';
-                div.style.borderRadius = '12px';
-                div.style.maxWidth = '80%';
-                div.style.margin = '5px auto';
-                div.style.display = 'inline-block';
-                div.innerHTML = `<span style="color:#ffd700;">${isMe ? '我' : msg.from.split('@')[0]}</span><br>${escapeHtml(msg.text)}<small style="color:#888; margin-left:8px;">${new Date(msg.timestamp).toLocaleTimeString()}</small>`;
+                div.style.display = 'flex';
+                div.style.alignItems = 'flex-start';
+                div.style.gap = '8px';
+                div.style.marginBottom = '12px';
+                div.style.flexDirection = isMe ? 'row-reverse' : 'row';
+                div.innerHTML = `
+        <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='/avatars/default.png'">
+        <div style="max-width:70%;">
+            <div style="background:${isMe ? '#2a2a2a' : '#111'}; padding:8px 12px; border-radius:12px; display:inline-block;">
+                ${escapeHtml(msg.text)}
+            </div>
+            <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+        </div>
+    `;
                 container.appendChild(div);
             });
             if (prevScroll > container.scrollHeight - 300) container.scrollTop = container.scrollHeight;

@@ -128,6 +128,70 @@
             margin-left: 8px;
             vertical-align: middle;
         }
+
+        #notificationBar {
+            display: none;
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ffd700;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 30px;
+            z-index: 100000;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #sideMenu {
+            position: fixed;
+            left: -280px;
+            top: 0;
+            width: 280px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            transition: left 0.3s;
+            border-right: 1px solid #ffd700;
+        }
+
+        #chatModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 500px;
+            height: 70%;
+            background: #1a1a1a;
+            border: 1px solid #ffd700;
+            border-radius: 20px;
+            z-index: 100001;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chatSettingsMenu {
+            display: none;
+            position: absolute;
+            background: #222;
+            border: 1px solid #ffd700;
+            border-radius: 8px;
+            z-index: 100002;
+        }
+
+        #chatSettingsMenu div {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #fff;
+        }
+
+        #chatSettingsMenu div:hover {
+            background: #333;
+        }
     </style>
 </head>
 
@@ -192,24 +256,17 @@
                 <div class="msg-tab" data-tab="friends">好友</div>
                 <div class="msg-tab" data-tab="settings">设置</div>
             </div>
-            <!-- 消息面板 -->
             <div id="messagesPanel" class="msg-panel active">
                 <div id="notificationList">加载中...</div>
             </div>
-            <!-- 好友面板 -->
             <div id="friendsPanel" class="msg-panel">
                 <div id="friendsList">加载中...</div>
             </div>
-            <!-- 设置面板 -->
             <div id="settingsPanel" class="msg-panel">
-                <div style="margin-top: 15px;">
-                    <label style="color:#fff;">新消息提醒音效</label>
-                    <input type="checkbox" id="soundCheckbox" checked>
-                </div>
-                <div style="margin-top: 15px;">
-                    <label style="color:#fff;">桌面通知</label>
-                    <input type="checkbox" id="desktopNotifyCheckbox">
-                </div>
+                <div style="margin-top:15px;"><label style="color:#fff;">新消息提醒音效</label><input type="checkbox"
+                        id="soundCheckbox" checked></div>
+                <div style="margin-top:15px;"><label style="color:#fff;">桌面通知</label><input type="checkbox"
+                        id="desktopNotifyCheckbox"></div>
             </div>
         </div>
     </div>
@@ -260,9 +317,35 @@
         </div>
     </div>
 
+    <!-- 聊天模态框 -->
+    <div id="chatModal" style="display: none;">
+        <div
+            style="padding:15px; background:#111; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+            <span id="chatFriendName" style="color:#ffd700;"></span>
+            <div><button id="chatSettingsBtn"
+                    style="background:transparent; border:none; color:#fff; cursor:pointer;">⚙️</button><button
+                    id="closeChatBtn"
+                    style="background:transparent; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✖</button>
+            </div>
+        </div>
+        <div id="chatMessages"
+            style="flex:1; overflow-y: auto; padding:15px; display:flex; flex-direction:column; gap:10px;"></div>
+        <div style="padding:15px; border-top:1px solid #333; display:flex; gap:10px;">
+            <input type="text" id="chatInput" placeholder="输入消息..."
+                style="flex:1; background:#111; border:1px solid #444; color:#fff; border-radius:20px; padding:8px 15px;">
+            <button id="sendChatBtn"
+                style="background:#ffd700; color:#000; border:none; border-radius:30px; padding:8px 20px;">发送</button>
+        </div>
+    </div>
+    <div id="chatSettingsMenu" style="display:none; position:absolute;">
+        <div id="deleteFriendBtn">删除好友</div>
+        <div id="muteFriendBtn">消息免打扰</div>
+        <div id="blockFriendBtn">拉黑</div>
+    </div>
+
     <script src="/js/main.js"></script>
     <script>
-        // -------------------------- Toast 函数（已经定义，兼容） --------------------------
+        // === 全局函数 ===
         function showToast(message, duration = 2000) {
             const existingToast = document.querySelector('.toast-message');
             if (existingToast) existingToast.remove();
@@ -270,9 +353,7 @@
             toast.className = 'toast-message';
             toast.textContent = message;
             document.body.appendChild(toast);
-            setTimeout(() => {
-                if (toast.parentNode) toast.remove();
-            }, duration);
+            setTimeout(() => { if (toast.parentNode) toast.remove(); }, duration);
         }
 
         async function authFetch(url, options = {}) {
@@ -284,7 +365,17 @@
             return fetch(url, options);
         }
 
-        // -------------------------- 原有函数保留 --------------------------
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>]/g, function (m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // -------------------------- 原有函数 --------------------------
         window.onload = () => { if (typeof initAll === 'function') initAll(); };
         function toggleWeather() {
             const m = document.getElementById('weather-more');
@@ -329,26 +420,22 @@
         }
         window.addEventListener('profileUpdated', () => updateAvatarIcon());
         updateAvatarIcon();
-
-        // -------------------------- 新增：通知系统相关 --------------------------
+        // -------------------------- 通知系统与聊天 --------------------------
         let lastUnreadCount = 0;
-        let currentNotifications = [];
+        let pollInterval = null;
+        let currentChatFriend = null;
+        let chatInterval = null;
 
-        // 显示顶部通知条
         function showNotificationBar(msg) {
             const bar = document.getElementById('notificationBar');
             const span = document.getElementById('notificationMsg');
             if (!bar || !span) return;
             span.innerText = msg;
             bar.style.display = 'block';
-            // 5秒后自动隐藏
             clearTimeout(window.notifTimeout);
-            window.notifTimeout = setTimeout(() => {
-                bar.style.display = 'none';
-            }, 5000);
+            window.notifTimeout = setTimeout(() => { bar.style.display = 'none'; }, 5000);
         }
 
-        // 关闭通知条（按钮点击）
         document.getElementById('closeNotifBtn')?.addEventListener('click', (e) => {
             e.stopPropagation();
             const bar = document.getElementById('notificationBar');
@@ -356,13 +443,11 @@
             clearTimeout(window.notifTimeout);
         });
 
-        // 点击通知条展开侧边栏并切换到消息面板
         const notificationBar = document.getElementById('notificationBar');
         if (notificationBar) {
             notificationBar.addEventListener('click', () => {
                 const sideMenu = document.getElementById('sideMenu');
                 if (sideMenu) sideMenu.style.left = '0px';
-                // 切换到消息面板
                 document.querySelectorAll('.msg-tab').forEach(tab => {
                     tab.classList.remove('active');
                     if (tab.getAttribute('data-tab') === 'messages') tab.classList.add('active');
@@ -370,7 +455,6 @@
                 document.querySelectorAll('.msg-panel').forEach(panel => panel.classList.remove('active'));
                 const msgPanel = document.getElementById('messagesPanel');
                 if (msgPanel) msgPanel.classList.add('active');
-                // 刷新通知列表（可选）
                 loadNotificationList();
             });
         }
@@ -378,39 +462,35 @@
         function showQuickReplyModal(animeId, commentId, replierEmail, originalReplyText) {
             const modal = document.createElement('div');
             modal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #1a1a1a;
-        border: 1px solid #ffd700;
-        border-radius: 20px;
-        padding: 20px;
-        width: 80%;
-        max-width: 400px;
-        z-index: 100000;
-        box-shadow: 0 0 20px rgba(0,0,0,0.8);
-    `;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #1a1a1a;
+                border: 1px solid #ffd700;
+                border-radius: 20px;
+                padding: 20px;
+                width: 80%;
+                max-width: 400px;
+                z-index: 100000;
+                box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            `;
             modal.innerHTML = `
-        <h4 style="color:#ffd700;">回复 ${replierEmail}</h4>
-        <div style="margin-bottom: 10px; padding: 8px; background: #222; border-radius: 8px; color: #aaa; font-size: 0.85rem;">
-            原回复：${escapeHtml(originalReplyText) || '(无内容)'}
-        </div>
-        <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
-        <div style="display:flex; gap:10px; margin-top:15px;">
-            <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
-            <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
-            <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
-        </div>
-    `;
+                <h4 style="color:#ffd700;">回复 ${replierEmail}</h4>
+                <div style="margin-bottom: 10px; padding: 8px; background: #222; border-radius: 8px; color: #aaa; font-size: 0.85rem;">
+                    原回复：${escapeHtml(originalReplyText) || '(无内容)'}
+                </div>
+                <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
+                    <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
+                    <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
+                </div>
+            `;
             document.body.appendChild(modal);
-
             document.getElementById('quickReplySend').onclick = async () => {
                 const text = document.getElementById('quickReplyText').value.trim();
-                if (!text) {
-                    showToast('请输入回复内容');
-                    return;
-                }
+                if (!text) return showToast('请输入回复内容');
                 const res = await authFetch(`/api/anime/${animeId}/comment`, {
                     method: 'POST',
                     body: { parentId: commentId, text }
@@ -418,10 +498,8 @@
                 if (res.ok) {
                     showToast('回复已发送');
                     modal.remove();
-                    loadNotificationList();  // 刷新通知列表
-                } else {
-                    showToast('回复失败');
-                }
+                    loadNotificationList();
+                } else showToast('回复失败');
             };
             document.getElementById('quickReplyCancel').onclick = () => modal.remove();
             document.getElementById('quickReplyJump').onclick = () => {
@@ -429,16 +507,6 @@
             };
         }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str).replace(/[&<>]/g, function (m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
-        // 加载通知列表并渲染到侧边栏消息面板
         async function loadNotificationList() {
             const container = document.getElementById('notificationList');
             if (!container) return;
@@ -446,7 +514,6 @@
                 const res = await fetch('/api/notifications', { credentials: 'include' });
                 if (!res.ok) throw new Error();
                 const notifs = await res.json();
-                currentNotifications = notifs;
                 if (!notifs.length) {
                     container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无消息</div>';
                     return;
@@ -455,106 +522,154 @@
                 notifs.forEach(notif => {
                     const div = document.createElement('div');
                     div.className = 'msg-item';
-                    div.innerHTML = `
-        <div>${notif.message}</div>
-        <small style="color:#888;">${new Date(notif.createdAt).toLocaleString()}</small>
-        ${!notif.read ? '<span class="red-dot"></span>' : ''}
-    `;
-                    // ✅ 将回复文本存储到自定义属性中，供点击时使用
-                    div.setAttribute('data-replytext', notif.replyText || '');
+                    div.innerHTML = `<div>${notif.message}</div><small style="color:#888;">${new Date(notif.createdAt).toLocaleString()}</small>${!notif.read ? '<span class="red-dot"></span>' : ''}`;
+                    if (notif.replyText) div.setAttribute('data-replytext', notif.replyText);
                     div.addEventListener('click', () => {
                         if (notif.type === 'comment_reply' && notif.animeId) {
-                            const replyText = div.getAttribute('data-replytext');
+                            const replyText = div.getAttribute('data-replytext') || '';
                             showQuickReplyModal(notif.animeId, notif.commentId, notif.from, replyText);
                         } else if (notif.type === 'friend_request') {
                             handleFriendRequest(notif.from);
+                        } else if (notif.type === 'new_message') {
+                            openChatWithFriend(notif.from);
                         }
                         markNotificationRead(notif.id);
                         div.querySelector('.red-dot')?.remove();
                     });
                     container.appendChild(div);
                 });
-
-            } catch (err) {
-                console.error('加载通知失败', err);
-                container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>';
-            }
+            } catch (err) { console.error(err); container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>'; }
         }
 
-        // 标记单条通知为已读
         async function markNotificationRead(id) {
             try {
-                await fetch('/api/notifications/mark-read', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ ids: [id] })
-                });
-            } catch (e) { console.error(e); }
+                await fetch('/api/notifications/mark-read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ ids: [id] }) });
+            } catch (e) { }
         }
 
-        // 处理好友请求（简易：直接通过）
         async function handleFriendRequest(fromEmail) {
             if (confirm(`接受 ${fromEmail} 的好友请求？`)) {
-                const res = await fetch('/api/friends/accept', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ requestId: fromEmail })
-                });
+                const res = await fetch('/api/friends/accept', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ requestId: fromEmail }) });
                 const data = await res.json();
                 if (data.success) {
                     showToast('已添加好友');
                     loadNotificationList();
                     loadFriendsList();
-                } else {
-                    showToast('操作失败');
-                }
+                } else showToast('操作失败');
             }
         }
 
-        // 加载好友列表
         async function loadFriendsList() {
             const container = document.getElementById('friendsList');
             if (!container) return;
             try {
                 const res = await fetch('/api/friends/list', { credentials: 'include' });
                 if (!res.ok) throw new Error();
-                const data = await res.json(); // 期望返回 [{ email, username, avatar }]
-                if (!data.length) {
-                    container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无好友</div>';
-                    return;
-                }
+                const data = await res.json();
+                if (!data.length) { container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无好友</div>'; return; }
                 container.innerHTML = '';
                 data.forEach(friend => {
                     const div = document.createElement('div');
                     div.className = 'msg-item';
-                    div.innerHTML = `
-                        <img src="${friend.avatar || '/avatars/default.png'}" class="friend-avatar" onerror="this.src='/avatars/default.png'">
-                        <span class="friend-name">${friend.username || friend.email}</span>
-                    `;
-                    div.addEventListener('click', () => {
-                        // 点击好友可展示对话窗口（后续实现）
-                        showToast(`与 ${friend.username} 的聊天功能开发中`);
-                    });
+                    div.innerHTML = `<img src="${friend.avatar || '/avatars/default.png'}" class="friend-avatar" onerror="this.src='/avatars/default.png'"><span class="friend-name">${friend.username || friend.email}</span>`;
+                    div.addEventListener('click', () => openChatWithFriend(friend.email));
                     container.appendChild(div);
                 });
-            } catch (err) {
-                console.error('加载好友列表失败', err);
-                container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>';
-            }
+            } catch (err) { console.error(err); container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>'; }
         }
 
-        // 更新小红点显示
+        function openChatWithFriend(friendEmail) {
+            currentChatFriend = friendEmail;
+            document.getElementById('chatFriendName').innerText = friendEmail.split('@')[0];
+            document.getElementById('chatModal').style.display = 'flex';
+            loadChatHistory();
+            if (chatInterval) clearInterval(chatInterval);
+            chatInterval = setInterval(loadChatHistory, 3000);
+        }
+
+        async function loadChatHistory() {
+            if (!currentChatFriend) return;
+            const res = await fetch(`/api/messages/history?friend=${encodeURIComponent(currentChatFriend)}`, { credentials: 'include' });
+            if (!res.ok) return;
+            const history = await res.json();
+            const container = document.getElementById('chatMessages');
+            const prevScroll = container.scrollTop;
+            container.innerHTML = '';
+            let currentUserEmail = null;
+            try {
+                const profileRes = await fetch('/api/user/current', { credentials: 'include' });
+                if (profileRes.ok) {
+                    const user = await profileRes.json();
+                    currentUserEmail = user.email;
+                }
+            } catch (e) { }
+            history.forEach(msg => {
+                const isMe = msg.from === currentUserEmail;
+                const div = document.createElement('div');
+                div.style.textAlign = isMe ? 'right' : 'left';
+                div.style.background = isMe ? '#2a2a2a' : '#111';
+                div.style.padding = '8px 12px';
+                div.style.borderRadius = '12px';
+                div.style.maxWidth = '80%';
+                div.style.margin = '5px auto';
+                div.style.display = 'inline-block';
+                div.innerHTML = `<span style="color:#ffd700;">${isMe ? '我' : (msg.from.split('@')[0])}</span><br>${escapeHtml(msg.text)}<small style="color:#888; margin-left:8px;">${new Date(msg.timestamp).toLocaleTimeString()}</small>`;
+                container.appendChild(div);
+            });
+            if (prevScroll > container.scrollHeight - 300) container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const text = document.getElementById('chatInput').value.trim();
+            if (!text || !currentChatFriend) return;
+            const res = await authFetch('/api/messages/send', { method: 'POST', body: { to: currentChatFriend, text } });
+            if (res.ok) {
+                document.getElementById('chatInput').value = '';
+                loadChatHistory();
+            } else showToast('发送失败');
+        }
+
+        document.getElementById('sendChatBtn')?.addEventListener('click', sendMessage);
+        document.getElementById('chatInput')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+        document.getElementById('closeChatBtn')?.addEventListener('click', () => {
+            document.getElementById('chatModal').style.display = 'none';
+            if (chatInterval) clearInterval(chatInterval);
+            currentChatFriend = null;
+        });
+        document.getElementById('chatSettingsBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = document.getElementById('chatSettingsMenu');
+            const rect = e.target.getBoundingClientRect();
+            menu.style.left = rect.left + 'px';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.display = 'block';
+            setTimeout(() => {
+                document.addEventListener('click', function hideMenu() {
+                    menu.style.display = 'none';
+                    document.removeEventListener('click', hideMenu);
+                });
+            }, 100);
+        });
+        document.getElementById('deleteFriendBtn')?.addEventListener('click', async () => {
+            if (!currentChatFriend) return;
+            if (confirm(`确定要删除好友 ${currentChatFriend} 吗？`)) {
+                const res = await authFetch('/api/friends/delete', { method: 'POST', body: { friend: currentChatFriend } });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('已删除好友');
+                    document.getElementById('chatModal').style.display = 'none';
+                    loadFriendsList();
+                } else showToast('删除失败');
+            }
+        });
+        document.getElementById('muteFriendBtn')?.addEventListener('click', () => showToast('消息免打扰功能开发中'));
+        document.getElementById('blockFriendBtn')?.addEventListener('click', () => showToast('拉黑功能开发中'));
+
         function updateBadge(unreadCount) {
             const badge = document.getElementById('avatarBadge');
-            if (badge) {
-                badge.style.display = unreadCount > 0 ? 'block' : 'none';
-            }
+            if (badge) badge.style.display = unreadCount > 0 ? 'block' : 'none';
         }
 
-        // 轮询检查新通知
-        let pollInterval = null;
         async function checkNotifications() {
             try {
                 const res = await fetch('/api/notifications', { credentials: 'include' });
@@ -565,38 +680,29 @@
                 if (currentUnread > lastUnreadCount) {
                     const newCount = currentUnread - lastUnreadCount;
                     showNotificationBar(`您有 ${newCount} 条新消息`);
-                    // 尝试桌面通知（如果用户允许）
                     if (Notification.permission === 'granted' && document.getElementById('desktopNotifyCheckbox')?.checked) {
                         new Notification('动漫资料库', { body: `您有 ${newCount} 条新消息` });
                     }
                 }
                 lastUnreadCount = currentUnread;
                 updateBadge(currentUnread);
-                // 如果侧边栏打开，且当前显示消息面板，实时刷新列表
                 const sideMenu = document.getElementById('sideMenu');
                 if (sideMenu && sideMenu.style.left === '0px') {
                     const activeTab = document.querySelector('.msg-tab.active')?.getAttribute('data-tab');
                     if (activeTab === 'messages') loadNotificationList();
                     else if (activeTab === 'friends') loadFriendsList();
                 }
-            } catch (err) {
-                console.error('轮询通知失败', err);
-            }
+            } catch (err) { console.error(err); }
         }
 
-        // 请求桌面通知权限
         function requestNotificationPermission() {
-            if ('Notification' in window && Notification.permission !== 'denied') {
-                Notification.requestPermission();
-            }
+            if ('Notification' in window && Notification.permission !== 'denied') Notification.requestPermission();
         }
 
-        // 侧边栏关闭按钮
         document.getElementById('closeSideMenuBtn')?.addEventListener('click', () => {
             document.getElementById('sideMenu').style.left = '-280px';
         });
 
-        // 侧边栏选项卡切换
         document.querySelectorAll('.msg-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 const target = tab.getAttribute('data-tab');
@@ -615,15 +721,34 @@
             });
         });
 
-        // 启动轮询和初始加载
         setTimeout(() => {
             checkNotifications();
-            loadFriendsList(); // 预加载好友列表（但不显示侧边栏）
+            loadFriendsList();
             pollInterval = setInterval(checkNotifications, 5000);
             requestNotificationPermission();
         }, 2000);
 
-        // -------------------------- 原有反馈功能（已有） --------------------------
+        // 头像菜单点击
+        const avatarIconEl = document.getElementById('avatarIcon');
+        const sideMenuEl = document.getElementById('sideMenu');
+        if (avatarIconEl) {
+            avatarIconEl.addEventListener('click', () => {
+                const isOpen = sideMenuEl.style.left === '0px';
+                sideMenuEl.style.left = isOpen ? '-280px' : '0px';
+                if (!isOpen) {
+                    const activeTab = document.querySelector('.msg-tab.active')?.getAttribute('data-tab');
+                    if (activeTab === 'messages') loadNotificationList();
+                    else if (activeTab === 'friends') loadFriendsList();
+                }
+            });
+        }
+        document.addEventListener('click', (e) => {
+            if (!sideMenuEl.contains(e.target) && e.target !== avatarIconEl && sideMenuEl.style.left === '0px') {
+                sideMenuEl.style.left = '-280px';
+            }
+        });
+
+        // -------------------------- 原有反馈功能 --------------------------
         const reportModal = document.getElementById('reportModal');
         const reportType = document.getElementById('reportType');
         const reportDesc = document.getElementById('reportDesc');
@@ -699,17 +824,11 @@
         submitReportBtn.addEventListener('click', async () => {
             const type = reportType.value;
             const description = reportDesc.value.trim();
-            if (!description) {
-                showToast('请填写问题描述');
-                return;
-            }
+            if (!description) { showToast('请填写问题描述'); return; }
             const file = reportImage.files[0];
             let imageBase64 = null;
             if (file) {
-                if (file.size > 2 * 1024 * 1024) {
-                    showToast('图片不能超过 2MB');
-                    return;
-                }
+                if (file.size > 2 * 1024 * 1024) { showToast('图片不能超过 2MB'); return; }
                 imageBase64 = await compressImage(file);
             }
             const payload = { type, description, imageBase64: imageBase64 || null };
@@ -724,34 +843,8 @@
                 if (data.success) {
                     showToast('反馈已提交，感谢您的支持！');
                     closeModal();
-                } else {
-                    showToast('提交失败：' + (data.error || '请稍后重试'));
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('网络错误，请重试');
-            }
-        });
-
-        // 头像菜单点击（原有）
-        const avatarIconEl = document.getElementById('avatarIcon');
-        const sideMenuEl = document.getElementById('sideMenu');
-        if (avatarIconEl) {
-            avatarIconEl.addEventListener('click', () => {
-                const isOpen = sideMenuEl.style.left === '0px';
-                sideMenuEl.style.left = isOpen ? '-280px' : '0px';
-                if (!isOpen) {
-                    // 打开侧边栏时，加载当前面板的数据
-                    const activeTab = document.querySelector('.msg-tab.active')?.getAttribute('data-tab');
-                    if (activeTab === 'messages') loadNotificationList();
-                    else if (activeTab === 'friends') loadFriendsList();
-                }
-            });
-        }
-        document.addEventListener('click', (e) => {
-            if (!sideMenuEl.contains(e.target) && e.target !== avatarIconEl && sideMenuEl.style.left === '0px') {
-                sideMenuEl.style.left = '-280px';
-            }
+                } else showToast('提交失败：' + (data.error || '请稍后重试'));
+            } catch (err) { showToast('网络错误，请重试'); }
         });
     </script>
 </body>

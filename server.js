@@ -730,15 +730,43 @@ app.post('/api/report', async (req, res) => {
         <p><strong>描述：</strong></p>
         <p>${description.replace(/\n/g, '<br>')}</p>
     `;
+
+    // 邮件附件列表
+    let attachments = [];
     if (imageBase64) {
-        htmlContent += `<p><strong>截图：</strong><br><img src="${imageBase64}" style="max-width:100%;"></p>`;
+        // 将 base64 转换为 Buffer
+        const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (matches) {
+            const ext = matches[1];
+            const base64Data = matches[2];
+            const buffer = Buffer.from(base64Data, 'base64');
+            attachments.push({
+                filename: `screenshot.${ext}`,
+                content: buffer,
+                contentType: `image/${ext}`
+            });
+        } else {
+            // 可能是纯 base64 字符串（没有 data:image 头），尝试直接解析
+            try {
+                const buffer = Buffer.from(imageBase64, 'base64');
+                attachments.push({
+                    filename: 'screenshot.png',
+                    content: buffer,
+                    contentType: 'image/png'
+                });
+            } catch (err) {
+                console.error('解析图片数据失败:', err);
+            }
+        }
     }
+
     try {
         await emailTransporter.sendMail({
             from: process.env.EMAIL_USER,
             to: process.env.EMAIL_USER,
             subject: `【反馈】${subject}`,
-            html: htmlContent
+            html: htmlContent,
+            attachments: attachments   // 以附件形式发送图片
         });
         res.json({ success: true });
     } catch (err) {

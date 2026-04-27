@@ -62,8 +62,49 @@
             <ul style="list-style: none; padding: 0;">
                 <li><a href="#" id="msgMenuItem"
                         style="color:#fff; text-decoration: none; display: block; padding: 10px;">💬 消息</a></li>
+                <li><a href="#" id="reportMenuItem"
+                        style="color:#fff; text-decoration: none; display: block; padding: 10px;">🐞 报错(bug)/意见箱</a>
+                </li>
                 <!-- 可添加更多菜单项 -->
             </ul>
+        </div>
+    </div>
+
+    <!-- 反馈模态框 -->
+    <div id="reportModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10001; backdrop-filter: blur(5px); align-items: center; justify-content: center;">
+        <div
+            style="background: #1a1a1a; border-radius: 20px; max-width: 500px; width: 90%; margin: 20px auto; padding: 20px; border: 1px solid #ffd700; max-height: 90vh; overflow-y: auto;">
+            <h3 style="color: #ffd700; text-align: center; margin-bottom: 20px;">意见反馈</h3>
+            <div>
+                <label style="color: #ffd700;">问题类型</label>
+                <select id="reportType"
+                    style="width: 100%; padding: 10px; background: #111; border: 1px solid #444; color: #fff; border-radius: 8px; margin-top: 5px;">
+                    <option value="bug">🐛 Bug</option>
+                    <option value="optimize">✨ 优化建议</option>
+                    <option value="suggestion">💡 意见</option>
+                    <option value="question">❓ 疑问</option>
+                </select>
+            </div>
+            <div style="margin-top: 15px;">
+                <label style="color: #ffd700;">问题描述</label>
+                <textarea id="reportDesc" rows="4"
+                    style="width: 100%; padding: 10px; background: #111; border: 1px solid #444; color: #fff; border-radius: 8px; resize: vertical;"
+                    placeholder="请详细描述您遇到的问题或建议..."></textarea>
+            </div>
+            <div style="margin-top: 15px;">
+                <label style="color: #ffd700;">上传截图（可选）</label>
+                <input type="file" id="reportImage" accept="image/jpeg,image/png,image/webp"
+                    style="margin-top: 5px; color: #fff;">
+                <div id="imagePreview" style="margin-top: 10px; max-width: 100%; overflow-x: auto;"></div>
+                <p style="font-size: 0.7rem; color: #888;">最多一张，建议小于2MB</p>
+            </div>
+            <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center;">
+                <button id="submitReportBtn"
+                    style="background: #ffd700; color: #000; border: none; padding: 10px 25px; border-radius: 30px; cursor: pointer;">提交反馈</button>
+                <button id="closeReportBtn"
+                    style="background: #444; color: #fff; border: none; padding: 10px 25px; border-radius: 30px; cursor: pointer;">取消</button>
+            </div>
         </div>
     </div>
 
@@ -84,7 +125,6 @@
 
         document.getElementById('logout-link').addEventListener('click', function (e) {
             e.preventDefault();
-            // 创建遮罩层，阻止用户操作
             const overlay = document.createElement('div');
             overlay.style.position = 'fixed';
             overlay.style.top = 0;
@@ -106,25 +146,20 @@
             audio.onended = function () {
                 window.location.href = '/logout';
             };
-            // 防止音频加载失败或极短时卡住，设置最大延迟 3 秒
             setTimeout(function () {
                 if (!audio.ended) window.location.href = '/logout';
             }, 3000);
         });
 
-        // 更新头像显示
         function updateAvatarIcon() {
             const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
             const avatar = profile.avatar || '/avatars/default.png';
             const avatarIcon = document.getElementById('avatarIcon');
             if (avatarIcon) avatarIcon.src = avatar;
         }
-
-        // 监听 profileUpdated 事件
         window.addEventListener('profileUpdated', () => updateAvatarIcon());
         updateAvatarIcon();
 
-        // 头像点击展开/收起菜单
         const avatarIcon = document.getElementById('avatarIcon');
         const sideMenu = document.getElementById('sideMenu');
         if (avatarIcon) {
@@ -133,21 +168,110 @@
                 sideMenu.style.left = isOpen ? '-280px' : '0px';
             });
         }
-        // 点击其他地方关闭菜单（可选）
         document.addEventListener('click', (e) => {
             if (!sideMenu.contains(e.target) && e.target !== avatarIcon && sideMenu.style.left === '0px') {
                 sideMenu.style.left = '-280px';
             }
         });
-        // 消息菜单项点击（后续聊天功能预留）
+
         const msgMenuItem = document.getElementById('msgMenuItem');
         if (msgMenuItem) {
             msgMenuItem.addEventListener('click', (e) => {
                 e.preventDefault();
                 alert('消息功能开发中');
-                // 后续可以跳转到聊天页面
             });
         }
+
+        // ----- 报错/意见箱功能 -----
+        const reportModal = document.getElementById('reportModal');
+        const reportType = document.getElementById('reportType');
+        const reportDesc = document.getElementById('reportDesc');
+        const reportImage = document.getElementById('reportImage');
+        const imagePreview = document.getElementById('imagePreview');
+        const submitReportBtn = document.getElementById('submitReportBtn');
+        const closeReportBtn = document.getElementById('closeReportBtn');
+        const reportMenuItem = document.getElementById('reportMenuItem');
+
+        // 预览图片
+        reportImage.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (ev) {
+                    imagePreview.innerHTML = `<img src="${ev.target.result}" style="max-width: 100%; max-height: 150px; border-radius: 8px; border: 1px solid #ffd700;">`;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.innerHTML = '';
+            }
+        });
+
+        // 打开模态框
+        if (reportMenuItem) {
+            reportMenuItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                reportModal.style.display = 'flex';
+            });
+        }
+
+        // 关闭模态框
+        function closeModal() {
+            reportModal.style.display = 'none';
+            reportType.value = 'bug';
+            reportDesc.value = '';
+            reportImage.value = '';
+            imagePreview.innerHTML = '';
+        }
+        closeReportBtn.addEventListener('click', closeModal);
+        reportModal.addEventListener('click', (e) => {
+            if (e.target === reportModal) closeModal();
+        });
+
+        // 提交反馈
+        submitReportBtn.addEventListener('click', async () => {
+            const type = reportType.value;
+            const description = reportDesc.value.trim();
+            if (!description) {
+                alert('请填写问题描述');
+                return;
+            }
+            const file = reportImage.files[0];
+            let imageBase64 = null;
+            if (file) {
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('图片不能超过 2MB');
+                    return;
+                }
+                imageBase64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(file);
+                });
+            }
+            const payload = {
+                type,
+                description,
+                imageBase64: imageBase64 || null
+            };
+            try {
+                const res = await fetch('/api/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('反馈已提交，感谢您的支持！');
+                    closeModal();
+                } else {
+                    alert('提交失败：' + (data.error || '请稍后重试'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('网络错误，请重试');
+            }
+        });
     </script>
 </body>
 

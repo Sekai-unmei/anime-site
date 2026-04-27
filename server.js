@@ -1,4 +1,5 @@
 console.log("开始执行 server.js");
+const nodemailer = require('nodemailer');
 const express = require('express');
 const session = require('express-session');
 const fs = require('fs');
@@ -265,7 +266,7 @@ app.get('/', (req, res) => {
             res.sendFile(path.join(__dirname, 'public/login.html'));
         }
     } else {
-        res.sendFile(path.join(__dirname, 'public/index.html'));
+        res.sendFile(path.join(__dirname, 'public/login.html'));
     }
 });
 
@@ -696,6 +697,56 @@ app.get('/login-failed', (req, res) => {
     res.redirect('/unauthorized.html');
 });
 
+// 邮件配置（使用环境变量）
+const emailTransporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+app.post('/api/report', async (req, res) => {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.error('邮件服务未配置：缺少 EMAIL_USER 或 EMAIL_PASS');
+        return res.status(500).json({ error: '反馈功能暂不可用，请联系管理员' });
+    }
+    const { type, description, imageBase64 } = req.body;
+    const user = req.session.user || '匿名用户';
+    if (!description) {
+        return res.status(400).json({ error: '描述不能为空' });
+    }
+    // 类型映射
+    const typeMap = {
+        bug: '🐞 Bug报告',
+        optimize: '✨ 优化建议',
+        suggestion: '💡 意见',
+        question: '❓ 疑问'
+    };
+    const subject = typeMap[type] || '意见反馈';
+    let htmlContent = `
+        <h2>用户反馈</h2>
+        <p><strong>用户邮箱：</strong> ${user}</p>
+        <p><strong>类型：</strong> ${subject}</p>
+        <p><strong>描述：</strong></p>
+        <p>${description.replace(/\n/g, '<br>')}</p>
+    `;
+    if (imageBase64) {
+        htmlContent += `<p><strong>截图：</strong><br><img src="${imageBase64}" style="max-width:100%;"></p>`;
+    }
+    try {
+        await emailTransporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: process.env.EMAIL_USER, // 发送给自己
+            subject: `【反馈】${subject}`,
+            html: htmlContent
+        });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('邮件发送失败:', err);
+        res.status(500).json({ error: '邮件发送失败，请稍后重试' });
+    }
+});
 // ========== 启动服务器 ==========
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

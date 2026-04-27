@@ -48,11 +48,90 @@
                 transform: translateX(-50%) translateY(-20px);
             }
         }
+
+        /* 头像小红点 */
+        .avatar-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 12px;
+            height: 12px;
+            background: #ff0000;
+            border-radius: 50%;
+            border: 1px solid #000;
+            display: none;
+            z-index: 1001;
+        }
+
+        #userAvatarMenu {
+            position: relative;
+        }
+
+        /* 侧边栏消息中心样式增强 */
+        .msg-tabs {
+            display: flex;
+            border-bottom: 1px solid #444;
+            margin-bottom: 15px;
+        }
+
+        .msg-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            color: #aaa;
+            transition: 0.2s;
+        }
+
+        .msg-tab.active {
+            color: #ffd700;
+            border-bottom: 2px solid #ffd700;
+        }
+
+        .msg-panel {
+            display: none;
+        }
+
+        .msg-panel.active {
+            display: block;
+        }
+
+        .msg-item {
+            padding: 12px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+        }
+
+        .msg-item:hover {
+            background: #222;
+        }
+
+        .friend-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 12px;
+            vertical-align: middle;
+        }
+
+        .friend-name {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .red-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #ff0000;
+            border-radius: 50%;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 
 <body>
-    <!-- 你的原有导航栏、内容等保持不变 -->
     <nav class="nav-bar">
         <a onclick="showSection('home')">首页</a>
         <a onclick="showSection('archive')">动漫查询库</a>
@@ -92,28 +171,58 @@
     <button id="confirm-btn">确认选择</button>
     <div id="poem-panel" class="poem-right"></div>
 
-    <!-- 左下角头像菜单 -->
+    <!-- 左下角头像菜单（带小红点） -->
     <div id="userAvatarMenu" style="position: fixed; left: 20px; bottom: 20px; z-index: 1000; cursor: pointer;">
         <img id="avatarIcon" src="/avatars/default.png"
             style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #ffd700; object-fit: cover;">
+        <div id="avatarBadge" class="avatar-badge"></div>
     </div>
 
-    <!-- 侧边导航栏（默认隐藏） -->
+    <!-- 侧边导航栏（扩展为消息中心） -->
     <div id="sideMenu"
         style="position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); z-index: 2000; transition: left 0.3s; border-right: 1px solid #ffd700;">
-        <div style="padding: 20px;">
-            <h3 style="color:#ffd700;">导航</h3>
-            <ul style="list-style: none; padding: 0;">
-                <li><a href="#" id="msgMenuItem"
-                        style="color:#fff; text-decoration: none; display: block; padding: 10px;">💬 消息</a></li>
-                <li><a href="#" id="reportMenuItem"
-                        style="color:#fff; text-decoration: none; display: block; padding: 10px;">🐞 报错(bug)/意见箱</a>
-                </li>
-            </ul>
+        <div style="padding: 20px; display: flex; flex-direction: column; height: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="color:#ffd700;">消息中心</h3>
+                <button id="closeSideMenuBtn"
+                    style="background:transparent; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✖</button>
+            </div>
+            <div class="msg-tabs">
+                <div class="msg-tab active" data-tab="messages">消息</div>
+                <div class="msg-tab" data-tab="friends">好友</div>
+                <div class="msg-tab" data-tab="settings">设置</div>
+            </div>
+            <!-- 消息面板 -->
+            <div id="messagesPanel" class="msg-panel active">
+                <div id="notificationList">加载中...</div>
+            </div>
+            <!-- 好友面板 -->
+            <div id="friendsPanel" class="msg-panel">
+                <div id="friendsList">加载中...</div>
+            </div>
+            <!-- 设置面板 -->
+            <div id="settingsPanel" class="msg-panel">
+                <div style="margin-top: 15px;">
+                    <label style="color:#fff;">新消息提醒音效</label>
+                    <input type="checkbox" id="soundCheckbox" checked>
+                </div>
+                <div style="margin-top: 15px;">
+                    <label style="color:#fff;">桌面通知</label>
+                    <input type="checkbox" id="desktopNotifyCheckbox">
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- 反馈模态框 -->
+    <!-- 顶部通知条 -->
+    <div id="notificationBar"
+        style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); background:#ffd700; color:#000; padding:8px 16px; border-radius:30px; z-index:100000; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+        <span id="notificationMsg"></span>
+        <button id="closeNotifBtn"
+            style="margin-left:10px; background:transparent; border:none; cursor:pointer;">✖</button>
+    </div>
+
+    <!-- 反馈模态框（原有） -->
     <div id="reportModal"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10001; backdrop-filter: blur(5px); align-items: center; justify-content: center;">
         <div
@@ -153,7 +262,7 @@
 
     <script src="/js/main.js"></script>
     <script>
-        // 定义 Toast 函数（必须在最前面）
+        // -------------------------- Toast 函数（已经定义，兼容） --------------------------
         function showToast(message, duration = 2000) {
             const existingToast = document.querySelector('.toast-message');
             if (existingToast) existingToast.remove();
@@ -166,6 +275,7 @@
             }, duration);
         }
 
+        // -------------------------- 原有函数保留 --------------------------
         window.onload = () => { if (typeof initAll === 'function') initAll(); };
         function toggleWeather() {
             const m = document.getElementById('weather-more');
@@ -211,29 +321,236 @@
         window.addEventListener('profileUpdated', () => updateAvatarIcon());
         updateAvatarIcon();
 
-        const avatarIcon = document.getElementById('avatarIcon');
-        const sideMenu = document.getElementById('sideMenu');
-        if (avatarIcon) {
-            avatarIcon.addEventListener('click', () => {
-                const isOpen = sideMenu.style.left === '0px';
-                sideMenu.style.left = isOpen ? '-280px' : '0px';
-            });
+        // -------------------------- 新增：通知系统相关 --------------------------
+        let lastUnreadCount = 0;
+        let currentNotifications = [];
+
+        // 显示顶部通知条
+        function showNotificationBar(msg) {
+            const bar = document.getElementById('notificationBar');
+            const span = document.getElementById('notificationMsg');
+            if (!bar || !span) return;
+            span.innerText = msg;
+            bar.style.display = 'block';
+            // 5秒后自动隐藏
+            clearTimeout(window.notifTimeout);
+            window.notifTimeout = setTimeout(() => {
+                bar.style.display = 'none';
+            }, 5000);
         }
-        document.addEventListener('click', (e) => {
-            if (!sideMenu.contains(e.target) && e.target !== avatarIcon && sideMenu.style.left === '0px') {
-                sideMenu.style.left = '-280px';
-            }
+
+        // 关闭通知条（按钮点击）
+        document.getElementById('closeNotifBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const bar = document.getElementById('notificationBar');
+            if (bar) bar.style.display = 'none';
+            clearTimeout(window.notifTimeout);
         });
 
-        const msgMenuItem = document.getElementById('msgMenuItem');
-        if (msgMenuItem) {
-            msgMenuItem.addEventListener('click', (e) => {
-                e.preventDefault();
-                alert('消息功能开发中');
+        // 点击通知条展开侧边栏并切换到消息面板
+        const notificationBar = document.getElementById('notificationBar');
+        if (notificationBar) {
+            notificationBar.addEventListener('click', () => {
+                const sideMenu = document.getElementById('sideMenu');
+                if (sideMenu) sideMenu.style.left = '0px';
+                // 切换到消息面板
+                document.querySelectorAll('.msg-tab').forEach(tab => {
+                    tab.classList.remove('active');
+                    if (tab.getAttribute('data-tab') === 'messages') tab.classList.add('active');
+                });
+                document.querySelectorAll('.msg-panel').forEach(panel => panel.classList.remove('active'));
+                const msgPanel = document.getElementById('messagesPanel');
+                if (msgPanel) msgPanel.classList.add('active');
+                // 刷新通知列表（可选）
+                loadNotificationList();
             });
         }
 
-        // ----- 报错/意见箱功能 -----
+        // 加载通知列表并渲染到侧边栏消息面板
+        async function loadNotificationList() {
+            const container = document.getElementById('notificationList');
+            if (!container) return;
+            try {
+                const res = await fetch('/api/notifications', { credentials: 'include' });
+                if (!res.ok) throw new Error();
+                const notifs = await res.json();
+                currentNotifications = notifs;
+                if (!notifs.length) {
+                    container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无消息</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                notifs.forEach(notif => {
+                    const div = document.createElement('div');
+                    div.className = 'msg-item';
+                    div.innerHTML = `
+                        <div>${notif.message}</div>
+                        <small style="color:#888;">${new Date(notif.createdAt).toLocaleString()}</small>
+                        ${!notif.read ? '<span class="red-dot"></span>' : ''}
+                    `;
+                    div.addEventListener('click', () => {
+                        // 处理点击消息：跳转或回复
+                        if (notif.type === 'comment_reply' && notif.animeId) {
+                            window.location.href = `/anime/${notif.animeId}`;
+                        } else if (notif.type === 'friend_request') {
+                            // 可以弹窗确认好友请求
+                            handleFriendRequest(notif.from);
+                        }
+                        // 标记为已读（调用后端接口）
+                        markNotificationRead(notif.id);
+                        div.querySelector('.red-dot')?.remove();
+                    });
+                    container.appendChild(div);
+                });
+            } catch (err) {
+                console.error('加载通知失败', err);
+                container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>';
+            }
+        }
+
+        // 标记单条通知为已读
+        async function markNotificationRead(id) {
+            try {
+                await fetch('/api/notifications/mark-read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ ids: [id] })
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        // 处理好友请求（简易：直接通过）
+        async function handleFriendRequest(fromEmail) {
+            if (confirm(`接受 ${fromEmail} 的好友请求？`)) {
+                const res = await fetch('/api/friends/accept', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ requestId: fromEmail })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('已添加好友');
+                    loadNotificationList();
+                    loadFriendsList();
+                } else {
+                    showToast('操作失败');
+                }
+            }
+        }
+
+        // 加载好友列表
+        async function loadFriendsList() {
+            const container = document.getElementById('friendsList');
+            if (!container) return;
+            try {
+                const res = await fetch('/api/friends/list', { credentials: 'include' });
+                if (!res.ok) throw new Error();
+                const data = await res.json(); // 期望返回 [{ email, username, avatar }]
+                if (!data.length) {
+                    container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无好友</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                data.forEach(friend => {
+                    const div = document.createElement('div');
+                    div.className = 'msg-item';
+                    div.innerHTML = `
+                        <img src="${friend.avatar || '/avatars/default.png'}" class="friend-avatar" onerror="this.src='/avatars/default.png'">
+                        <span class="friend-name">${friend.username || friend.email}</span>
+                    `;
+                    div.addEventListener('click', () => {
+                        // 点击好友可展示对话窗口（后续实现）
+                        showToast(`与 ${friend.username} 的聊天功能开发中`);
+                    });
+                    container.appendChild(div);
+                });
+            } catch (err) {
+                console.error('加载好友列表失败', err);
+                container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>';
+            }
+        }
+
+        // 更新小红点显示
+        function updateBadge(unreadCount) {
+            const badge = document.getElementById('avatarBadge');
+            if (badge) {
+                badge.style.display = unreadCount > 0 ? 'block' : 'none';
+            }
+        }
+
+        // 轮询检查新通知
+        let pollInterval = null;
+        async function checkNotifications() {
+            try {
+                const res = await fetch('/api/notifications', { credentials: 'include' });
+                if (!res.ok) return;
+                const notifs = await res.json();
+                const unread = notifs.filter(n => !n.read);
+                const currentUnread = unread.length;
+                if (currentUnread > lastUnreadCount) {
+                    const newCount = currentUnread - lastUnreadCount;
+                    showNotificationBar(`您有 ${newCount} 条新消息`);
+                    // 尝试桌面通知（如果用户允许）
+                    if (Notification.permission === 'granted' && document.getElementById('desktopNotifyCheckbox')?.checked) {
+                        new Notification('动漫资料库', { body: `您有 ${newCount} 条新消息` });
+                    }
+                }
+                lastUnreadCount = currentUnread;
+                updateBadge(currentUnread);
+                // 如果侧边栏打开，且当前显示消息面板，实时刷新列表
+                const sideMenu = document.getElementById('sideMenu');
+                if (sideMenu && sideMenu.style.left === '0px') {
+                    const activeTab = document.querySelector('.msg-tab.active')?.getAttribute('data-tab');
+                    if (activeTab === 'messages') loadNotificationList();
+                    else if (activeTab === 'friends') loadFriendsList();
+                }
+            } catch (err) {
+                console.error('轮询通知失败', err);
+            }
+        }
+
+        // 请求桌面通知权限
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+        }
+
+        // 侧边栏关闭按钮
+        document.getElementById('closeSideMenuBtn')?.addEventListener('click', () => {
+            document.getElementById('sideMenu').style.left = '-280px';
+        });
+
+        // 侧边栏选项卡切换
+        document.querySelectorAll('.msg-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.getAttribute('data-tab');
+                document.querySelectorAll('.msg-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                document.querySelectorAll('.msg-panel').forEach(p => p.classList.remove('active'));
+                if (target === 'messages') {
+                    document.getElementById('messagesPanel').classList.add('active');
+                    loadNotificationList();
+                } else if (target === 'friends') {
+                    document.getElementById('friendsPanel').classList.add('active');
+                    loadFriendsList();
+                } else if (target === 'settings') {
+                    document.getElementById('settingsPanel').classList.add('active');
+                }
+            });
+        });
+
+        // 启动轮询和初始加载
+        setTimeout(() => {
+            checkNotifications();
+            loadFriendsList(); // 预加载好友列表（但不显示侧边栏）
+            pollInterval = setInterval(checkNotifications, 5000);
+            requestNotificationPermission();
+        }, 2000);
+
+        // -------------------------- 原有反馈功能（已有） --------------------------
         const reportModal = document.getElementById('reportModal');
         const reportType = document.getElementById('reportType');
         const reportDesc = document.getElementById('reportDesc');
@@ -317,7 +634,7 @@
             let imageBase64 = null;
             if (file) {
                 if (file.size > 2 * 1024 * 1024) {
-                    showToast('图片不能超过 5MB');
+                    showToast('图片不能超过 2MB');
                     return;
                 }
                 imageBase64 = await compressImage(file);
@@ -340,6 +657,27 @@
             } catch (err) {
                 console.error(err);
                 showToast('网络错误，请重试');
+            }
+        });
+
+        // 头像菜单点击（原有）
+        const avatarIconEl = document.getElementById('avatarIcon');
+        const sideMenuEl = document.getElementById('sideMenu');
+        if (avatarIconEl) {
+            avatarIconEl.addEventListener('click', () => {
+                const isOpen = sideMenuEl.style.left === '0px';
+                sideMenuEl.style.left = isOpen ? '-280px' : '0px';
+                if (!isOpen) {
+                    // 打开侧边栏时，加载当前面板的数据
+                    const activeTab = document.querySelector('.msg-tab.active')?.getAttribute('data-tab');
+                    if (activeTab === 'messages') loadNotificationList();
+                    else if (activeTab === 'friends') loadFriendsList();
+                }
+            });
+        }
+        document.addEventListener('click', (e) => {
+            if (!sideMenuEl.contains(e.target) && e.target !== avatarIconEl && sideMenuEl.style.left === '0px') {
+                sideMenuEl.style.left = '-280px';
             }
         });
     </script>

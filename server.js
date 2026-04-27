@@ -16,7 +16,7 @@ app.use(session({
     saveUninitialized: true,
     cookie: { maxAge: 24 * 60 * 60 * 1000 }
 }));
-app.use(express.json({ limit: '10mb' }));  // 增加到 10MB
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
 // ========== Google OAuth 客户端 ==========
@@ -27,7 +27,7 @@ const ALLOWED_EMAILS = ['kevin88ye88@gmail.com', 'darkmaster1212xixi@gmail.com',
 
 // ========== 数据加载与保存（动漫数据） ==========
 let animeData = [];
-let userProfiles = {};          // 原有的内存用户配置，保留兼容
+let userProfiles = {};
 const DATA_FILE = path.join(__dirname, 'data/anime.json');
 
 function loadData() {
@@ -35,7 +35,6 @@ function loadData() {
         if (fs.existsSync(DATA_FILE)) {
             const raw = fs.readFileSync(DATA_FILE, 'utf-8');
             animeData = JSON.parse(raw);
-            // 确保每个动漫都有 ratings 和 user_ratings
             animeData.forEach(anime => {
                 if (!anime.ratings) {
                     anime.ratings = { "神作": 0, "好看": 0, "普通": 0, "无聊": 0, "狗屎": 0 };
@@ -64,9 +63,7 @@ function getRatings(anime) {
     if (!anime.ratings) {
         anime.ratings = { "神作": 0, "好看": 0, "普通": 0, "无聊": 0, "狗屎": 0, "哲救世皇骗": 0 };
     }
-    if (!anime.user_ratings) {
-        anime.user_ratings = {};
-    }
+    if (!anime.user_ratings) anime.user_ratings = {};
     return anime.ratings;
 }
 
@@ -74,10 +71,8 @@ console.time("加载动漫数据");
 loadData();
 console.timeEnd("加载动漫数据");
 
-
+// ========== 文件上传（头像） ==========
 const multer = require('multer');
-
-// 确保 avatars 目录存在
 const AVATAR_DIR = path.join(__dirname, 'public/avatars');
 if (!fs.existsSync(AVATAR_DIR)) fs.mkdirSync(AVATAR_DIR, { recursive: true });
 
@@ -98,7 +93,6 @@ const upload = multer({
     }
 });
 
-// 上传头像接口
 app.post('/api/user/avatar', upload.single('avatar'), (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
     if (!req.file) return res.status(400).json({ error: "没有上传文件" });
@@ -108,53 +102,43 @@ app.post('/api/user/avatar', upload.single('avatar'), (req, res) => {
     if (!users[email]) users[email] = {};
     users[email].avatar = avatarUrl;
     saveUsers(users);
-    // 同时更新前端 localStorage 中的 avatar（可选，前端会重新获取）
     res.json({ success: true, avatarUrl });
 });
 
-// 获取当前登录用户信息（包含头像）
 app.get('/api/user/current', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
     const email = req.session.user;
     const users = loadUsers();
     const userInfo = users[email] || {};
-    // 如果有 Google 头像可优先返回，但我们简单处理
     res.json({ email, ...userInfo });
 });
 
-// ========== 新建：用户信息 + 好友数据持久化 ==========
+// ========== 用户信息 + 好友 + 通知持久化 ==========
 const USERS_FILE = path.join(__dirname, 'data/users.json');
 const FRIENDS_FILE = path.join(__dirname, 'data/friends.json');
+const NOTIFICATIONS_FILE = path.join(__dirname, 'data/notifications.json');
 
 function initDataFiles() {
     if (!fs.existsSync(path.dirname(USERS_FILE))) fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
     if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, JSON.stringify({}, null, 2));
     if (!fs.existsSync(FRIENDS_FILE)) fs.writeFileSync(FRIENDS_FILE, JSON.stringify([], null, 2));
+    if (!fs.existsSync(NOTIFICATIONS_FILE)) fs.writeFileSync(NOTIFICATIONS_FILE, JSON.stringify({}, null, 2));
 }
 initDataFiles();
 
 function loadUsers() {
-    try {
-        return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-    } catch (e) {
-        return {};
-    }
+    try { return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch (e) { return {}; }
 }
-function saveUsers(users) {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-}
+function saveUsers(users) { fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2)); }
 function loadFriends() {
-    try {
-        return JSON.parse(fs.readFileSync(FRIENDS_FILE, 'utf8'));
-    } catch (e) {
-        return [];
-    }
+    try { return JSON.parse(fs.readFileSync(FRIENDS_FILE, 'utf8')); } catch (e) { return []; }
 }
-function saveFriends(friends) {
-    fs.writeFileSync(FRIENDS_FILE, JSON.stringify(friends, null, 2));
+function saveFriends(friends) { fs.writeFileSync(FRIENDS_FILE, JSON.stringify(friends, null, 2)); }
+function loadNotifications() {
+    try { return JSON.parse(fs.readFileSync(NOTIFICATIONS_FILE, 'utf8')); } catch (e) { return {}; }
 }
+function saveNotifications(notifications) { fs.writeFileSync(NOTIFICATIONS_FILE, JSON.stringify(notifications, null, 2)); }
 
-// 获取或创建用户公开信息（首次评论或登录时自动调用）
 function getOrCreateUserInfo(email, username = null) {
     let users = loadUsers();
     if (!users[email]) {
@@ -169,13 +153,12 @@ function getOrCreateUserInfo(email, username = null) {
     return users[email];
 }
 
-// 迁移旧评论格式（为每个评论生成 id、userId、username、avatar、replies 字段）
+// ========== 迁移旧评论格式 ==========
 function migrateCommentFormat() {
     let changed = false;
     animeData.forEach(anime => {
         if (!anime.comments) anime.comments = [];
         anime.comments = anime.comments.map(comment => {
-            // 如果是旧格式（没有 id 字段）
             if (!comment.id) {
                 changed = true;
                 const userEmail = comment.user || 'unknown';
@@ -190,7 +173,6 @@ function migrateCommentFormat() {
                     replies: (comment.replies || []).map(reply => migrateCommentFormatOne(reply))
                 };
             }
-            // 如果已有 id 但 replies 还是旧格式，递归处理
             if (comment.replies) {
                 comment.replies = comment.replies.map(r => migrateCommentFormatOne(r));
             }
@@ -218,18 +200,15 @@ function migrateCommentFormatOne(comment) {
     }
     return comment;
 }
-// 执行迁移（只需一次）
 migrateCommentFormat();
 
-// ========== 新增：系列/类型/评价索引（用于系列查询） ==========
+// ========== 系列/类型/评价索引 ==========
 let seriesMap = new Map();
 let genreIndex = new Map();
 let ratingIndex = new Map();
 
 function buildIndex() {
-    seriesMap.clear();
-    genreIndex.clear();
-    ratingIndex.clear();
+    seriesMap.clear(); genreIndex.clear(); ratingIndex.clear();
     animeData.forEach(anime => {
         const series = anime.series_title || anime.title;
         if (!seriesMap.has(series)) seriesMap.set(series, []);
@@ -248,9 +227,7 @@ function buildIndex() {
 }
 buildIndex();
 
-function getAnimeById(id) {
-    return animeData.find(a => a.id == id);
-}
+function getAnimeById(id) { return animeData.find(a => a.id == id); }
 
 // ========== 首页路由（登录检查） ==========
 app.get('/', (req, res) => {
@@ -258,10 +235,8 @@ app.get('/', (req, res) => {
     if (req.session && req.session.user) {
         const users = loadUsers();
         if (users[req.session.user]) {
-            // 有效登录用户
             res.sendFile(path.join(__dirname, 'public/index.html'));
         } else {
-            // session 中的用户无效，销毁 session
             req.session.destroy();
             res.sendFile(path.join(__dirname, 'public/login.html'));
         }
@@ -275,24 +250,17 @@ app.post('/auth/google/token', async (req, res) => {
     const { token } = req.body;
     if (!token) return res.status(400).json({ success: false, message: '缺少 token' });
     try {
-        const ticket = await client.verifyIdToken({
-            idToken: token,
-            audience: GOOGLE_CLIENT_ID,
-        });
+        const ticket = await client.verifyIdToken({ idToken: token, audience: GOOGLE_CLIENT_ID });
         const payload = ticket.getPayload();
         const email = payload.email;
         if (!ALLOWED_EMAILS.includes(email)) {
             return res.json({ success: false, message: '您的邮箱未被授权访问' });
         }
-
         const googleAvatar = payload.picture || null;
         console.log('获取到 Google 头像:', googleAvatar);
-
         let users = loadUsers();
         const existing = users[email];
-        const isNewUser = !existing;
-
-        if (isNewUser) {
+        if (!existing) {
             users[email] = {
                 username: email.split('@')[0],
                 avatar: googleAvatar || '/avatars/default.png',
@@ -301,22 +269,16 @@ app.post('/auth/google/token', async (req, res) => {
                 joinDate: new Date().toISOString().split('T')[0]
             };
         } else {
-            // 老用户：补充可能缺失的 googleAvatar 字段
-            if (googleAvatar && !existing.googleAvatar) {
-                existing.googleAvatar = googleAvatar;
-            }
-            // 如果当前头像为空或为默认图片，则更新为 Google 头像
+            if (googleAvatar && !existing.googleAvatar) existing.googleAvatar = googleAvatar;
             const currentAvatar = existing.avatar || '';
             const isDefaultOrEmpty = !currentAvatar || currentAvatar === '/avatars/default.png' || currentAvatar === '';
             if (googleAvatar && isDefaultOrEmpty) {
                 existing.avatar = googleAvatar;
                 console.log(`更新用户 ${email} 头像为 Google 头像: ${googleAvatar}`);
             }
-            // 确保有 username
             if (!existing.username) existing.username = email.split('@')[0];
         }
         saveUsers(users);
-
         req.session.user = email;
         req.session.playAudio = true;
         res.json({ success: true });
@@ -325,7 +287,7 @@ app.post('/auth/google/token', async (req, res) => {
         res.status(401).json({ success: false, message: 'Token 无效' });
     }
 });
-// ========== 登出 ==========
+
 app.get('/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) console.error("登出失败:", err);
@@ -339,7 +301,7 @@ app.get('/anime/:id', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/anime-detail.html'));
 });
 
-// ========== 原有 API：动漫列表（完全保留，已支持多选） ==========
+// ========== 动漫列表（原有多选） ==========
 app.get('/api/anime/list', (req, res) => {
     let { page = 1, limit = 12, keyword = '', year = '', month = '', tag = '', rating = '' } = req.query;
     page = parseInt(page);
@@ -392,22 +354,16 @@ app.get('/api/anime/list', (req, res) => {
     });
 });
 
-// ========== 原有 API：系列数量 ==========
 app.get('/api/anime/series-count', (req, res) => {
     const uniqueSeries = new Set();
     animeData.forEach(anime => {
-        let key = (anime.series_title && anime.series_title.trim() !== '')
-            ? anime.series_title.trim()
-            : anime.title.trim();
+        let key = (anime.series_title && anime.series_title.trim() !== '') ? anime.series_title.trim() : anime.title.trim();
         key = key.toLowerCase();
         uniqueSeries.add(key);
     });
-    const count = uniqueSeries.size;
-    console.log(`系列去重前条数: ${animeData.length}, 去重后: ${count}`);
-    res.json({ count });
+    res.json({ count: uniqueSeries.size });
 });
 
-// ========== 新增 API：系列搜索（模糊匹配） ==========
 app.get('/api/anime/series', (req, res) => {
     let keyword = req.query.title;
     if (!keyword) return res.json([]);
@@ -424,25 +380,13 @@ app.get('/api/anime/series', (req, res) => {
     res.json(matched);
 });
 
-// ========== 【修正】评分排行榜（必须放在 /api/anime/:id 之前） ==========
 app.get('/api/anime/ratings-stats', (req, res) => {
     try {
         const stats = animeData.map(anime => {
             const ratings = anime.ratings || { "神作": 0, "好看": 0, "普通": 0, "无聊": 0, "狗屎": 0 };
-            const score = (ratings["神作"] || 0) * 5 +
-                (ratings["好看"] || 0) * 4 +
-                (ratings["普通"] || 0) * 3 +
-                (ratings["无聊"] || 0) * 2 +
-                (ratings["狗屎"] || 0) * 1;
+            const score = (ratings["神作"] || 0) * 5 + (ratings["好看"] || 0) * 4 + (ratings["普通"] || 0) * 3 + (ratings["无聊"] || 0) * 2 + (ratings["狗屎"] || 0) * 1;
             const totalVotes = (ratings["神作"] || 0) + (ratings["好看"] || 0) + (ratings["普通"] || 0) + (ratings["无聊"] || 0) + (ratings["狗屎"] || 0);
-            return {
-                id: anime.id,
-                title: anime.title,
-                image_url: anime.image_url,
-                ratings: ratings,
-                totalVotes: totalVotes,
-                weightedScore: score
-            };
+            return { id: anime.id, title: anime.title, image_url: anime.image_url, ratings, totalVotes, weightedScore: score };
         });
         stats.sort((a, b) => b.weightedScore - a.weightedScore);
         res.json(stats);
@@ -452,14 +396,12 @@ app.get('/api/anime/ratings-stats', (req, res) => {
     }
 });
 
-// ========== 原有 API：获取单个动漫详情 ==========
 app.get('/api/anime/:id', (req, res) => {
     const anime = animeData.find(a => a.id == req.params.id);
     if (!anime) return res.status(404).json({ error: "未找到" });
     res.json(anime);
 });
 
-// ========== 原有 API：评分（完全保留） ==========
 app.post('/api/anime/rate', (req, res) => {
     const { id, ratingType } = req.body;
     const user = req.session.user;
@@ -476,7 +418,7 @@ app.post('/api/anime/rate', (req, res) => {
     saveData();
     res.json({ success: true, ratings: anime.ratings });
 });
-// 取消评分
+
 app.post('/api/anime/unrate', (req, res) => {
     const { id } = req.body;
     const user = req.session.user;
@@ -495,20 +437,18 @@ app.post('/api/anime/unrate', (req, res) => {
     }
 });
 
-// 重置头像为邮箱默认头像（Google 头像或默认）
 app.post('/api/user/reset-avatar', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
     const email = req.session.user;
     let users = loadUsers();
     if (!users[email]) return res.status(404).json({ error: "用户不存在" });
-    // 尝试从 users.json 中获取之前保存的 Google 头像，如果没有则用默认
     const defaultAvatar = users[email].googleAvatar || '/avatars/default.png';
     users[email].avatar = defaultAvatar;
     saveUsers(users);
     res.json({ success: true, avatarUrl: defaultAvatar });
 });
 
-// ========== 修改评论 API：支持嵌套回复（兼容旧数据） ==========
+// ========== 评论（支持嵌套回复 + 通知） ==========
 app.post('/api/anime/:id/comment', (req, res) => {
     const anime = animeData.find(a => a.id == req.params.id);
     if (!anime) return res.status(404).send("Not found");
@@ -517,7 +457,41 @@ app.post('/api/anime/:id/comment', (req, res) => {
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
 
+    // 提前获取用户信息，用于通知和评论对象
     const userInfo = getOrCreateUserInfo(user);
+
+    // 处理回复通知
+    if (parentId) {
+        let parentAuthor = null;
+        function findAuthor(comments) {
+            for (let c of comments) {
+                if (c.id === parentId) {
+                    parentAuthor = c.userId;
+                    return true;
+                }
+                if (c.replies && findAuthor(c.replies)) return true;
+            }
+            return false;
+        }
+        findAuthor(anime.comments);
+        if (parentAuthor && parentAuthor !== user) {
+            const notification = {
+                id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+                type: 'comment_reply',
+                animeId: anime.id,
+                commentId: parentId,
+                from: user,
+                message: `${userInfo.username} 回复了你的评论`,
+                read: false,
+                createdAt: new Date().toISOString()
+            };
+            let notifications = loadNotifications();
+            if (!notifications[parentAuthor]) notifications[parentAuthor] = [];
+            notifications[parentAuthor].push(notification);
+            saveNotifications(notifications);
+        }
+    }
+
     const newComment = {
         id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
         userId: user,
@@ -547,20 +521,17 @@ app.post('/api/anime/:id/comment', (req, res) => {
         anime.comments.push(newComment);
     }
     saveData();
-    // 同步更新内存 animeData
     const index = animeData.findIndex(a => a.id == anime.id);
     if (index !== -1) animeData[index] = anime;
     res.json(anime.comments);
 });
 
-// ========== 删除评论（支持递归删除回复） ==========
 app.delete('/api/anime/:id/comment/:commentId', (req, res) => {
     const anime = animeData.find(a => a.id == req.params.id);
     if (!anime) return res.status(404).send("Not found");
     const commentId = req.params.commentId;
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
-
     function deleteComment(comments) {
         for (let i = 0; i < comments.length; i++) {
             if (comments[i].id === commentId && comments[i].userId === user) {
@@ -580,20 +551,18 @@ app.delete('/api/anime/:id/comment/:commentId', (req, res) => {
     }
 });
 
-// ========== 原有 API：用户资料（兼容原有的 userProfiles 内存存储） ==========
+// ========== 用户资料与好友 ==========
 app.get('/api/user/profile', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
     const userProfile = userProfiles[req.session.user] || {};
     res.json(userProfile);
 });
-
 app.post('/api/user/profile', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
     userProfiles[req.session.user] = req.body;
     res.json({ success: true });
 });
 
-// ========== 新增 API：更新用户公开信息 ==========
 app.post('/api/user/update', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
     const { username, avatar, bio } = req.body;
@@ -607,21 +576,13 @@ app.post('/api/user/update', (req, res) => {
     res.json({ success: true });
 });
 
-// ========== 新增 API：获取用户公开信息 ==========
 app.get('/api/user/info/:email', (req, res) => {
     const email = req.params.email;
     const userInfo = loadUsers()[email];
     if (!userInfo) return res.status(404).json({ error: "用户不存在" });
-    res.json({
-        email,
-        username: userInfo.username,
-        avatar: userInfo.avatar,
-        bio: userInfo.bio,
-        joinDate: userInfo.joinDate
-    });
+    res.json({ email, username: userInfo.username, avatar: userInfo.avatar, bio: userInfo.bio, joinDate: userInfo.joinDate });
 });
 
-// ========== 新增 API：获取当前用户评分过的动漫 ==========
 app.get('/api/user/ratings', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
     const user = req.session.user;
@@ -629,7 +590,6 @@ app.get('/api/user/ratings', (req, res) => {
     res.json(rated);
 });
 
-// ========== 新增 API：好友请求 ==========
 app.post('/api/friends/request', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
     const fromUser = req.session.user;
@@ -639,21 +599,28 @@ app.post('/api/friends/request', (req, res) => {
     if (friends.some(f => (f.user === fromUser && f.friend === toEmail) || (f.user === toEmail && f.friend === fromUser))) {
         return res.status(400).json({ error: "已添加或请求已存在" });
     }
-    friends.push({
-        user: fromUser,
-        friend: toEmail,
-        status: "pending",
-        requestDate: new Date().toISOString()
-    });
+    friends.push({ user: fromUser, friend: toEmail, status: "pending", requestDate: new Date().toISOString() });
     saveFriends(friends);
+    // 为对方生成通知
+    const notification = {
+        id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+        type: 'friend_request',
+        from: fromUser,
+        message: `${fromUser} 请求添加你为好友`,
+        read: false,
+        createdAt: new Date().toISOString()
+    };
+    let notifications = loadNotifications();
+    if (!notifications[toEmail]) notifications[toEmail] = [];
+    notifications[toEmail].push(notification);
+    saveNotifications(notifications);
     res.json({ success: true });
 });
 
-// ========== 新增 API：同意好友请求 ==========
 app.post('/api/friends/accept', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
     const currentUser = req.session.user;
-    const { requestId } = req.body; // requestId 即对方的 email
+    const { requestId } = req.body;
     let friends = loadFriends();
     const request = friends.find(f => f.friend === currentUser && f.status === "pending" && f.user === requestId);
     if (!request) return res.status(404).json({ error: "请求不存在" });
@@ -662,7 +629,44 @@ app.post('/api/friends/accept', (req, res) => {
     res.json({ success: true });
 });
 
-// ========== 原有 API：音频相关（完全保留） ==========
+// 好友列表（供前端使用）
+app.get('/api/friends/list', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "未登录" });
+    const friends = loadFriends();
+    const accepted = friends.filter(f =>
+        (f.user === req.session.user && f.status === 'accepted') ||
+        (f.friend === req.session.user && f.status === 'accepted')
+    );
+    const friendEmails = accepted.map(f => f.user === req.session.user ? f.friend : f.user);
+    const users = loadUsers();
+    const result = friendEmails.map(email => ({
+        email,
+        username: users[email]?.username || email.split('@')[0],
+        avatar: users[email]?.avatar || '/avatars/default.png'
+    }));
+    res.json(result);
+});
+
+// ========== 通知相关 ==========
+app.get('/api/notifications', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "未登录" });
+    const notifications = loadNotifications();
+    res.json(notifications[req.session.user] || []);
+});
+
+app.post('/api/notifications/mark-read', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "未登录" });
+    const { ids } = req.body;
+    let notifications = loadNotifications();
+    const userNotifs = notifications[req.session.user] || [];
+    userNotifs.forEach(n => {
+        if (ids.includes(n.id)) n.read = true;
+    });
+    saveNotifications(notifications);
+    res.json({ success: true });
+});
+
+// ========== 音频相关 ==========
 app.get('/api/random-audio', (req, res) => {
     const audioDir = path.join(__dirname, 'public/audio');
     if (!fs.existsSync(audioDir)) return res.json({ error: "目录不存在" });
@@ -697,7 +701,7 @@ app.get('/login-failed', (req, res) => {
     res.redirect('/unauthorized.html');
 });
 
-// 邮件配置（使用环境变量）
+// ========== 邮件反馈 ==========
 const emailTransporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -730,43 +734,28 @@ app.post('/api/report', async (req, res) => {
         <p><strong>描述：</strong></p>
         <p>${description.replace(/\n/g, '<br>')}</p>
     `;
-
-    // 邮件附件列表
     let attachments = [];
     if (imageBase64) {
-        // 将 base64 转换为 Buffer
         const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
         if (matches) {
             const ext = matches[1];
             const base64Data = matches[2];
             const buffer = Buffer.from(base64Data, 'base64');
-            attachments.push({
-                filename: `screenshot.${ext}`,
-                content: buffer,
-                contentType: `image/${ext}`
-            });
+            attachments.push({ filename: `screenshot.${ext}`, content: buffer, contentType: `image/${ext}` });
         } else {
-            // 可能是纯 base64 字符串（没有 data:image 头），尝试直接解析
             try {
                 const buffer = Buffer.from(imageBase64, 'base64');
-                attachments.push({
-                    filename: 'screenshot.png',
-                    content: buffer,
-                    contentType: 'image/png'
-                });
-            } catch (err) {
-                console.error('解析图片数据失败:', err);
-            }
+                attachments.push({ filename: 'screenshot.png', content: buffer, contentType: 'image/png' });
+            } catch (err) { console.error('解析图片数据失败:', err); }
         }
     }
-
     try {
         await emailTransporter.sendMail({
             from: process.env.EMAIL_USER,
             to: process.env.EMAIL_USER,
             subject: `【反馈】${subject}`,
             html: htmlContent,
-            attachments: attachments   // 以附件形式发送图片
+            attachments
         });
         res.json({ success: true });
     } catch (err) {
@@ -774,7 +763,6 @@ app.post('/api/report', async (req, res) => {
         res.status(500).json({ error: '邮件发送失败，请稍后重试' });
     }
 });
-
 
 // ========== 启动服务器 ==========
 app.listen(PORT, () => {

@@ -310,6 +310,14 @@
             }, duration);
         }
 
+        async function authFetch(url, options = {}) {
+            options.credentials = 'include';
+            if (options.body && typeof options.body === 'object') {
+                options.body = JSON.stringify(options.body);
+                options.headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+            }
+            return fetch(url, options);
+        }
         let animeId = window.location.pathname.split('/').pop();
         let currentAnime = null;
         let currentUserEmail = null;
@@ -328,14 +336,6 @@
             }
         }
 
-        async function authFetch(url, options = {}) {
-            options.credentials = 'include';
-            if (options.body && typeof options.body === 'object') {
-                options.body = JSON.stringify(options.body);
-                options.headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-            }
-            return fetch(url, options);
-        }
 
         async function loadAnime() {
             // 添加时间戳防止任何形式的缓存
@@ -506,7 +506,8 @@
             const res = await authFetch(`/api/anime/${animeId}/comment`, { method: 'POST', body: { text } });
             if (res.ok) {
                 textarea.value = '';
-                loadAnime();
+                await loadAnime();   // 确保等待刷新完成
+                // 可选：滚动到评论区底部
             } else {
                 const err = await res.json();
                 showToast(err.error || '评论失败，请登录');

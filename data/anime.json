@@ -5482,5 +5482,35 @@
             "kevin88ye88@gmail.com": "好看"
         },
         "comments": []
+    },
+    {
+        "id": 188,
+        "title": "伊克西翁传说DT",
+        "series_title": "伊克西翁传说DT",
+        "season": "2012-10",
+        "aliases": [
+            "伊克西翁传说DT",
+            "DT",
+            "IXION SAGA DT"
+        ],
+        "description": "穿越到游戏的世界,没有强大的数值,只是完成摆脱dt而拯救世界的人罢了,可惜最后也没能解决,还有,结局也太TM仓促了吧",
+        "recommend_text": "可以-游戏类",
+        "image_url": "/images/异世界/可以/游戏/伊克西翁传说DT.png",
+        "rating": "可以",
+        "genre": [
+            "微猎奇",
+            "战斗",
+            "游戏类(来回)",
+            "冒险"
+        ],
+        "ratings": {
+            "神作": 0,
+            "好看": 0,
+            "普通": 0,
+            "无聊": 0,
+            "狗屎": 0,
+            "哲救世皇骗": 0
+        },
+        "user_ratings": {}
     }
 ]

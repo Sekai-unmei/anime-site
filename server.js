@@ -461,6 +461,7 @@ app.post('/api/anime/:id/comment', (req, res) => {
     const userInfo = getOrCreateUserInfo(user);
 
     // 处理回复通知
+    // 处理回复通知 (放在 userInfo 获取之后，newComment 之前)
     if (parentId) {
         let parentAuthor = null;
         function findAuthor(comments) {
@@ -475,13 +476,16 @@ app.post('/api/anime/:id/comment', (req, res) => {
         }
         findAuthor(anime.comments);
         if (parentAuthor && parentAuthor !== user) {
+            // 截取回复内容的前30个字符（用于消息预览）
+            const shortReply = text.length > 30 ? text.substring(0, 30) + '…' : text;
             const notification = {
                 id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
                 type: 'comment_reply',
                 animeId: anime.id,
                 commentId: parentId,
                 from: user,
-                message: `${userInfo.username} 回复了你的评论`,
+                message: `${userInfo.username} 回复了你的评论：“${shortReply}”`,
+                replyText: text,          // ✅ 保存完整的回复内容，供前端显示
                 read: false,
                 createdAt: new Date().toISOString()
             };
@@ -491,7 +495,6 @@ app.post('/api/anime/:id/comment', (req, res) => {
             saveNotifications(notifications);
         }
     }
-
     const newComment = {
         id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
         userId: user,

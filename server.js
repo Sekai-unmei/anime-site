@@ -23,7 +23,7 @@ app.use(express.static('public'));
 const GOOGLE_CLIENT_ID = '1046534438268-vmrn92gmqjgdu0ro037d2nhsfmnq63ao.apps.googleusercontent.com';
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-const ALLOWED_EMAILS = ['kevin88ye88@gmail.com'];
+const ALLOWED_EMAILS = ['kevin88ye88@gmail.com', 'darkmaster1212xixi@gmail.com', 'ye.kevin@sassettiperuzzi.edu.it'];
 
 // ========== 数据加载与保存（动漫数据） ==========
 let animeData = [];

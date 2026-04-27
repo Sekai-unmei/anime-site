@@ -317,7 +317,7 @@
             let imageBase64 = null;
             if (file) {
                 if (file.size > 2 * 1024 * 1024) {
-                    showToast('图片不能超过 2MB');
+                    showToast('图片不能超过 5MB');
                     return;
                 }
                 imageBase64 = await compressImage(file);

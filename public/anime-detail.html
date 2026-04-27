@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <title>动漫详情 - 资料库</title>
     <style>
-        /* 原有样式保持不变，只增加以下样式 */
         body {
             margin: 0;
             background: #0a0a0a;
@@ -234,7 +233,6 @@
             cursor: pointer;
         }
 
-        /* Toast 提示 */
         .toast-message {
             position: fixed;
             bottom: 30px;
@@ -275,6 +273,148 @@
                 transform: translateX(-50%) translateY(-20px);
             }
         }
+
+        .avatar-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 12px;
+            height: 12px;
+            background: #ff0000;
+            border-radius: 50%;
+            border: 1px solid #000;
+            display: none;
+            z-index: 1001;
+        }
+
+        #userAvatarMenu {
+            position: relative;
+        }
+
+        .msg-tabs {
+            display: flex;
+            border-bottom: 1px solid #444;
+            margin-bottom: 15px;
+        }
+
+        .msg-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            color: #aaa;
+            transition: 0.2s;
+        }
+
+        .msg-tab.active {
+            color: #ffd700;
+            border-bottom: 2px solid #ffd700;
+        }
+
+        .msg-panel {
+            display: none;
+        }
+
+        .msg-panel.active {
+            display: block;
+        }
+
+        .msg-item {
+            padding: 12px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+        }
+
+        .msg-item:hover {
+            background: #222;
+        }
+
+        .friend-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 12px;
+            vertical-align: middle;
+        }
+
+        .friend-name {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .red-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #ff0000;
+            border-radius: 50%;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        #notificationBar {
+            display: none;
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ffd700;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 30px;
+            z-index: 100000;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #sideMenu {
+            position: fixed;
+            left: -280px;
+            top: 0;
+            width: 280px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            transition: left 0.3s;
+            border-right: 1px solid #ffd700;
+        }
+
+        #chatModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 500px;
+            height: 70%;
+            background: #1a1a1a;
+            border: 1px solid #ffd700;
+            border-radius: 20px;
+            z-index: 100001;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chatSettingsMenu {
+            display: none;
+            position: absolute;
+            background: #222;
+            border: 1px solid #ffd700;
+            border-radius: 8px;
+            z-index: 100002;
+        }
+
+        #chatSettingsMenu div {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #fff;
+        }
+
+        #chatSettingsMenu div:hover {
+            background: #333;
+        }
     </style>
 </head>
 
@@ -296,8 +436,78 @@
         </div>
     </div>
 
+    <!-- 全局通知条 -->
+    <div id="notificationBar"
+        style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); background:#ffd700; color:#000; padding:8px 16px; border-radius:30px; z-index:100000; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+        <span id="notificationMsg"></span>
+        <button id="closeNotifBtn"
+            style="margin-left:10px; background:transparent; border:none; cursor:pointer;">✖</button>
+    </div>
+
+    <!-- 侧边栏消息中心 -->
+    <div id="sideMenu"
+        style="position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); z-index: 2000; transition: left 0.3s; border-right: 1px solid #ffd700;">
+        <div style="padding: 20px; display: flex; flex-direction: column; height: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="color:#ffd700;">消息中心</h3>
+                <button id="closeSideMenuBtn"
+                    style="background:transparent; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✖</button>
+            </div>
+            <div class="msg-tabs">
+                <div class="msg-tab active" data-tab="messages">消息</div>
+                <div class="msg-tab" data-tab="friends">好友</div>
+                <div class="msg-tab" data-tab="settings">设置</div>
+            </div>
+            <div id="messagesPanel" class="msg-panel active">
+                <div id="notificationList">加载中...</div>
+            </div>
+            <div id="friendsPanel" class="msg-panel">
+                <div id="friendsList">加载中...</div>
+            </div>
+            <div id="settingsPanel" class="msg-panel">
+                <div style="margin-top:15px;"><label style="color:#fff;">新消息提醒音效</label><input type="checkbox"
+                        id="soundCheckbox" checked></div>
+                <div style="margin-top:15px;"><label style="color:#fff;">桌面通知</label><input type="checkbox"
+                        id="desktopNotifyCheckbox"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 聊天模态框 -->
+    <div id="chatModal" style="display: none;">
+        <div
+            style="padding:15px; background:#111; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+            <span id="chatFriendName" style="color:#ffd700;"></span>
+            <div><button id="chatSettingsBtn"
+                    style="background:transparent; border:none; color:#fff; cursor:pointer;">⚙️</button><button
+                    id="closeChatBtn"
+                    style="background:transparent; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✖</button>
+            </div>
+        </div>
+        <div id="chatMessages"
+            style="flex:1; overflow-y: auto; padding:15px; display:flex; flex-direction:column; gap:10px;"></div>
+        <div style="padding:15px; border-top:1px solid #333; display:flex; gap:10px;">
+            <input type="text" id="chatInput" placeholder="输入消息..."
+                style="flex:1; background:#111; border:1px solid #444; color:#fff; border-radius:20px; padding:8px 15px;">
+            <button id="sendChatBtn"
+                style="background:#ffd700; color:#000; border:none; border-radius:30px; padding:8px 20px;">发送</button>
+        </div>
+    </div>
+    <div id="chatSettingsMenu" style="display:none; position:absolute;">
+        <div id="deleteFriendBtn">删除好友</div>
+        <div id="muteFriendBtn">消息免打扰</div>
+        <div id="blockFriendBtn">拉黑</div>
+    </div>
+
+    <!-- 左下角头像菜单（简略版） -->
+    <div id="userAvatarMenu" style="position: fixed; left: 20px; bottom: 20px; z-index: 1000; cursor: pointer;">
+        <img id="avatarIcon" src="/avatars/default.png"
+            style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #ffd700; object-fit: cover;">
+        <div id="avatarBadge" class="avatar-badge"></div>
+    </div>
+
     <script>
-        // ====== 添加 showToast 函数 ======
+        // === 全局函数（showToast, authFetch 等）===
         function showToast(message, duration = 2000) {
             const existingToast = document.querySelector('.toast-message');
             if (existingToast) existingToast.remove();
@@ -305,9 +515,7 @@
             toast.className = 'toast-message';
             toast.textContent = message;
             document.body.appendChild(toast);
-            setTimeout(() => {
-                if (toast.parentNode) toast.remove();
-            }, duration);
+            setTimeout(() => { if (toast.parentNode) toast.remove(); }, duration);
         }
 
         async function authFetch(url, options = {}) {
@@ -318,6 +526,18 @@
             }
             return fetch(url, options);
         }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>]/g, function (m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // --- 原动漫详情相关代码（复制自你的文件，保持完整）---
         let animeId = window.location.pathname.split('/').pop();
         let currentAnime = null;
         let currentUserEmail = null;
@@ -328,53 +548,22 @@
                 if (res.ok) {
                     const data = await res.json();
                     currentUserEmail = data.email;
-                } else {
-                    currentUserEmail = null;
-                }
-            } catch (e) {
-                currentUserEmail = null;
-            }
+                } else { currentUserEmail = null; }
+            } catch (e) { currentUserEmail = null; }
         }
 
-
         async function loadAnime() {
-            // 添加时间戳防止任何形式的缓存
             const timestamp = Date.now();
-            const res = await fetch(`/api/anime/${animeId}?_=${timestamp}`, {
-                credentials: 'include',
-                headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
-                cache: 'no-store'
-            });
+            const res = await fetch(`/api/anime/${animeId}?_=${timestamp}`, { credentials: 'include', headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }, cache: 'no-store' });
             currentAnime = await res.json();
             renderAnimeDetail();
             renderComments();
             renderRatingButtons();
         }
-        function renderAnimeDetail() {
-            const html = `
-            <div class="anime-detail">
-                <h1 class="title">${escapeHtml(currentAnime.title)}</h1>
-                <img src="${currentAnime.image_url}" alt="${currentAnime.title}" onerror="this.src='/images/default.jpg'">
-                <div class="description">${escapeHtml(currentAnime.description || '暂无简介')}</div>
-                <div class="info">
-                    <p><span>推荐指数：</span>${escapeHtml(currentAnime.recommend_text || '暂无')}</p>
-                    <p><span>题材：</span>${currentAnime.genre ? escapeHtml(currentAnime.genre.join('、')) : '暂无'}</p>
-                    <p><span>系列：</span>${escapeHtml(currentAnime.series_title || '独立作品')}</p>
-                    <p><span>首播：</span>${escapeHtml(currentAnime.season || '无')}</p>
-                </div>
-            </div>
-        `;
-            document.getElementById('animeDetail').innerHTML = html;
-        }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str).replace(/[&<>]/g, function (m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
+        function renderAnimeDetail() {
+            const html = `<div class="anime-detail"><h1 class="title">${escapeHtml(currentAnime.title)}</h1><img src="${currentAnime.image_url}" alt="${currentAnime.title}" onerror="this.src='/images/default.jpg'"><div class="description">${escapeHtml(currentAnime.description || '暂无简介')}</div><div class="info"><p><span>推荐指数：</span>${escapeHtml(currentAnime.recommend_text || '暂无')}</p><p><span>题材：</span>${currentAnime.genre ? escapeHtml(currentAnime.genre.join('、')) : '暂无'}</p><p><span>系列：</span>${escapeHtml(currentAnime.series_title || '独立作品')}</p><p><span>首播：</span>${escapeHtml(currentAnime.season || '无')}</p></div></div>`;
+            document.getElementById('animeDetail').innerHTML = html;
         }
 
         async function renderRatingButtons() {
@@ -398,47 +587,25 @@
         async function rateAnime(ratingType, btnElement) {
             const isActive = btnElement.classList.contains('active');
             if (isActive) {
-                try {
-                    const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: animeId } });
-                    const data = await res.json();
-                    if (data.success) {
-                        showToast(`已取消 ${ratingType} 评分`);
-                        await loadAnime();
-                    } else {
-                        showToast(data.error || '取消评分失败');
-                    }
-                } catch (err) {
-                    showToast('网络错误');
-                }
+                const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: animeId } });
+                const data = await res.json();
+                if (data.success) { showToast(`已取消 ${ratingType} 评分`); await loadAnime(); }
+                else showToast(data.error || '取消评分失败');
             } else {
                 const res = await authFetch('/api/anime/rate', { method: 'POST', body: { id: animeId, ratingType } });
-                if (res.ok) {
-                    showToast(`已评为 ${ratingType}`);
-                    await loadAnime();
-                } else {
-                    const err = await res.json();
-                    showToast(err.error || '评分失败，请登录');
-                }
+                if (res.ok) { showToast(`已评为 ${ratingType}`); await loadAnime(); }
+                else { const err = await res.json(); showToast(err.error || '评分失败，请登录'); }
             }
         }
 
         function renderComments() {
             const container = document.getElementById('commentSection');
-            container.innerHTML = ''; // 彻底清空，避免残留
+            container.innerHTML = '';
             if (!currentAnime.comments) currentAnime.comments = [];
-            container.innerHTML = `
-            <h3>评论 (${currentAnime.comments.length})</h3>
-            <div class="comment-form">
-                <textarea id="newCommentText" rows="2" placeholder="发表评论..."></textarea>
-                <button class="comment-submit" onclick="submitComment()">发表评论</button>
-            </div>
-            <div id="commentsList"></div>
-        `;
+            container.innerHTML = `<h3>评论 (${currentAnime.comments.length})</h3><div class="comment-form"><textarea id="newCommentText" rows="2" placeholder="发表评论..."></textarea><button class="comment-submit" onclick="submitComment()">发表评论</button></div><div id="commentsList"></div>`;
             const commentsDiv = document.getElementById('commentsList');
             commentsDiv.innerHTML = '';
-            currentAnime.comments.forEach(comment => {
-                commentsDiv.appendChild(createCommentElement(comment));
-            });
+            currentAnime.comments.forEach(comment => { commentsDiv.appendChild(createCommentElement(comment)); });
         }
 
         function createCommentElement(comment, parentId = null) {
@@ -447,42 +614,17 @@
             div.dataset.id = comment.id;
             const isOwner = (currentUserEmail && comment.userId === currentUserEmail);
             const deleteBtn = isOwner ? `<span class="delete-comment" data-id="${comment.id}">🗑️ 删除</span>` : '';
-            div.innerHTML = `
-            <div class="comment-header">
-                <img class="comment-avatar" src="${comment.avatar}" onerror="this.src='/avatars/default.png'" data-email="${comment.userId}">
-                <span class="comment-username" data-email="${comment.userId}">${escapeHtml(comment.username)}</span>
-                <span class="comment-date">${new Date(comment.date).toLocaleString()}</span>
-                ${deleteBtn}
-            </div>
-            <div class="comment-text">${escapeHtml(comment.text)}</div>
-            <div class="reply-btn" data-id="${comment.id}">💬 回复</div>
-            <div id="reply-form-${comment.id}" class="reply-form">
-                <textarea rows="2" placeholder="回复..."></textarea>
-                <button class="comment-submit" onclick="submitReply('${comment.id}')">提交回复</button>
-            </div>
-        `;
+            div.innerHTML = `<div class="comment-header"><img class="comment-avatar" src="${comment.avatar}" onerror="this.src='/avatars/default.png'" data-email="${comment.userId}"><span class="comment-username" data-email="${comment.userId}">${escapeHtml(comment.username)}</span><span class="comment-date">${new Date(comment.date).toLocaleString()}</span>${deleteBtn}</div><div class="comment-text">${escapeHtml(comment.text)}</div><div class="reply-btn" data-id="${comment.id}">💬 回复</div><div id="reply-form-${comment.id}" class="reply-form"><textarea rows="2" placeholder="回复..."></textarea><button class="comment-submit" onclick="submitReply('${comment.id}')">提交回复</button></div>`;
             if (isOwner) {
                 const delBtn = div.querySelector('.delete-comment');
-                delBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteComment(comment.id);
-                });
+                delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteComment(comment.id); });
             }
             const replyBtn = div.querySelector('.reply-btn');
-            replyBtn.onclick = (e) => {
-                e.stopPropagation();
-                const form = document.getElementById(`reply-form-${comment.id}`);
-                form.style.display = form.style.display === 'block' ? 'none' : 'block';
-            };
-            div.querySelectorAll('.comment-avatar, .comment-username').forEach(el => {
-                el.addEventListener('click', () => showUserInfo(el.dataset.email));
-            });
+            replyBtn.onclick = (e) => { e.stopPropagation(); const form = document.getElementById(`reply-form-${comment.id}`); form.style.display = form.style.display === 'block' ? 'none' : 'block'; };
+            div.querySelectorAll('.comment-avatar, .comment-username').forEach(el => { el.addEventListener('click', () => showUserInfo(el.dataset.email)); });
             if (comment.replies && comment.replies.length) {
-                const repliesDiv = document.createElement('div');
-                repliesDiv.className = 'replies';
-                comment.replies.forEach(reply => {
-                    repliesDiv.appendChild(createCommentElement(reply, comment.id));
-                });
+                const repliesDiv = document.createElement('div'); repliesDiv.className = 'replies';
+                comment.replies.forEach(reply => { repliesDiv.appendChild(createCommentElement(reply, comment.id)); });
                 div.appendChild(repliesDiv);
             }
             return div;
@@ -490,13 +632,8 @@
 
         async function deleteComment(commentId) {
             const res = await authFetch(`/api/anime/${animeId}/comment/${commentId}`, { method: 'DELETE' });
-            if (res.ok) {
-                showToast('评论已删除');
-                loadAnime();
-            } else {
-                const err = await res.json();
-                showToast(err.error || '删除失败');
-            }
+            if (res.ok) { showToast('评论已删除'); loadAnime(); }
+            else { const err = await res.json(); showToast(err.error || '删除失败'); }
         }
 
         async function submitComment() {
@@ -504,14 +641,8 @@
             const text = textarea.value.trim();
             if (!text) return;
             const res = await authFetch(`/api/anime/${animeId}/comment`, { method: 'POST', body: { text } });
-            if (res.ok) {
-                textarea.value = '';
-                await loadAnime();   // 确保等待刷新完成
-                // 可选：滚动到评论区底部
-            } else {
-                const err = await res.json();
-                showToast(err.error || '评论失败，请登录');
-            }
+            if (res.ok) { textarea.value = ''; await loadAnime(); }
+            else { const err = await res.json(); showToast(err.error || '评论失败，请登录'); }
         }
 
         async function submitReply(parentId) {
@@ -520,13 +651,8 @@
             const text = textarea.value.trim();
             if (!text) return;
             const res = await authFetch(`/api/anime/${animeId}/comment`, { method: 'POST', body: { parentId, text } });
-            if (res.ok) {
-                textarea.value = '';
-                formDiv.style.display = 'none';
-                loadAnime();
-            } else {
-                showToast('回复失败');
-            }
+            if (res.ok) { textarea.value = ''; formDiv.style.display = 'none'; loadAnime(); }
+            else showToast('回复失败');
         }
 
         const modal = document.getElementById('userModal');
@@ -542,9 +668,7 @@
                 const addBtn = document.getElementById('addFriendBtn');
                 addBtn.onclick = () => addFriend(email);
                 modal.style.display = 'flex';
-            } catch (e) {
-                showToast('无法获取用户信息');
-            }
+            } catch (e) { showToast('无法获取用户信息'); }
         }
 
         function closeModal() { modal.style.display = 'none'; }
@@ -553,17 +677,274 @@
         async function addFriend(toEmail) {
             const res = await authFetch('/api/friends/request', { method: 'POST', body: { toEmail } });
             const data = await res.json();
-            if (data.success) {
-                showToast('好友请求已发送');
-            } else {
-                showToast(data.error || '请求失败');
+            if (data.success) showToast('好友请求已发送');
+            else showToast(data.error || '请求失败');
+        }
+        // ========== 全局通知系统（与 index.html 保持一致） ==========
+        let lastUnreadCount = 0;
+        let pollInterval = null;
+
+        function showNotificationBar(msg) {
+            const bar = document.getElementById('notificationBar');
+            const span = document.getElementById('notificationMsg');
+            if (!bar || !span) return;
+            span.innerText = msg;
+            bar.style.display = 'block';
+            clearTimeout(window.notifTimeout);
+            window.notifTimeout = setTimeout(() => { bar.style.display = 'none'; }, 5000);
+        }
+
+        document.getElementById('closeNotifBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const bar = document.getElementById('notificationBar');
+            if (bar) bar.style.display = 'none';
+            clearTimeout(window.notifTimeout);
+        });
+
+        const notificationBar = document.getElementById('notificationBar');
+        if (notificationBar) {
+            notificationBar.addEventListener('click', () => {
+                const sideMenu = document.getElementById('sideMenu');
+                if (sideMenu) sideMenu.style.left = '0px';
+                document.querySelectorAll('.msg-tab').forEach(tab => {
+                    tab.classList.remove('active');
+                    if (tab.getAttribute('data-tab') === 'messages') tab.classList.add('active');
+                });
+                document.querySelectorAll('.msg-panel').forEach(panel => panel.classList.remove('active'));
+                const msgPanel = document.getElementById('messagesPanel');
+                if (msgPanel) msgPanel.classList.add('active');
+                loadNotificationList();
+            });
+        }
+
+        async function loadNotificationList() {
+            const container = document.getElementById('notificationList');
+            if (!container) return;
+            try {
+                const res = await fetch('/api/notifications', { credentials: 'include' });
+                if (!res.ok) throw new Error();
+                const notifs = await res.json();
+                if (!notifs.length) {
+                    container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无消息</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                notifs.forEach(notif => {
+                    const div = document.createElement('div');
+                    div.className = 'msg-item';
+                    div.innerHTML = `<div>${notif.message}</div><small style="color:#888;">${new Date(notif.createdAt).toLocaleString()}</small>${!notif.read ? '<span class="red-dot"></span>' : ''}`;
+                    if (notif.replyText) div.setAttribute('data-replytext', notif.replyText);
+                    div.addEventListener('click', () => {
+                        if (notif.type === 'comment_reply' && notif.animeId) {
+                            const replyText = div.getAttribute('data-replytext') || '';
+                            showQuickReplyModal(notif.animeId, notif.commentId, notif.from, replyText);
+                        } else if (notif.type === 'friend_request') {
+                            handleFriendRequest(notif.from);
+                        } else if (notif.type === 'new_message') {
+                            // 自动打开聊天窗口
+                            openChatWithFriend(notif.from);
+                        }
+                        markNotificationRead(notif.id);
+                        div.querySelector('.red-dot')?.remove();
+                    });
+                    container.appendChild(div);
+                });
+            } catch (err) { console.error(err); container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>'; }
+        }
+
+        async function markNotificationRead(id) {
+            try {
+                await fetch('/api/notifications/mark-read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ ids: [id] }) });
+            } catch (e) { }
+        }
+
+        async function handleFriendRequest(fromEmail) {
+            if (confirm(`接受 ${fromEmail} 的好友请求？`)) {
+                const res = await fetch('/api/friends/accept', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ requestId: fromEmail }) });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('已添加好友');
+                    loadNotificationList();
+                    loadFriendsList();
+                } else showToast('操作失败');
             }
         }
 
-        (async () => {
-            await fetchCurrentUser();
-            await loadAnime();
-        })();
+        async function loadFriendsList() {
+            const container = document.getElementById('friendsList');
+            if (!container) return;
+            try {
+                const res = await fetch('/api/friends/list', { credentials: 'include' });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                if (!data.length) { container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无好友</div>'; return; }
+                container.innerHTML = '';
+                data.forEach(friend => {
+                    const div = document.createElement('div');
+                    div.className = 'msg-item';
+                    div.innerHTML = `<img src="${friend.avatar || '/avatars/default.png'}" class="friend-avatar" onerror="this.src='/avatars/default.png'"><span class="friend-name">${friend.username || friend.email}</span>`;
+                    div.addEventListener('click', () => openChatWithFriend(friend.email));
+                    container.appendChild(div);
+                });
+            } catch (err) { console.error(err); container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>'; }
+        }
+
+        function updateBadge(unreadCount) {
+            const badge = document.getElementById('avatarBadge');
+            if (badge) badge.style.display = unreadCount > 0 ? 'block' : 'none';
+        }
+
+        async function checkNotifications() {
+            try {
+                const res = await fetch('/api/notifications', { credentials: 'include' });
+                if (!res.ok) return;
+                const notifs = await res.json();
+                const unread = notifs.filter(n => !n.read);
+                const currentUnread = unread.length;
+                if (currentUnread > lastUnreadCount) {
+                    const newCount = currentUnread - lastUnreadCount;
+                    showNotificationBar(`您有 ${newCount} 条新消息`);
+                    if (Notification.permission === 'granted' && document.getElementById('desktopNotifyCheckbox')?.checked) {
+                        new Notification('动漫资料库', { body: `您有 ${newCount} 条新消息` });
+                    }
+                }
+                lastUnreadCount = currentUnread;
+                updateBadge(currentUnread);
+                const sideMenu = document.getElementById('sideMenu');
+                if (sideMenu && sideMenu.style.left === '0px') {
+                    const activeTab = document.querySelector('.msg-tab.active')?.getAttribute('data-tab');
+                    if (activeTab === 'messages') loadNotificationList();
+                    else if (activeTab === 'friends') loadFriendsList();
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        // 聊天相关
+        let currentChatFriend = null;
+        let chatInterval = null;
+
+        function openChatWithFriend(friendEmail) {
+            currentChatFriend = friendEmail;
+            document.getElementById('chatFriendName').innerText = friendEmail;
+            document.getElementById('chatModal').style.display = 'flex';
+            loadChatHistory();
+            if (chatInterval) clearInterval(chatInterval);
+            chatInterval = setInterval(loadChatHistory, 3000);
+        }
+
+        async function loadChatHistory() {
+            if (!currentChatFriend) return;
+            const res = await fetch(`/api/messages/history?friend=${encodeURIComponent(currentChatFriend)}`, { credentials: 'include' });
+            if (!res.ok) return;
+            const history = await res.json();
+            const container = document.getElementById('chatMessages');
+            const prevScroll = container.scrollTop;
+            container.innerHTML = '';
+            history.forEach(msg => {
+                const isMe = msg.from === currentUserEmail;
+                const div = document.createElement('div');
+                div.style.textAlign = isMe ? 'right' : 'left';
+                div.style.background = isMe ? '#2a2a2a' : '#111';
+                div.style.padding = '8px 12px';
+                div.style.borderRadius = '12px';
+                div.style.maxWidth = '80%';
+                div.style.margin = '5px auto';
+                div.style.display = 'inline-block';
+                div.innerHTML = `<span style="color:#ffd700;">${isMe ? '我' : msg.from.split('@')[0]}</span><br>${escapeHtml(msg.text)}<small style="color:#888; margin-left:8px;">${new Date(msg.timestamp).toLocaleTimeString()}</small>`;
+                container.appendChild(div);
+            });
+            if (prevScroll > container.scrollHeight - 300) container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const text = document.getElementById('chatInput').value.trim();
+            if (!text || !currentChatFriend) return;
+            const res = await authFetch('/api/messages/send', { method: 'POST', body: { to: currentChatFriend, text } });
+            if (res.ok) {
+                document.getElementById('chatInput').value = '';
+                loadChatHistory();
+            } else showToast('发送失败');
+        }
+
+        document.getElementById('sendChatBtn')?.addEventListener('click', sendMessage);
+        document.getElementById('chatInput')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+        document.getElementById('closeChatBtn')?.addEventListener('click', () => {
+            document.getElementById('chatModal').style.display = 'none';
+            if (chatInterval) clearInterval(chatInterval);
+            currentChatFriend = null;
+        });
+        document.getElementById('chatSettingsBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = document.getElementById('chatSettingsMenu');
+            const rect = e.target.getBoundingClientRect();
+            menu.style.left = rect.left + 'px';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.display = 'block';
+            setTimeout(() => { document.addEventListener('click', function hideMenu() { menu.style.display = 'none'; document.removeEventListener('click', hideMenu); }); }, 100);
+        });
+        document.getElementById('deleteFriendBtn')?.addEventListener('click', async () => {
+            if (!currentChatFriend) return;
+            if (confirm(`确定要删除好友 ${currentChatFriend} 吗？`)) {
+                const res = await authFetch('/api/friends/delete', { method: 'POST', body: { friend: currentChatFriend } });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('已删除好友');
+                    document.getElementById('chatModal').style.display = 'none';
+                    loadFriendsList();
+                } else showToast('删除失败');
+            }
+        });
+        document.getElementById('muteFriendBtn')?.addEventListener('click', () => showToast('消息免打扰功能开发中'));
+        document.getElementById('blockFriendBtn')?.addEventListener('click', () => showToast('拉黑功能开发中'));
+
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission !== 'denied') Notification.requestPermission();
+        }
+
+        // 头像菜单点击展开侧边栏（简化）
+        const avatarIconEl = document.getElementById('avatarIcon');
+        const sideMenuEl = document.getElementById('sideMenu');
+        if (avatarIconEl) {
+            avatarIconEl.addEventListener('click', () => {
+                const isOpen = sideMenuEl.style.left === '0px';
+                sideMenuEl.style.left = isOpen ? '-280px' : '0px';
+                if (!isOpen) {
+                    const activeTab = document.querySelector('.msg-tab.active')?.getAttribute('data-tab');
+                    if (activeTab === 'messages') loadNotificationList();
+                    else if (activeTab === 'friends') loadFriendsList();
+                }
+            });
+        }
+        document.addEventListener('click', (e) => {
+            if (!sideMenuEl.contains(e.target) && e.target !== avatarIconEl && sideMenuEl.style.left === '0px') {
+                sideMenuEl.style.left = '-280px';
+            }
+        });
+
+        document.getElementById('closeSideMenuBtn')?.addEventListener('click', () => sideMenuEl.style.left = '-280px');
+        document.querySelectorAll('.msg-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.getAttribute('data-tab');
+                document.querySelectorAll('.msg-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                document.querySelectorAll('.msg-panel').forEach(p => p.classList.remove('active'));
+                if (target === 'messages') document.getElementById('messagesPanel').classList.add('active'), loadNotificationList();
+                else if (target === 'friends') document.getElementById('friendsPanel').classList.add('active'), loadFriendsList();
+                else if (target === 'settings') document.getElementById('settingsPanel').classList.add('active');
+            });
+        });
+
+        // 启动轮询
+        setTimeout(() => {
+            checkNotifications();
+            loadFriendsList();
+            pollInterval = setInterval(checkNotifications, 5000);
+            requestNotificationPermission();
+        }, 2000);
+
+        // 初始化动漫详情
+        fetchCurrentUser();
+        loadAnime();
         modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     </script>
 </body>

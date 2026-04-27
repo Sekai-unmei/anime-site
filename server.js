@@ -460,7 +460,6 @@ app.post('/api/anime/:id/comment', (req, res) => {
     // 提前获取用户信息，用于通知和评论对象
     const userInfo = getOrCreateUserInfo(user);
 
-    // 处理回复通知
     // 处理回复通知 (放在 userInfo 获取之后，newComment 之前)
     if (parentId) {
         let parentAuthor = null;
@@ -765,8 +764,68 @@ app.post('/api/report', async (req, res) => {
         console.error('邮件发送失败:', err);
         res.status(500).json({ error: '邮件发送失败，请稍后重试' });
     }
+});// ========== 聊天消息存储 ==========
+const MESSAGES_FILE = path.join(__dirname, 'data/messages.json');
+if (!fs.existsSync(MESSAGES_FILE)) fs.writeFileSync(MESSAGES_FILE, JSON.stringify({}, null, 2));
+
+function loadMessages() {
+    try { return JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf8')); } catch (e) { return {}; }
+}
+function saveMessages(messages) { fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2)); }
+
+// 发送消息
+app.post('/api/messages/send', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "未登录" });
+    const { to, text } = req.body;
+    if (!to || !text) return res.status(400).json({ error: "缺少参数" });
+    const from = req.session.user;
+    const key = [from, to].sort().join('_');
+    let messages = loadMessages();
+    if (!messages[key]) messages[key] = [];
+    messages[key].push({
+        from, to, text, timestamp: new Date().toISOString(), read: false
+    });
+    saveMessages(messages);
+    // 可选：为对方生成通知
+    const notification = {
+        id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+        type: 'new_message',
+        from: from,
+        message: `${from} 给你发了一条新消息`,
+        read: false,
+        createdAt: new Date().toISOString()
+    };
+    let notifications = loadNotifications();
+    if (!notifications[to]) notifications[to] = [];
+    notifications[to].push(notification);
+    saveNotifications(notifications);
+    res.json({ success: true });
 });
 
+// 获取聊天记录
+app.get('/api/messages/history', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "未登录" });
+    const { friend } = req.query;
+    if (!friend) return res.status(400).json({ error: "缺少好友邮箱" });
+    const me = req.session.user;
+    const key = [me, friend].sort().join('_');
+    const messages = loadMessages();
+    const history = messages[key] || [];
+    // 标记已读（可选）
+    res.json(history);
+});
+
+// 删除好友
+app.post('/api/friends/delete', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "未登录" });
+    const { friend } = req.body;
+    let friends = loadFriends();
+    friends = friends.filter(f => !((f.user === req.session.user && f.friend === friend) || (f.user === friend && f.friend === req.session.user)));
+    saveFriends(friends);
+    res.json({ success: true });
+});
+
+// 拉黑/免打扰可暂不实现，或扩展 friends 数组增加字段（后续可加）
 // ========== 启动服务器 ==========
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

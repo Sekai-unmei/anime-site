@@ -366,6 +366,50 @@
             });
         }
 
+        function showQuickReplyModal(animeId, commentId, replierEmail) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #1a1a1a;
+        border: 1px solid #ffd700;
+        border-radius: 20px;
+        padding: 20px;
+        width: 80%;
+        max-width: 400px;
+        z-index: 100000;
+        box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    `;
+            modal.innerHTML = `
+        <h4 style="color:#ffd700;">回复 ${replierEmail}</h4>
+        <textarea id="quickReplyText" rows="3" style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
+            <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
+        </div>
+    `;
+            document.body.appendChild(modal);
+            document.getElementById('quickReplySend').onclick = async () => {
+                const text = document.getElementById('quickReplyText').value.trim();
+                if (!text) return;
+                const res = await authFetch(`/api/anime/${animeId}/comment`, {
+                    method: 'POST',
+                    body: { parentId: commentId, text }
+                });
+                if (res.ok) {
+                    showToast('回复已发送');
+                    modal.remove();
+                    // 可选：刷新通知列表
+                    loadNotificationList();
+                } else {
+                    showToast('回复失败');
+                }
+            };
+            document.getElementById('quickReplyCancel').onclick = () => modal.remove();
+        }
+
         // 加载通知列表并渲染到侧边栏消息面板
         async function loadNotificationList() {
             const container = document.getElementById('notificationList');
@@ -389,14 +433,12 @@
                         ${!notif.read ? '<span class="red-dot"></span>' : ''}
                     `;
                     div.addEventListener('click', () => {
-                        // 处理点击消息：跳转或回复
                         if (notif.type === 'comment_reply' && notif.animeId) {
-                            window.location.href = `/anime/${notif.animeId}`;
+                            // 不跳转，打开快速回复模态框
+                            showQuickReplyModal(notif.animeId, notif.commentId, notif.from);
                         } else if (notif.type === 'friend_request') {
-                            // 可以弹窗确认好友请求
                             handleFriendRequest(notif.from);
                         }
-                        // 标记为已读（调用后端接口）
                         markNotificationRead(notif.id);
                         div.querySelector('.red-dot')?.remove();
                     });

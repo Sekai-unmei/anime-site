@@ -338,13 +338,18 @@
         }
 
         async function loadAnime() {
-            const res = await fetch(`/api/anime/${animeId}`, { credentials: 'include' });
+            // 添加时间戳防止任何形式的缓存
+            const timestamp = Date.now();
+            const res = await fetch(`/api/anime/${animeId}?_=${timestamp}`, {
+                credentials: 'include',
+                headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+                cache: 'no-store'
+            });
             currentAnime = await res.json();
             renderAnimeDetail();
             renderComments();
             renderRatingButtons();
         }
-
         function renderAnimeDetail() {
             const html = `
             <div class="anime-detail">
@@ -419,6 +424,7 @@
 
         function renderComments() {
             const container = document.getElementById('commentSection');
+            container.innerHTML = ''; // 彻底清空，避免残留
             if (!currentAnime.comments) currentAnime.comments = [];
             container.innerHTML = `
             <h3>评论 (${currentAnime.comments.length})</h3>

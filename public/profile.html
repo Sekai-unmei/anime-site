@@ -1163,31 +1163,36 @@
                     contentDiv.innerHTML = `<div class="name-display">📍 ${loc}</div>`;
                     break;
                 case '名片':
-                    // 创建卡片容器，添加点击事件打开全屏详情
-                    const card = document.createElement('div');
-                    card.style.cssText = `
-                background: #111;
-                border-radius: 20px;
-                padding: 20px;
-                max-width: 90vw;
-                width: auto;
-                margin: 0 auto;
-                text-align: center;
-                border: 1px solid ${profile.avatarBorderColor};
-                word-break: break-word;
-                cursor: pointer;
-                transition: 0.2s;
-            `;
-                    card.innerHTML = `
+                    const isMobile = window.innerWidth <= 768;
+                    if (isMobile) {
+                        const btn = document.createElement('button');
+                        btn.textContent = '📱 点击查看名片';
+                        btn.style.cssText = `
+            background: #ffd700;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 20px auto;
+            display: block;
+        `;
+                        btn.onclick = () => showFullscreenCard();  // 复用全屏名片函数
+                        contentDiv.appendChild(btn);
+                    } else {
+                        // 大屏幕原有卡片显示（但为了统一，也可以直接显示全屏名片按钮，但卡片更直观）
+                        const locationStr = [profile.planet, profile.country, profile.region].filter(s => s).join(' · ') || '未填写';
+                        contentDiv.innerHTML = `
+            <div style="background:#111; border-radius:20px; padding:20px; max-width:90vw; width:auto; margin:0 auto; text-align:center; border:1px solid ${profile.avatarBorderColor}; word-break:break-word;">
                 <img src="${profile.avatar}" style="width:100px; height:100px; border-radius:50%; border:3px solid ${profile.avatarBorderColor}; margin-bottom:20px; object-fit:cover;" onerror="this.src='/avatars/default.png'">
                 <h2 style="color:${profile.nameColor}; font-size:1.3rem; margin:10px 0;">${profile.name || '未填写'}</h2>
                 <p style="color:${profile.nameColor}; margin:5px 0;">称号：${profile.title || '未填写'}</p>
                 <p style="color:${profile.bioColor}; margin:5px 0;">简介：${profile.bio || '未填写'}</p>
-                <p style="color:#aaa; margin:5px 0;">位置：${[profile.planet, profile.country, profile.region].filter(s => s).join(' · ') || '未填写'}</p>
-                <div style="margin-top: 15px; font-size:0.8rem; color:#ffd700;">👇 点击查看全屏名片</div>
-            `;
-                    card.addEventListener('click', () => showFullscreenCard());
-                    contentDiv.appendChild(card);
+                <p style="color:#aaa; margin:5px 0;">位置：${locationStr}</p>
+            </div>
+        `;
+                    }
                     break;
                 case '返回':
                     contentDiv.innerHTML = `<div>点击返回按钮退出设置</div>`;

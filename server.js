@@ -343,7 +343,7 @@ app.get('/api/anime/ratings-stats', async (req, res) => {
 
 app.get('/api/anime/:id', async (req, res) => {
     const animeId = parseInt(req.params.id);  // 转换为数字
-    const anime = await Anime.findOne({ id: animeId }).lean();
+    const anime = await Anime.findOne({ id: animeId });
     if (!anime) return res.status(404).json({ error: "未找到" });
     res.json(anime);
 });
@@ -352,7 +352,7 @@ app.post('/api/anime/rate', async (req, res) => {
     const id = parseInt(req.body.id);
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
-    const anime = await Anime.findOne({ id });
+    const anime = await Anime.findOne({ id: animeId });
     if (!anime) return res.status(404).json({ error: "未找到动漫" });
     if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
     if (!anime.user_ratings) anime.user_ratings = new Map();
@@ -370,7 +370,7 @@ app.post('/api/anime/unrate', async (req, res) => {
     const id = parseInt(req.body.id);
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
-    const anime = await Anime.findOne({ id });
+    const anime = await Anime.findOne({ id: animeId });
     if (!anime) return res.status(404).json({ error: "未找到动漫" });
     const oldRating = anime.user_ratings.get(user);
     if (oldRating && anime.ratings[oldRating] > 0) {

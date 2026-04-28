@@ -342,13 +342,14 @@ app.get('/api/anime/ratings-stats', async (req, res) => {
 });
 
 app.get('/api/anime/:id', async (req, res) => {
-    const anime = await Anime.findOne({ id: req.params.id }).lean();
+    const animeId = parseInt(req.params.id);  // 转换为数字
+    const anime = await Anime.findOne({ id: animeId }).lean();
     if (!anime) return res.status(404).json({ error: "未找到" });
     res.json(anime);
 });
 
 app.post('/api/anime/rate', async (req, res) => {
-    const { id, ratingType } = req.body;
+    const id = parseInt(req.body.id);
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
     const anime = await Anime.findOne({ id });
@@ -366,7 +367,7 @@ app.post('/api/anime/rate', async (req, res) => {
 });
 
 app.post('/api/anime/unrate', async (req, res) => {
-    const { id } = req.body;
+    const id = parseInt(req.body.id);
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
     const anime = await Anime.findOne({ id });
@@ -383,7 +384,8 @@ app.post('/api/anime/unrate', async (req, res) => {
 });
 
 app.post('/api/anime/:id/comment', async (req, res) => {
-    const anime = await Anime.findOne({ id: req.params.id });
+    const animeId = parseInt(req.params.id);
+    const anime = await Anime.findOne({ id: animeId });
     if (!anime) return res.status(404).send("Not found");
     const { parentId, text } = req.body;
     const user = req.session.user;
@@ -450,7 +452,8 @@ app.post('/api/anime/:id/comment', async (req, res) => {
 });
 
 app.delete('/api/anime/:id/comment/:commentId', async (req, res) => {
-    const anime = await Anime.findOne({ id: req.params.id });
+    const animeId = parseInt(req.params.id);
+    const anime = await Anime.findOne({ id: animeId });
     if (!anime) return res.status(404).send("Not found");
     const commentId = req.params.commentId;
     const user = req.session.user;

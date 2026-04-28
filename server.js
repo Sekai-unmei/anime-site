@@ -1,4 +1,5 @@
 console.log("开始执行 server.js (MongoDB 持久化版 - 修正顺序与集合名)");
+console.log("Anime collection name:", Anime.collection.name);
 const nodemailer = require('nodemailer');
 const express = require('express');
 const session = require('express-session');

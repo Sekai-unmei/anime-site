@@ -101,7 +101,7 @@ const animeSchema = new mongoose.Schema({
     genre: [String],
     series_title: String,
     season: String,
-    rating: String,               // 整体推荐等级，如 "神作", "好看" 等
+    rating: String,
     ratings: {
         神作: { type: Number, default: 0 },
         好看: { type: Number, default: 0 },
@@ -109,7 +109,7 @@ const animeSchema = new mongoose.Schema({
         无聊: { type: Number, default: 0 },
         狗屎: { type: Number, default: 0 }
     },
-    user_ratings: { type: Map, of: String, default: {} },  // key: 用户邮箱, value: 评分类型
+    user_ratings: { type: Map, of: String, default: {} },
     comments: [
         {
             id: String,
@@ -131,8 +131,7 @@ const animeSchema = new mongoose.Schema({
             ]
         }
     ]
-});
-const Anime = mongoose.model('Anime', animeSchema);
+}, { collection: 'anime' });
 
 // ========== 辅助函数（与原来行为一致，但使用数据库）==========
 async function getOrCreateUserInfo(email, username = null) {

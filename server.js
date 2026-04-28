@@ -17,10 +17,7 @@ if (!MONGO_URI) {
     console.error("❌ 未设置 MONGO_URI 环境变量，请检查 Render 环境变量");
     process.exit(1);
 }
-mongoose.connect(MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ MongoDB 连接成功"))
     .catch(err => {
         console.error("❌ MongoDB 连接失败:", err);

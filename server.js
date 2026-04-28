@@ -1,5 +1,4 @@
 console.log("开始执行 server.js (MongoDB 持久化版 - 修正顺序与集合名)");
-console.log("Anime collection name:", Anime.collection.name);
 const nodemailer = require('nodemailer');
 const express = require('express');
 const session = require('express-session');
@@ -69,7 +68,7 @@ const noteSchema = new mongoose.Schema({
 const Note = mongoose.model('Note', noteSchema);
 
 // ★★★★★ 动漫模型（核心）★★★★★
-// 重要修正：Atlas 中存放数据的集合是 'animes'，所以要将 collection 指定为 'animes'
+// 使用明确集合名 'animes'
 const animeSchema = new mongoose.Schema({
     id: { type: Number, unique: true, required: true },
     title: String,
@@ -122,20 +121,29 @@ if (!MONGO_URI) {
 mongoose.connect(MONGO_URI)
     .then(async () => {
         console.log("✅ MongoDB 连接成功");
+        console.log(`📌 使用集合: ${Anime.collection.name}`);  // 确认集合名
 
-        // 确认数据库中的动漫数量
+        // 获取当前文档数
         const count = await Anime.countDocuments();
-        if (count === 0) {
-            console.log("📀 数据库为空，正在从 anime.json 导入初始数据...");
+        console.log(`📊 当前动漫文档数: ${count}`);
+
+        // 预期总数为 191（从本地文件读取）
+        const EXPECTED_COUNT = 191;
+        if (count !== EXPECTED_COUNT) {
+            console.log(`⚠️ 文档数 ${count} 与预期 ${EXPECTED_COUNT} 不符，强制清空并重新导入...`);
             try {
+                await Anime.deleteMany({});   // 清空集合
                 const animeData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/anime.json'), 'utf8'));
                 await Anime.insertMany(animeData, { ordered: false });
-                console.log(`✅ 成功导入 ${animeData.length} 条动漫数据`);
+                console.log(`✅ 成功导入 ${animeData.length} 条动漫数据（预期 ${EXPECTED_COUNT}）`);
+                const newCount = await Anime.countDocuments();
+                console.log(`📊 重新导入后文档数: ${newCount}`);
             } catch (importErr) {
                 console.error("❌ 导入失败:", importErr);
+                // 导入失败不退出，以便继续提供其他服务（但动漫数据为空）
             }
         } else {
-            console.log(`📊 已记录动漫数量：${count}`);
+            console.log(`✅ 动漫数据完整，共 ${count} 条。`);
         }
     })
     .catch(err => console.error("❌ MongoDB 连接失败:", err));

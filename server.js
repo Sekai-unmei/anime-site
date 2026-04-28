@@ -11,30 +11,7 @@ const { OAuth2Client } = require('google-auth-library');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ========== 连接 MongoDB ==========
-const MONGO_URI = process.env.MONGO_URI;
-if (!MONGO_URI) {
-    console.error("❌ 未设置 MONGO_URI 环境变量，请检查 Render 环境变量");
-    process.exit(1);
-}
-mongoose.connect(MONGO_URI)
-    .then(async () => {
-        console.log("✅ MongoDB 连接成功");
-
-        // 检查是否已有动漫数据，若没有则从文件导入
-        const count = await Anime.countDocuments();
-        if (count === 0) {
-            console.log("📀 数据库为空，正在从 anime.json 导入初始数据...");
-            const animeData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/anime.json'), 'utf8'));
-            for (let anime of animeData) {
-                await Anime.create(anime);
-            }
-            console.log(`✅ 成功导入 ${animeData.length} 条动漫数据`);
-        }
-    })
-    .catch(err => console.error("❌ MongoDB 连接失败:", err));
-
-// ========== 定义 Mongoose 模型 ==========
+// ========== 定义 Mongoose 模型（必须在连接数据库之前）==========
 
 // 用户模型
 const userSchema = new mongoose.Schema({
@@ -44,7 +21,6 @@ const userSchema = new mongoose.Schema({
     googleAvatar: String,
     bio: String,
     joinDate: String,
-    // 其他扩展字段可加
 });
 const User = mongoose.model('User', userSchema);
 
@@ -59,7 +35,7 @@ const Friend = mongoose.model('Friend', friendSchema);
 
 // 通知模型
 const notificationSchema = new mongoose.Schema({
-    targetUser: { type: String, required: true }, // 接收通知的用户邮箱
+    targetUser: { type: String, required: true },
     id: String,
     type: String,
     animeId: Number,
@@ -74,7 +50,7 @@ const Notification = mongoose.model('Notification', notificationSchema);
 
 // 聊天消息模型
 const messageSchema = new mongoose.Schema({
-    key: String,               // 两人邮箱排序后拼接，如 "a@b.com_b@c.com"
+    key: String,
     from: String,
     to: String,
     text: String,
@@ -91,7 +67,7 @@ const noteSchema = new mongoose.Schema({
 });
 const Note = mongoose.model('Note', noteSchema);
 
-// 动漫模型（核心）
+// 动漫模型（核心）- 指定使用 'anime' 集合
 const animeSchema = new mongoose.Schema({
     id: { type: Number, unique: true, required: true },
     title: String,
@@ -132,8 +108,34 @@ const animeSchema = new mongoose.Schema({
         }
     ]
 }, { collection: 'anime' });
+const Anime = mongoose.model('Anime', animeSchema);
 
-// ========== 辅助函数（与原来行为一致，但使用数据库）==========
+// ========== 连接 MongoDB（模型已全部定义）==========
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+    console.error("❌ 未设置 MONGO_URI 环境变量，请检查 Render 环境变量");
+    process.exit(1);
+}
+
+mongoose.connect(MONGO_URI)
+    .then(async () => {
+        console.log("✅ MongoDB 连接成功");
+        // 检查是否存在动漫数据，没有则自动导入
+        const count = await Anime.countDocuments();
+        if (count === 0) {
+            console.log("📀 数据库为空，正在从 anime.json 导入初始数据...");
+            const animeData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/anime.json'), 'utf8'));
+            for (let anime of animeData) {
+                await Anime.create(anime);
+            }
+            console.log(`✅ 成功导入 ${animeData.length} 条动漫数据`);
+        } else {
+            console.log(`📊 已记录动漫数量：${count}`);
+        }
+    })
+    .catch(err => console.error("❌ MongoDB 连接失败:", err));
+
+// ========== 辅助函数 ==========
 async function getOrCreateUserInfo(email, username = null) {
     let user = await User.findOne({ email });
     if (!user) {
@@ -270,7 +272,6 @@ app.get('/anime/:id', (req, res) => {
 app.get('/login-failed', (req, res) => res.redirect('/unauthorized.html'));
 
 // ========== 动漫相关接口（完全使用 MongoDB）==========
-// 动漫列表（支持筛选、分页）
 app.get('/api/anime/list', async (req, res) => {
     let { page = 1, limit = 12, keyword = '', year = '', month = '', tag = '', rating = '' } = req.query;
     page = parseInt(page);
@@ -280,7 +281,7 @@ app.get('/api/anime/list', async (req, res) => {
         filter.$or = [
             { title: { $regex: keyword, $options: 'i' } },
             { series_title: { $regex: keyword, $options: 'i' } },
-            { aliases: { $regex: keyword, $options: 'i' } }  // 注意：原数据中可能有 aliases 字段，若没有可忽略
+            { aliases: { $regex: keyword, $options: 'i' } }
         ];
     }
     if (year) {
@@ -302,14 +303,12 @@ app.get('/api/anime/list', async (req, res) => {
     res.json({ total, page, limit, data });
 });
 
-// 动漫系列数量
 app.get('/api/anime/series-count', async (req, res) => {
     const series = await Anime.distinct('series_title');
     const uniqueSeries = new Set(series.filter(s => s && s.trim() !== ''));
     res.json({ count: uniqueSeries.size });
 });
 
-// 按系列搜索
 app.get('/api/anime/series', async (req, res) => {
     let keyword = req.query.title;
     if (!keyword) return res.json([]);
@@ -317,7 +316,6 @@ app.get('/api/anime/series', async (req, res) => {
     res.json(animes);
 });
 
-// 评分统计排行
 app.get('/api/anime/ratings-stats', async (req, res) => {
     const all = await Anime.find().lean();
     const stats = all.map(anime => {
@@ -330,14 +328,12 @@ app.get('/api/anime/ratings-stats', async (req, res) => {
     res.json(stats);
 });
 
-// 单个动漫详情
 app.get('/api/anime/:id', async (req, res) => {
     const anime = await Anime.findOne({ id: req.params.id }).lean();
     if (!anime) return res.status(404).json({ error: "未找到" });
     res.json(anime);
 });
 
-// 评分提交
 app.post('/api/anime/rate', async (req, res) => {
     const { id, ratingType } = req.body;
     const user = req.session.user;
@@ -356,7 +352,6 @@ app.post('/api/anime/rate', async (req, res) => {
     res.json({ success: true, ratings: anime.ratings });
 });
 
-// 取消评分
 app.post('/api/anime/unrate', async (req, res) => {
     const { id } = req.body;
     const user = req.session.user;
@@ -374,7 +369,6 @@ app.post('/api/anime/unrate', async (req, res) => {
     }
 });
 
-// 发表评论或回复
 app.post('/api/anime/:id/comment', async (req, res) => {
     const anime = await Anime.findOne({ id: req.params.id });
     if (!anime) return res.status(404).send("Not found");
@@ -382,8 +376,6 @@ app.post('/api/anime/:id/comment', async (req, res) => {
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
     const userInfo = await getOrCreateUserInfo(user);
-
-    // 处理回复通知
     if (parentId) {
         let parentAuthor = null;
         function findAuthor(comments) {
@@ -414,7 +406,6 @@ app.post('/api/anime/:id/comment', async (req, res) => {
             await notification.save();
         }
     }
-
     const newComment = {
         id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
         userId: user,
@@ -424,7 +415,6 @@ app.post('/api/anime/:id/comment', async (req, res) => {
         date: new Date(),
         replies: []
     };
-
     function addReply(comments) {
         for (let i = 0; i < comments.length; i++) {
             if (comments[i].id === parentId) {
@@ -435,7 +425,6 @@ app.post('/api/anime/:id/comment', async (req, res) => {
         }
         return false;
     }
-
     if (parentId) {
         if (!addReply(anime.comments)) {
             return res.status(404).json({ error: "父评论不存在" });
@@ -447,7 +436,6 @@ app.post('/api/anime/:id/comment', async (req, res) => {
     res.json(anime.comments);
 });
 
-// 删除评论
 app.delete('/api/anime/:id/comment/:commentId', async (req, res) => {
     const anime = await Anime.findOne({ id: req.params.id });
     if (!anime) return res.status(404).send("Not found");

@@ -108,7 +108,7 @@ const animeSchema = new mongoose.Schema({
             ]
         }
     ]
-}, { collection: 'animes' }); // ⬅️ 这里改成了 'animes'
+}, { collection: 'animes' });
 const Anime = mongoose.model('Anime', animeSchema);
 
 // ========== 2. 连接 MongoDB ==========

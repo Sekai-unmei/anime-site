@@ -959,7 +959,7 @@
                 const file = reportImage.files[0];
                 let imageBase64 = null;
                 if (file) {
-                    if (file.size > 2 * 1024 * 1024) { showToast('图片不能超过 2MB'); return; }
+                    if (file.size > 10 * 1024 * 1024) { showToast('图片不能超过 10MB'); return; }
                     imageBase64 = await compressImage(file);
                 }
                 const payload = { type, description, imageBase64: imageBase64 || null };

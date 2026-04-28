@@ -1,4 +1,4 @@
-console.log("开始执行 server.js (MongoDB 持久化版)");
+console.log("开始执行 server.js (MongoDB 持久化版 - 修正顺序与集合名)");
 const nodemailer = require('nodemailer');
 const express = require('express');
 const session = require('express-session');
@@ -11,7 +11,7 @@ const { OAuth2Client } = require('google-auth-library');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ========== 定义 Mongoose 模型（必须在连接数据库之前）==========
+// ========== 1. 定义 mongoose 模型 (必须在连接数据库之前！) ==========
 
 // 用户模型
 const userSchema = new mongoose.Schema({
@@ -67,7 +67,8 @@ const noteSchema = new mongoose.Schema({
 });
 const Note = mongoose.model('Note', noteSchema);
 
-// 动漫模型（核心）- 指定使用 'anime' 集合
+// ★★★★★ 动漫模型（核心）★★★★★
+// 重要修正：Atlas 中存放数据的集合是 'animes'，所以要将 collection 指定为 'animes'
 const animeSchema = new mongoose.Schema({
     id: { type: Number, unique: true, required: true },
     title: String,
@@ -107,10 +108,10 @@ const animeSchema = new mongoose.Schema({
             ]
         }
     ]
-}, { collection: 'anime' });
+}, { collection: 'animes' }); // ⬅️ 这里改成了 'animes'
 const Anime = mongoose.model('Anime', animeSchema);
 
-// ========== 连接 MongoDB（模型已全部定义）==========
+// ========== 2. 连接 MongoDB ==========
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
     console.error("❌ 未设置 MONGO_URI 环境变量，请检查 Render 环境变量");
@@ -120,15 +121,18 @@ if (!MONGO_URI) {
 mongoose.connect(MONGO_URI)
     .then(async () => {
         console.log("✅ MongoDB 连接成功");
-        // 检查是否存在动漫数据，没有则自动导入
+
+        // 确认数据库中的动漫数量
         const count = await Anime.countDocuments();
         if (count === 0) {
             console.log("📀 数据库为空，正在从 anime.json 导入初始数据...");
-            const animeData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/anime.json'), 'utf8'));
-            for (let anime of animeData) {
-                await Anime.create(anime);
+            try {
+                const animeData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/anime.json'), 'utf8'));
+                await Anime.insertMany(animeData, { ordered: false });
+                console.log(`✅ 成功导入 ${animeData.length} 条动漫数据`);
+            } catch (importErr) {
+                console.error("❌ 导入失败:", importErr);
             }
-            console.log(`✅ 成功导入 ${animeData.length} 条动漫数据`);
         } else {
             console.log(`📊 已记录动漫数量：${count}`);
         }
@@ -271,7 +275,7 @@ app.get('/anime/:id', (req, res) => {
 });
 app.get('/login-failed', (req, res) => res.redirect('/unauthorized.html'));
 
-// ========== 动漫相关接口（完全使用 MongoDB）==========
+// ========== 动漫相关接口 ==========
 app.get('/api/anime/list', async (req, res) => {
     let { page = 1, limit = 12, keyword = '', year = '', month = '', tag = '', rating = '' } = req.query;
     page = parseInt(page);

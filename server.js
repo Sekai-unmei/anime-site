@@ -280,7 +280,11 @@ app.get('/', (req, res) => {
     }
 });
 // 必须放在所有静态文件路由之前，且只匹配数字ID
-app.get('/anime/:id(\\d+)', (req, res) => {
+app.get('/anime/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+        return res.status(404).send('Invalid anime id');
+    }
     res.sendFile(path.join(__dirname, 'public/anime-detail.html'));
 });
 app.get('/login-failed', (req, res) => res.redirect('/unauthorized.html'));

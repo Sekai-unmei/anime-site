@@ -100,35 +100,29 @@
 <body>
     <div class="container">
         <div class="overall-card" id="overall"></div>
-
         <div class="section" id="mainline">
             <h3>🔹 主线</h3>
             <div class="card-grid" id="mainlineGrid"></div>
         </div>
-
         <div class="section" id="son">
             <h3>🧬 儿子（承太郎）</h3>
             <div class="card-grid" id="sonGrid"></div>
         </div>
-
         <div class="section" id="daughter">
             <h3>🌸 女儿（徐伦）</h3>
             <div class="card-grid" id="daughterGrid"></div>
         </div>
-
         <div class="section" id="extra">
             <h3>✨ 番外・飙马野郎</h3>
             <div class="card-grid" id="extraGrid"></div>
         </div>
-
         <a href="/" class="back-btn">← 返回首页</a>
     </div>
 
     <script>
-        const SERIES_TITLE = "jojo的奇妙冒险";  // 与数据中 series_title 匹配
-        // 预定义分组ID（基于你提供的示例）
+        const SERIES_TITLE = "jojo的奇妙冒险";
         const GROUP_IDS = {
-            overall: 178,           // 整体评价卡
+            overall: 178,
             mainline: [179, 180, 181, 183],
             son: [182],
             daughter: [184, 185, 186],
@@ -137,24 +131,22 @@
 
         async function loadAnimeData() {
             const res = await fetch(`/api/anime/series?title=${encodeURIComponent(SERIES_TITLE)}`);
-            const all = await res.json(); // 返回该系列所有动漫
+            const all = await res.json();
             const map = new Map();
             all.forEach(anime => map.set(anime.id, anime));
 
-            // 渲染整体评价
             const overall = map.get(GROUP_IDS.overall);
             if (overall) {
                 document.getElementById('overall').innerHTML = `
-                <img src="${overall.image_url}" alt="${overall.title}">
-                <div class="overall-info">
-                    <h2>📖 整体评价 · ${overall.title}</h2>
-                    <p>${overall.description || '暂无简介'}</p>
-                    <p>⭐ 推荐度：${overall.rating} &nbsp; | &nbsp; 🏷️ ${overall.genre?.join(' · ')}</p>
-                </div>
-            `;
+                    <img src="${overall.image_url}" alt="${overall.title}">
+                    <div class="overall-info">
+                        <h2>📖 整体评价 · ${overall.title}</h2>
+                        <p>${overall.description || '暂无简介'}</p>
+                        <p>⭐ 推荐度：${overall.rating} &nbsp; | &nbsp; 🏷️ ${overall.genre?.join(' · ')}</p>
+                    </div>
+                `;
             }
 
-            // 通用渲染函数
             const renderGroup = (ids, containerId) => {
                 const container = document.getElementById(containerId);
                 if (!container) return;
@@ -165,12 +157,18 @@
                     const card = document.createElement('div');
                     card.className = 'anime-card';
                     card.innerHTML = `
-                    <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/placeholder.png'">
-                    <p>${anime.title}</p>
-                `;
-                    card.addEventListener('click', () => {
-                        window.location.href = `/anime/${anime.id}`;
-                    });
+                        <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/placeholder.png'">
+                        <p>${anime.title}</p>
+                    `;
+                    const animeId = anime.id || anime._id;
+                    if (animeId) {
+                        card.addEventListener('click', () => {
+                            window.location.href = `/anime/${animeId}`;
+                        });
+                    } else {
+                        console.error('动漫缺少 ID:', anime);
+                        card.style.cursor = 'not-allowed';
+                    }
                     container.appendChild(card);
                 });
             };

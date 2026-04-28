@@ -104,7 +104,6 @@
             opacity: 0;
             transition: opacity 0.2s;
             backdrop-filter: blur(8px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         }
 
         .tooltip.show {
@@ -117,14 +116,12 @@
             margin-bottom: 6px;
             text-align: center;
             color: #ffd700;
-            word-break: break-all;
         }
 
         .tooltip-desc {
             font-size: 0.8rem;
             color: #ccc;
             margin-bottom: 8px;
-            line-height: 1.4;
         }
 
         .tooltip-recommend {
@@ -150,7 +147,6 @@
         <div id="anime-grid" class="anime-grid"></div>
         <div id="no-result" class="no-result" style="display: none;">没有找到符合条件的动漫</div>
     </div>
-
     <div id="tooltip" class="tooltip"></div>
 
     <script>
@@ -162,14 +158,12 @@
             return str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
         }
 
-        // 解析 URL 参数：keyword, tag, year, month
         const urlParams = new URLSearchParams(window.location.search);
         const keyword = urlParams.get('keyword') || '';
         const tag = urlParams.get('tag') || '';
         const year = urlParams.get('year') || '';
         const month = urlParams.get('month') || '';
 
-        // 构建筛选摘要
         let summary = '';
         if (keyword) summary += `搜索: ${keyword} `;
         if (tag) summary += `类型: ${tag} `;
@@ -179,13 +173,11 @@
         document.getElementById('filter-summary').innerHTML = summary;
 
         async function loadSearchResult() {
-            // 没有任何筛选条件
             if (!keyword && !tag && !year && !month) {
                 document.getElementById('no-result').style.display = 'block';
                 document.getElementById('no-result').innerHTML = '请输入搜索关键词或选择筛选条件';
                 return;
             }
-
             try {
                 let url = `/api/anime/list?page=1&limit=100`;
                 if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
@@ -225,11 +217,17 @@
                     </div>
                 `;
                 const img = card.querySelector('img');
+                const animeId = anime.id || anime._id;
+                if (animeId) {
+                    card.addEventListener('click', () => {
+                        window.location.href = `/anime/${animeId}`;
+                    });
+                } else {
+                    console.error('动漫缺少 ID:', anime);
+                    card.style.cursor = 'not-allowed';
+                }
                 img.addEventListener('mouseenter', (e) => showTooltip(e, anime));
                 img.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300); });
-                card.addEventListener('click', () => {
-                    window.location.href = `/anime/${anime.id}`;
-                });
                 container.appendChild(card);
             });
         }

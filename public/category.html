@@ -143,7 +143,8 @@
     <div class="category-layout">
         <div class="sidebar">
             <h3>📂 动漫分类</h3>
-            <div id="series-count" class="category-stats">加载中...</div>
+            <div id="total-count" class="category-stats">加载中...</div>
+            <div id="series-count" class="category-stats" style="font-size:0.8rem; color:#666;">系列数量: --</div>
             <div id="category-tree"></div>
             <a href="/recommend.html" class="back-btn">← 返回</a>
         </div>
@@ -153,7 +154,6 @@
     </div>
 
     <script>
-        // ======================== 分类树（已统一使用“学校”） ========================
         const categoryTree = [
             { name: "神作", children: [] },
             { name: "神作之下-好看之上", children: [] },
@@ -197,10 +197,24 @@
 
         let allAnime = [];
 
+        async function loadTotalCount() {
+            try {
+                const res = await fetch('/api/anime/list?limit=1');
+                const data = await res.json();
+                document.getElementById('total-count').innerHTML = `📊 动漫总数：${data.total}`;
+            } catch (err) {
+                document.getElementById('total-count').innerHTML = `📊 动漫总数：获取失败`;
+            }
+        }
+
         async function loadSeriesCount() {
-            const res = await fetch('/api/anime/series-count');
-            const data = await res.json();
-            document.getElementById('series-count').innerHTML = `📊 已记录动漫数量：${data.count}`;
+            try {
+                const res = await fetch('/api/anime/series-count');
+                const data = await res.json();
+                document.getElementById('series-count').innerHTML = `📚 系列数量：${data.count}`;
+            } catch (err) {
+                document.getElementById('series-count').innerHTML = `📚 系列数量：--`;
+            }
         }
 
         async function loadAnimeData() {
@@ -217,9 +231,7 @@
 
         function showAllByRating(rating) {
             const realRating = mapRating(rating);
-            let url = `/api/anime/list?rating=${encodeURIComponent(realRating)}&limit=1000`;
-            console.log(`请求全部: ${url}`);
-            fetch(url)
+            fetch(`/api/anime/list?rating=${encodeURIComponent(realRating)}&limit=1000`)
                 .then(res => res.json())
                 .then(data => renderAnime(data.data))
                 .catch(err => console.error('请求失败', err));
@@ -229,7 +241,6 @@
             const realRating = mapRating(rating);
             let url = `/api/anime/list?rating=${encodeURIComponent(realRating)}&limit=1000`;
             if (genre) url += `&tag=${encodeURIComponent(genre)}`;
-            console.log(`请求筛选: ${url}`);
             fetch(url)
                 .then(res => res.json())
                 .then(data => renderAnime(data.data))
@@ -246,16 +257,35 @@
             animes.forEach(anime => {
                 const card = document.createElement('div');
                 card.className = 'anime-card';
+                // 兼容 id 字段：优先使用 anime.id，否则使用 anime._id
+                const animeId = anime.id || anime._id;
+                if (!animeId) {
+                    console.warn('动漫数据缺少 id 字段', anime);
+                }
                 card.innerHTML = `
-                <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
-                <div class="anime-info">
-                    <div class="anime-title">${anime.title}</div>
-                </div>
-            `;
-                card.addEventListener('click', () => {
-                    window.location.href = `/anime/${anime.id}`;
-                });
+                    <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
+                    <div class="anime-info">
+                        <div class="anime-title">${escapeHtml(anime.title)}</div>
+                    </div>
+                `;
+                if (animeId) {
+                    card.addEventListener('click', () => {
+                        window.location.href = `/anime/${animeId}`;
+                    });
+                } else {
+                    card.style.cursor = 'not-allowed';
+                }
                 grid.appendChild(card);
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>]/g, m => {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
             });
         }
 
@@ -353,6 +383,7 @@
         }
 
         (async () => {
+            await loadTotalCount();
             await loadSeriesCount();
             await loadAnimeData();
             buildSidebar();

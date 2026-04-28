@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>站长推荐 - 动漫资料库</title>
     <style>
-        /* 样式保持不变，省略... 请保留原有 style */
         body {
             margin: 0;
             background: #0a0a0a;
@@ -43,10 +42,6 @@
             border-radius: 30px;
             width: 250px;
             outline: none;
-        }
-
-        .search-box:focus {
-            background: rgba(255, 255, 255, 0.2);
         }
 
         .section-title {
@@ -133,7 +128,6 @@
             opacity: 0;
             transition: opacity 0.2s;
             backdrop-filter: blur(8px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         }
 
         .tooltip.show {
@@ -146,14 +140,12 @@
             margin-bottom: 6px;
             text-align: center;
             color: #ffd700;
-            word-break: break-all;
         }
 
         .tooltip-desc {
             font-size: 0.8rem;
             color: #ccc;
             margin-bottom: 8px;
-            line-height: 1.4;
         }
 
         .tooltip-recommend {
@@ -274,7 +266,6 @@
             <div class="circle-btn" onclick="location.href='/category.html'">📚 分类</div>
         </div>
     </div>
-
     <div id="tooltip" class="tooltip"></div>
 
     <script>
@@ -293,23 +284,18 @@
             allAnime = data.data;
         }
 
-        // 通用请求函数，带二次过滤
         async function fetchAnimeByRating(rating, limit = 8) {
             const url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=${limit}`;
             const res = await fetch(url);
             const data = await res.json();
-            // 二次过滤，确保返回的动漫 rating 完全匹配（防止后端过滤不严）
             return data.data.filter(anime => anime.rating === rating);
         }
 
         async function loadRecommendations() {
-            // 神作
             const godList = await fetchAnimeByRating('神作', 8);
             renderAnime(godList, 'god-anime-list');
-            // 好看
             const goodList = await fetchAnimeByRating('好看', 8);
             renderAnime(goodList, 'good-anime-list');
-            // 神作之下-好看之上 (对应 rating = "神作之下-好看之上")
             const midList = await fetchAnimeByRating('神作之下-好看之上', 8);
             renderAnime(midList, 'mid-anime-list');
             startGodParticles();
@@ -336,11 +322,17 @@
                 </div>
             `;
             const img = card.querySelector('img');
+            const animeId = anime.id || anime._id;
+            if (animeId) {
+                card.addEventListener('click', () => {
+                    window.location.href = `/anime/${animeId}`;
+                });
+            } else {
+                console.error('动漫缺少 ID:', anime);
+                card.style.cursor = 'not-allowed';
+            }
             img.addEventListener('mouseenter', (e) => showTooltip(e, anime));
             img.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300); });
-            card.addEventListener('click', () => {
-                window.location.href = `/anime/${anime.id}`;
-            });
             return card;
         }
 
@@ -371,10 +363,10 @@
             const shortTitle = truncate(anime.title, 10);
             const shortDesc = truncate(anime.description || '', 30);
             tooltip.innerHTML = `
-        <div class="tooltip-title">${shortTitle}</div>
-        <div class="tooltip-desc">${shortDesc}</div>
-        <div class="tooltip-recommend">推荐指数：${anime.recommend_text || '暂无'}</div>
-    `;
+                <div class="tooltip-title">${shortTitle}</div>
+                <div class="tooltip-desc">${shortDesc}</div>
+                <div class="tooltip-recommend">推荐指数：${anime.recommend_text || '暂无'}</div>
+            `;
             tooltip.style.visibility = 'hidden';
             tooltip.classList.add('show');
             const tooltipRect = tooltip.getBoundingClientRect();
@@ -401,6 +393,7 @@
             tooltip.style.top = top + 'px';
             tooltip.style.visibility = 'visible';
         }
+
         tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
         tooltip.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
 

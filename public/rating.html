@@ -116,7 +116,6 @@
                 const res = await fetch('/api/anime/ratings-stats');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const allStats = await res.json();
-                // 只显示至少有一票的动漫
                 const stats = allStats.filter(anime => anime.totalVotes > 0);
                 const container = document.getElementById('rating-list');
                 if (!stats.length) {
@@ -130,22 +129,28 @@
                     const card = document.createElement('div');
                     card.className = 'anime-card';
                     card.innerHTML = `
-                    <img src="${escapeHtml(anime.image_url)}" alt="${escapeHtml(anime.title)}" onerror="this.src='/images/default.jpg'">
-                    <div class="anime-info">
-                        <div class="anime-title">${escapeHtml(anime.title)}</div>
-                        <div class="rating-stats">
-                            <div class="rating-badge">夯(神作) ${ratings["神作"] || 0}</div>
-                            <div class="rating-badge">顶级(好看) ${ratings["好看"] || 0}</div>
-                            <div class="rating-badge">人上人(普通) ${ratings["普通"] || 0}</div>
-                            <div class="rating-badge">NPC (无聊) ${ratings["无聊"] || 0}</div>
-                            <div class="rating-badge">拉完了 (狗屎) ${ratings["狗屎"] || 0}</div>
+                        <img src="${escapeHtml(anime.image_url)}" alt="${escapeHtml(anime.title)}" onerror="this.src='/images/default.jpg'">
+                        <div class="anime-info">
+                            <div class="anime-title">${escapeHtml(anime.title)}</div>
+                            <div class="rating-stats">
+                                <div class="rating-badge">夯(神作) ${ratings["神作"] || 0}</div>
+                                <div class="rating-badge">顶级(好看) ${ratings["好看"] || 0}</div>
+                                <div class="rating-badge">人上人(普通) ${ratings["普通"] || 0}</div>
+                                <div class="rating-badge">NPC (无聊) ${ratings["无聊"] || 0}</div>
+                                <div class="rating-badge">拉完了 (狗屎) ${ratings["狗屎"] || 0}</div>
+                            </div>
+                            <div class="rating-stats" style="margin-top: 5px; color:#aaa;">总票数：${totalVotes}</div>
                         </div>
-                        <div class="rating-stats" style="margin-top: 5px; color:#aaa;">总票数：${totalVotes}</div>
-                    </div>
-                `;
-                    card.addEventListener('click', () => {
-                        window.location.href = `/anime/${anime.id}`;
-                    });
+                    `;
+                    // 获取正确的 ID
+                    const animeId = anime.id || anime._id;
+                    if (animeId) {
+                        card.addEventListener('click', () => {
+                            window.location.href = `/anime/${animeId}`;
+                        });
+                    } else {
+                        console.error('动漫缺少 ID:', anime);
+                    }
                     container.appendChild(card);
                 });
             } catch (err) {

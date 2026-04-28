@@ -18,11 +18,21 @@ if (!MONGO_URI) {
     process.exit(1);
 }
 mongoose.connect(MONGO_URI)
-    .then(() => console.log("✅ MongoDB 连接成功"))
-    .catch(err => {
-        console.error("❌ MongoDB 连接失败:", err);
-        process.exit(1);
-    });
+    .then(async () => {
+        console.log("✅ MongoDB 连接成功");
+
+        // 检查是否已有动漫数据，若没有则从文件导入
+        const count = await Anime.countDocuments();
+        if (count === 0) {
+            console.log("📀 数据库为空，正在从 anime.json 导入初始数据...");
+            const animeData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/anime.json'), 'utf8'));
+            for (let anime of animeData) {
+                await Anime.create(anime);
+            }
+            console.log(`✅ 成功导入 ${animeData.length} 条动漫数据`);
+        }
+    })
+    .catch(err => console.error("❌ MongoDB 连接失败:", err));
 
 // ========== 定义 Mongoose 模型 ==========
 

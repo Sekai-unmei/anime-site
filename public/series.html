@@ -160,7 +160,7 @@
                         <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/placeholder.png'">
                         <p>${anime.title}</p>
                     `;
-                    const animeId = anime.id;
+                    const animeId = anime._id;
                     if (animeId) {
                         card.addEventListener('click', () => {
                             window.location.href = `/anime/${animeId}`;

@@ -217,7 +217,7 @@
                     </div>
                 `;
                 const img = card.querySelector('img');
-                const animeId = anime.id;
+                const animeId = anime._id;
                 if (animeId) {
                     card.addEventListener('click', () => {
                         window.location.href = `/anime/${animeId}`;

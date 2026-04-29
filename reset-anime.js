@@ -23,7 +23,8 @@ const Anime = mongoose.model('Anime', animeSchema);
 
         await Anime.insertMany(animeData);
         console.log(`✅ 成功导入 ${animeData.length} 条动漫数据`);
-
+        const sample = await Anime.findOne();
+        console.log('样例文档的 id:', sample.id);
         process.exit(0);
     } catch (err) {
         console.error('❌ 出错:', err);

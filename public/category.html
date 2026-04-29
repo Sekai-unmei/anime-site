@@ -258,7 +258,7 @@
                 const card = document.createElement('div');
                 card.className = 'anime-card';
                 // 使用数字 id
-                const animeId = anime.id;
+                const animeId = anime._id;
                 if (!animeId) {
                     console.warn('动漫缺少数字id字段', anime);
                 }

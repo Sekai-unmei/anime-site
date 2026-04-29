@@ -142,7 +142,7 @@
                             <div class="rating-stats" style="margin-top: 5px; color:#aaa;">总票数：${totalVotes}</div>
                         </div>
                     `;
-                    const animeId = anime.id;
+                    const animeId = anime._id;
                     if (animeId) {
                         card.addEventListener('click', () => {
                             window.location.href = `/anime/${animeId}`;

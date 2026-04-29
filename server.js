@@ -361,6 +361,7 @@ app.get('/api/anime/:id', async (req, res) => {
     res.json(anime);
 });
 
+// 然后继续原有逻辑
 app.post('/api/anime/rate', async (req, res) => {
     try {
         const { id, ratingType } = req.body;
@@ -370,7 +371,21 @@ app.post('/api/anime/rate', async (req, res) => {
         let anime = await findAnimeByIdentifier(id);
         if (!anime) return res.status(404).json({ error: "未找到动漫" });
 
-        // 强制确保 user_ratings 是普通对象
+        // ---------- 防护代码（放在这里）----------
+        if (Array.isArray(anime.user_ratings)) {
+            let obj = {};
+            for (let item of anime.user_ratings) {
+                if (typeof item === 'object') {
+                    for (let [email, rating] of Object.entries(item)) obj[email] = rating;
+                } else if (typeof item === 'string') {
+                    let parts = item.split(':');
+                    if (parts.length === 2) obj[parts[0]] = parts[1];
+                }
+            }
+            anime.user_ratings = obj;
+            await anime.save();
+        }
+        // 确保 user_ratings 是普通对象
         let ur = anime.user_ratings;
         if (!ur || typeof ur !== 'object') ur = {};
         if (ur instanceof Map) {
@@ -381,21 +396,14 @@ app.post('/api/anime/rate', async (req, res) => {
         anime.user_ratings = ur;
 
         if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
-
         const oldRating = ur[user];
         if (oldRating === ratingType) {
             return res.json({ success: true, ratings: anime.ratings });
         }
-
-        // 扣除旧票
-        if (oldRating && anime.ratings[oldRating] > 0) {
-            anime.ratings[oldRating]--;
-        }
-        // 增加新票
+        if (oldRating && anime.ratings[oldRating] > 0) anime.ratings[oldRating]--;
         anime.ratings[ratingType] = (anime.ratings[ratingType] || 0) + 1;
         ur[user] = ratingType;
         anime.user_ratings = ur;
-
         await anime.save();
         res.json({ success: true, ratings: anime.ratings });
     } catch (err) {
@@ -403,6 +411,8 @@ app.post('/api/anime/rate', async (req, res) => {
         res.status(500).json({ error: '服务器内部错误' });
     }
 });
+
+
 
 app.post('/api/anime/unrate', async (req, res) => {
     try {

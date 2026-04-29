@@ -1,62 +1,63 @@
 const mongoose = require('mongoose');
 const MONGO_URI = 'mongodb+srv://render_user:Render2024@animer-sj.vjdntz9.mongodb.net/anime_db?retryWrites=true&w=majority';
 
-const animeSchema = new mongoose.Schema({}, { strict: false, collection: 'animes' });
-const Anime = mongoose.model('Anime', animeSchema);
-
-async function fix() {
-    await mongoose.connect(MONGO_URI);
+mongoose.connect(MONGO_URI).then(async () => {
+    const Anime = mongoose.model('Anime', new mongoose.Schema({}, { strict: false, collection: 'animes' }));
     const docs = await Anime.find({});
+    let fixedCount = 0;
+
     for (let doc of docs) {
-        // 1. 规范化 user_ratings
-        let ur = doc.user_ratings;
-        let fixed = false;
+        let original = doc.user_ratings;
         let newUR = {};
+        let changed = false;
 
-        if (ur === null || ur === undefined) {
-            ur = {};
-            fixed = true;
-        }
-        if (ur instanceof Map) {
-            for (let [k, v] of ur.entries()) newUR[k] = v;
-            fixed = true;
-        } else if (Array.isArray(ur)) {
-            // 如果是数组，取最后一个元素（假设格式 {user, rating}）
-            if (ur.length > 0) {
-                const last = ur[ur.length - 1];
-                if (last && last.user && last.rating) newUR[last.user] = last.rating;
-                else console.warn(`数组格式异常: ${doc.title}`);
+        // 处理数组：将 [{email: rating}, ...] 转换成 {email: rating}
+        if (Array.isArray(original)) {
+            console.log(`⚠️ ${doc.title}: user_ratings 是数组，长度 ${original.length}`);
+            for (let item of original) {
+                if (typeof item === 'object') {
+                    for (let [email, rating] of Object.entries(item)) {
+                        if (rating) newUR[email] = rating;
+                    }
+                } else if (typeof item === 'string') {
+                    let parts = item.split(':');
+                    if (parts.length === 2) newUR[parts[0]] = parts[1];
+                }
             }
-            fixed = true;
-        } else if (typeof ur === 'object') {
-            // 普通对象，直接使用
-            newUR = ur;
-            // 但需要删除重复key？不会重复
-        } else {
+            changed = true;
+        }
+        // 处理 Map
+        else if (original instanceof Map) {
+            for (let [k, v] of original.entries()) newUR[k] = v;
+            changed = true;
+        }
+        // 处理普通对象
+        else if (typeof original === 'object' && original !== null) {
+            newUR = original;
+        }
+        // 其他情况重置为空对象
+        else {
             newUR = {};
-            fixed = true;
+            changed = true;
         }
 
-        // 2. 重新计算 ratings
+        // 重新计算评分统计
         const newRatings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
         for (let rating of Object.values(newUR)) {
             if (newRatings[rating] !== undefined) newRatings[rating]++;
-            else console.warn(`未知评分类型: ${rating}`);
         }
 
-        // 3. 更新文档
-        if (fixed || JSON.stringify(doc.user_ratings) !== JSON.stringify(newUR) ||
-            JSON.stringify(doc.ratings) !== JSON.stringify(newRatings)) {
+        // 更新文档
+        if (changed || JSON.stringify(doc.ratings) !== JSON.stringify(newRatings)) {
             doc.user_ratings = newUR;
             doc.ratings = newRatings;
             await doc.save();
-            console.log(`修复: ${doc.title} -> user_ratings: ${JSON.stringify(newUR)}, ratings: ${JSON.stringify(newRatings)}`);
+            console.log(`✅ ${doc.title}: 修复后用户评分: ${JSON.stringify(newUR)}`);
+            fixedCount++;
         } else {
-            console.log(`跳过: ${doc.title} 已正常`);
+            console.log(`✔️ ${doc.title}: 已正常`);
         }
     }
-    console.log('修复完成');
+    console.log(`🎉 修复完成，共处理 ${fixedCount} 个文档`);
     process.exit(0);
-}
-
-fix().catch(console.error);
+}).catch(err => { console.error(err); process.exit(1); });

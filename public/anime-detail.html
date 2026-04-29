@@ -636,10 +636,8 @@
             const ratings = ['神作', '好看', '普通', '无聊', '狗屎'];
             const container = document.getElementById('ratingPanel');
             container.innerHTML = '<strong>评分：</strong> ';
-            let userRating = null;
-            if (currentUserEmail && currentAnime.user_ratings && currentAnime.user_ratings[currentUserEmail]) {
-                userRating = currentAnime.user_ratings[currentUserEmail];
-            }
+            // ★ 关键修改：使用后端返回的 currentUserRating，而不是 user_ratings
+            let userRating = currentAnime.currentUserRating || null;
             ratings.forEach(r => {
                 const btn = document.createElement('button');
                 btn.textContent = r;
@@ -659,10 +657,9 @@
                 const data = await res.json();
                 if (data.success) {
                     showToast(`已取消 ${ratingType} 评分`);
-                    // 更新本地 currentAnime 的 ratings 和 user_ratings
                     if (data.ratings) currentAnime.ratings = data.ratings;
-                    if (currentUserEmail && currentAnime.user_ratings) delete currentAnime.user_ratings[currentUserEmail];
-                    // 重新渲染按钮（刷新高亮和票数显示）
+                    // 清空当前用户的评分标记
+                    currentAnime.currentUserRating = null;
                     renderRatingButtons();
                 } else {
                     showToast(data.error || '取消评分失败');
@@ -673,11 +670,9 @@
                 if (res.ok) {
                     const data = await res.json();
                     showToast(`已评为 ${ratingType}`);
-                    // 更新本地 currentAnime 数据
                     if (data.ratings) currentAnime.ratings = data.ratings;
-                    if (!currentAnime.user_ratings) currentAnime.user_ratings = {};
-                    currentAnime.user_ratings[currentUserEmail] = ratingType;
-                    // 重新渲染按钮
+                    // 保存当前用户的评分类型
+                    currentAnime.currentUserRating = ratingType;
                     renderRatingButtons();
                 } else {
                     const err = await res.json();
@@ -685,7 +680,6 @@
                 }
             }
         }
-
         // 评论相关
         function renderComments() {
             const container = document.getElementById('commentSection');

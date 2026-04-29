@@ -62,7 +62,7 @@ const noteSchema = new mongoose.Schema({
 });
 const Note = mongoose.model('Note', noteSchema);
 
-// 关键修复：user_ratings 字段使用 Mixed 类型，同时支持 Map 和普通对象
+// 动漫模型（保留 user_ratings 兼容旧结构，但新评分系统已使用独立的 Vote 集合）
 const animeSchema = new mongoose.Schema({
     id: { type: Number, unique: true },
     title: String,
@@ -105,6 +105,7 @@ const animeSchema = new mongoose.Schema({
 }, { collection: 'animes' });
 const Anime = mongoose.model('Anime', animeSchema);
 
+// 独立的投票集合，防止刷票（唯一索引保证一个用户对一部动漫只有一条记录）
 const voteSchema = new mongoose.Schema({
     userId: { type: String, required: true },
     animeId: { type: Number, required: true }, // 使用数字 id，不是 _id
@@ -125,6 +126,11 @@ if (!MONGO_URI) {
 mongoose.connect(MONGO_URI)
     .then(async () => {
         console.log("✅ MongoDB 连接成功");
+
+        // ★★★ 确保 Vote 表的唯一索引被创建（非常重要） ★★★
+        await Vote.init();
+        console.log("✅ Vote 索引已就绪");
+
         console.log(`📌 使用集合: ${Anime.collection.name}`);
         const count = await Anime.countDocuments();
         console.log(`📊 当前动漫文档数: ${count}`);
@@ -165,7 +171,7 @@ async function findAnimeByIdentifier(identifier) {
     return null;
 }
 
-// 安全读写 user_ratings 辅助函数（兼容普通对象和Map）
+// 安全读写 user_ratings 辅助函数（兼容普通对象和Map）- 保留用于旧数据，新系统不再使用
 function getUserRating(anime, userEmail) {
     const ur = anime.user_ratings;
     if (!ur) return null;
@@ -353,7 +359,7 @@ app.get('/api/anime/ratings-stats', async (req, res) => {
         const score = (ratings.神作 || 0) * 5 + (ratings.好看 || 0) * 4 + (ratings.普通 || 0) * 3 + (ratings.无聊 || 0) * 2 + (ratings.狗屎 || 0) * 1;
         const totalVotes = (ratings.神作 || 0) + (ratings.好看 || 0) + (ratings.普通 || 0) + (ratings.无聊 || 0) + (ratings.狗屎 || 0);
         return {
-            _id: anime._id,   // 关键：添加 _id 供前端使用
+            _id: anime._id,
             id: anime.id,
             title: anime.title,
             image_url: anime.image_url,
@@ -369,25 +375,38 @@ app.get('/api/anime/ratings-stats', async (req, res) => {
 app.get('/api/anime/:id', async (req, res) => {
     const anime = await findAnimeByIdentifier(req.params.id);
     if (!anime) return res.status(404).json({ error: "未找到" });
-    res.json(anime);
+
+    // 如果用户已登录，查询他对此动漫的评分
+    let currentUserRating = null;
+    if (req.session.user) {
+        const vote = await Vote.findOne({
+            userId: req.session.user,
+            animeId: anime.id
+        });
+        currentUserRating = vote ? vote.type : null;
+    }
+
+    // 转换成普通对象并附加字段
+    const result = anime.toObject ? anime.toObject() : anime;
+    result.currentUserRating = currentUserRating;
+    res.json(result);
 });
 
-// 然后继续原有逻辑
-// ========== 评分路由（最终版）==========
+// ========== 评分路由（最终版，基于 Vote 集合，防刷票）==========
 app.post('/api/anime/rate', async (req, res) => {
     try {
         const { id, ratingType } = req.body;
         const userId = req.session.user;
         if (!userId) return res.status(401).json({ error: "未登录" });
 
-        const anime = await Anime.findOne({ id: parseInt(id) }); // 确保 id 是数字
+        const anime = await findAnimeByIdentifier(id);
         if (!anime) return res.status(404).json({ error: "动漫不存在" });
 
         // 原子更新 vote 记录（自动处理 insert/update）
-        const oldVote = await Vote.findOneAndUpdate(
+        await Vote.findOneAndUpdate(
             { userId, animeId: anime.id },
             { type: ratingType, updatedAt: new Date() },
-            { upsert: true, new: true }  // 返回更新后的文档
+            { upsert: true, new: true }
         );
 
         // 重新计算该动漫的 ratings 统计（从 vote 集合聚合）
@@ -401,34 +420,43 @@ app.post('/api/anime/rate', async (req, res) => {
         // 原子更新 anime 文档
         await Anime.updateOne(
             { id: anime.id },
-            { $set: { ratings: newRatings, user_ratings: {} } } // user_ratings 不再使用，可保留空对象
+            { $set: { ratings: newRatings, user_ratings: {} } }
         );
 
         res.json({ success: true, ratings: newRatings });
     } catch (err) {
         if (err.code === 11000) {
-            // 唯一索引冲突（理论上 findOneAndUpdate 已处理，但若并发极高可能触发）
             return res.status(409).json({ error: "请稍后重试" });
         }
         console.error(err);
         res.status(500).json({ error: "服务器错误" });
     }
 });
+
 // ========== 取消评分路由 ==========
 app.post('/api/anime/unrate', async (req, res) => {
-    const { id } = req.body;
-    const userId = req.session.user;
-    if (!userId) return res.status(401).json({ error: "未登录" });
-    const anime = await Anime.findOne({ id: parseInt(id) });
-    if (!anime) return res.status(404).json({ error: "动漫不存在" });
+    try {
+        const { id } = req.body;
+        const userId = req.session.user;
+        if (!userId) return res.status(401).json({ error: "未登录" });
+        const anime = await findAnimeByIdentifier(id);
+        if (!anime) return res.status(404).json({ error: "动漫不存在" });
 
-    await Vote.deleteOne({ userId, animeId: anime.id });
+        await Vote.deleteOne({ userId, animeId: anime.id });
 
-    // 重新聚合统计（同上）
-    const stats = await Vote.aggregate([...]);
-    const newRatings = { ...};
-    await Anime.updateOne({ id: anime.id }, { $set: { ratings: newRatings } });
-    res.json({ success: true });
+        // 重新聚合统计
+        const stats = await Vote.aggregate([
+            { $match: { animeId: anime.id } },
+            { $group: { _id: '$type', count: { $sum: 1 } } }
+        ]);
+        const newRatings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
+        stats.forEach(s => { newRatings[s._id] = s.count; });
+        await Anime.updateOne({ id: anime.id }, { $set: { ratings: newRatings } });
+        res.json({ success: true, ratings: newRatings });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "服务器错误" });
+    }
 });
 
 app.post('/api/anime/:id/comment', async (req, res) => {
@@ -439,7 +467,7 @@ app.post('/api/anime/:id/comment', async (req, res) => {
         const user = req.session.user;
         if (!user) return res.status(401).json({ error: "未登录" });
         const userInfo = await getOrCreateUserInfo(user);
-        // 回复通知逻辑（保持不变）
+        // 回复通知逻辑
         if (parentId) {
             let parentAuthor = null;
             function findAuthor(comments) {
@@ -550,8 +578,14 @@ app.get('/api/user/info/:email', async (req, res) => {
 app.get('/api/user/ratings', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
     const user = req.session.user;
-    const animes = await Anime.find({ [`user_ratings.${user}`]: { $exists: true } }).lean();
-    res.json(animes);
+    const votes = await Vote.find({ userId: user });
+    const animeIds = votes.map(v => v.animeId);
+    const animes = await Anime.find({ id: { $in: animeIds } }).lean();
+    const animeWithRating = animes.map(anime => ({
+        ...anime,
+        userRating: votes.find(v => v.animeId === anime.id)?.type
+    }));
+    res.json(animeWithRating);
 });
 
 app.post('/api/user/reset-avatar', async (req, res) => {

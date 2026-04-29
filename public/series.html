@@ -121,74 +121,93 @@
 
     <script>
         const SERIES_TITLE = "jojo的奇妙冒险";
-        const GROUP_IDS = {
-            overall: 178,
-            mainline: [179, 180, 181, 183],
-            son: [182],
-            daughter: [184, 185, 186],
-            extra: [187]
-        };
+
+        // 动态分组规则（根据标题关键词匹配）
+        function categorizeAnime(anime) {
+            const title = anime.title;
+            if (title.includes("第一季") || title === "jojo的奇妙冒险") return "overall";
+            if (title.includes("星尘斗士")) return "mainline";
+            if (title.includes("不灭钻石")) return "son";
+            if (title.includes("黄金之风")) return "mainline";
+            if (title.includes("石之海")) return "daughter";
+            if (title.includes("飙马野郎")) return "extra";
+            // 默认主线
+            return "mainline";
+        }
 
         async function loadAnimeData() {
             try {
                 const res = await fetch(`/api/anime/series?title=${encodeURIComponent(SERIES_TITLE)}`);
                 const all = await res.json();
                 console.log('API返回数据:', all);
-                const map = new Map();
-                all.forEach(anime => {
-                    // 同时映射数字id和字符串_id
-                    if (anime.id !== undefined && anime.id !== null) map.set(anime.id, anime);
-                    if (anime._id) map.set(anime._id, anime);
-                });
 
-                const overall = map.get(GROUP_IDS.overall);
-                if (overall) {
-                    document.getElementById('overall').innerHTML = `
-                        <img src="${overall.image_url}" alt="${overall.title}">
-                        <div class="overall-info">
-                            <h2>📖 整体评价 · ${overall.title}</h2>
-                            <p>${overall.description || '暂无简介'}</p>
-                            <p>⭐ 推荐度：${overall.rating} &nbsp; | &nbsp; 🏷️ ${overall.genre?.join(' · ')}</p>
-                        </div>
-                    `;
-                } else {
-                    console.warn('未找到整体评价条目，id:', GROUP_IDS.overall);
+                if (!all.length) {
+                    document.getElementById('overall').innerHTML = '<div style="color:red">未找到相关动漫</div>';
+                    return;
                 }
 
-                const renderGroup = (ids, containerId) => {
+                // 找出整体评价（通常为 id=178 或是最早一部）
+                const overallAnime = all.find(a => a.id === 178 || a.title === "jojo的奇妙冒险");
+                if (overallAnime) {
+                    document.getElementById('overall').innerHTML = `
+                        <img src="${overallAnime.image_url}" alt="${overallAnime.title}">
+                        <div class="overall-info">
+                            <h2>📖 整体评价 · ${overallAnime.title}</h2>
+                            <p>${overallAnime.description || '暂无简介'}</p>
+                            <p>⭐ 推荐度：${overallAnime.rating} &nbsp; | &nbsp; 🏷️ ${overallAnime.genre?.join(' · ')}</p>
+                        </div>
+                    `;
+                }
+
+                // 分组
+                const groups = {
+                    mainline: [],
+                    son: [],
+                    daughter: [],
+                    extra: []
+                };
+
+                all.forEach(anime => {
+                    const category = categorizeAnime(anime);
+                    if (category === "overall") return; // 整体评价已单独处理
+                    groups[category].push(anime);
+                });
+
+                // 渲染函数
+                const renderGroup = (containerId, animes) => {
                     const container = document.getElementById(containerId);
                     if (!container) return;
                     container.innerHTML = '';
-                    ids.forEach(id => {
-                        const anime = map.get(id);
-                        if (!anime) {
-                            console.warn(`未找到id ${id} 对应的动漫`);
-                            return;
-                        }
+                    animes.forEach(anime => {
                         const card = document.createElement('div');
                         card.className = 'anime-card';
                         card.innerHTML = `
                             <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/placeholder.png'">
                             <p>${anime.title}</p>
                         `;
-                        // 使用 _id 跳转，确保可靠
-                        const animeId = anime._id;
+                        const animeId = anime._id; // 使用 _id 跳转，保证可靠
                         if (animeId) {
                             card.addEventListener('click', () => {
                                 window.location.href = `/anime/${animeId}`;
                             });
                         } else {
-                            console.error('动漫缺少 _id:', anime);
                             card.style.cursor = 'not-allowed';
                         }
                         container.appendChild(card);
                     });
                 };
 
-                renderGroup(GROUP_IDS.mainline, 'mainlineGrid');
-                renderGroup(GROUP_IDS.son, 'sonGrid');
-                renderGroup(GROUP_IDS.daughter, 'daughterGrid');
-                renderGroup(GROUP_IDS.extra, 'extraGrid');
+                renderGroup('mainlineGrid', groups.mainline);
+                renderGroup('sonGrid', groups.son);
+                renderGroup('daughterGrid', groups.daughter);
+                renderGroup('extraGrid', groups.extra);
+
+                // 如果某个分组为空，隐藏该区域
+                if (groups.mainline.length === 0) document.getElementById('mainline').style.display = 'none';
+                if (groups.son.length === 0) document.getElementById('son').style.display = 'none';
+                if (groups.daughter.length === 0) document.getElementById('daughter').style.display = 'none';
+                if (groups.extra.length === 0) document.getElementById('extra').style.display = 'none';
+
             } catch (err) {
                 console.error('加载系列数据失败:', err);
             }

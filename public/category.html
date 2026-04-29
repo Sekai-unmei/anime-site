@@ -258,9 +258,12 @@
                 const card = document.createElement('div');
                 card.className = 'anime-card';
                 // 只使用数字 id
-                const animeId = anime.id;
-                if (!animeId) {
-                    console.warn('动漫数据缺少数字id字段', anime);
+
+                const animeId = anime._id;
+                if (animeId) {
+                    card.addEventListener('click', () => {
+                        window.location.href = `/anime/${animeId}`;
+                    });
                 }
                 card.innerHTML = `
                     <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">

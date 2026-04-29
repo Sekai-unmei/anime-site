@@ -281,10 +281,7 @@ app.get('/', (req, res) => {
 });
 // 必须放在所有静态文件路由之前，且只匹配数字ID
 app.get('/anime/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-        return res.status(404).send('Invalid anime id');
-    }
+    // 直接返回 anime-detail.html，让前端负责处理 ID
     res.sendFile(path.join(__dirname, 'public/anime-detail.html'));
 });
 app.get('/login-failed', (req, res) => res.redirect('/unauthorized.html'));
@@ -347,18 +344,38 @@ app.get('/api/anime/ratings-stats', async (req, res) => {
 });
 
 app.get('/api/anime/:id', async (req, res) => {
-    const animeId = parseInt(req.params.id);  // 转换为数字
-    const anime = await Anime.findOne({ id: animeId });
+    const param = req.params.id;
+    let query = {};
+    const numericId = parseInt(param);
+    if (!isNaN(numericId)) {
+        query = { id: numericId };
+    } else if (param.match(/^[a-fA-F0-9]{24}$/)) {
+        query = { _id: param };
+    } else {
+        return res.status(400).json({ error: "无效的ID格式" });
+    }
+    const anime = await Anime.findOne(query).lean();
     if (!anime) return res.status(404).json({ error: "未找到" });
     res.json(anime);
 });
 
 app.post('/api/anime/rate', async (req, res) => {
-    const id = parseInt(req.body.id);
-    const { ratingType } = req.body;
+    const { id, ratingType } = req.body;
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
-    const anime = await Anime.findOne({ id: id });  // 使用 id 变量
+
+    // 兼容 id 可能是数字或字符串 _id
+    let query = {};
+    const numericId = parseInt(id);
+    if (!isNaN(numericId)) {
+        query = { id: numericId };
+    } else if (typeof id === 'string' && id.match(/^[a-fA-F0-9]{24}$/)) {
+        query = { _id: id };
+    } else {
+        return res.status(400).json({ error: "无效的动漫ID" });
+    }
+
+    const anime = await Anime.findOne(query);
     if (!anime) return res.status(404).json({ error: "未找到动漫" });
     if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
     if (!anime.user_ratings) anime.user_ratings = new Map();
@@ -373,10 +390,21 @@ app.post('/api/anime/rate', async (req, res) => {
 });
 
 app.post('/api/anime/unrate', async (req, res) => {
-    const id = parseInt(req.body.id);
+    const { id } = req.body;
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
-    const anime = await Anime.findOne({ id: id });
+
+    let query = {};
+    const numericId = parseInt(id);
+    if (!isNaN(numericId)) {
+        query = { id: numericId };
+    } else if (typeof id === 'string' && id.match(/^[a-fA-F0-9]{24}$/)) {
+        query = { _id: id };
+    } else {
+        return res.status(400).json({ error: "无效的动漫ID" });
+    }
+
+    const anime = await Anime.findOne(query);
     if (!anime) return res.status(404).json({ error: "未找到动漫" });
     const oldRating = anime.user_ratings.get(user);
     if (oldRating && anime.ratings[oldRating] > 0) {
@@ -389,14 +417,26 @@ app.post('/api/anime/unrate', async (req, res) => {
     }
 });
 
+
 app.post('/api/anime/:id/comment', async (req, res) => {
-    const animeId = parseInt(req.params.id);
-    const anime = await Anime.findOne({ id: animeId });
+    const param = req.params.id;
+    let query = {};
+    const numericId = parseInt(param);
+    if (!isNaN(numericId)) {
+        query = { id: numericId };
+    } else if (param.match(/^[a-fA-F0-9]{24}$/)) {
+        query = { _id: param };
+    } else {
+        return res.status(400).json({ error: "无效的动漫ID" });
+    }
+    const anime = await Anime.findOne(query);
     if (!anime) return res.status(404).send("Not found");
+
     const { parentId, text } = req.body;
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
     const userInfo = await getOrCreateUserInfo(user);
+
     if (parentId) {
         let parentAuthor = null;
         function findAuthor(comments) {
@@ -427,6 +467,7 @@ app.post('/api/anime/:id/comment', async (req, res) => {
             await notification.save();
         }
     }
+
     const newComment = {
         id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
         userId: user,
@@ -436,6 +477,7 @@ app.post('/api/anime/:id/comment', async (req, res) => {
         date: new Date(),
         replies: []
     };
+
     function addReply(comments) {
         for (let i = 0; i < comments.length; i++) {
             if (comments[i].id === parentId) {
@@ -446,6 +488,7 @@ app.post('/api/anime/:id/comment', async (req, res) => {
         }
         return false;
     }
+
     if (parentId) {
         if (!addReply(anime.comments)) {
             return res.status(404).json({ error: "父评论不存在" });
@@ -457,13 +500,25 @@ app.post('/api/anime/:id/comment', async (req, res) => {
     res.json(anime.comments);
 });
 
+
 app.delete('/api/anime/:id/comment/:commentId', async (req, res) => {
-    const animeId = parseInt(req.params.id);
-    const anime = await Anime.findOne({ id: animeId });
+    const param = req.params.id;
+    let query = {};
+    const numericId = parseInt(param);
+    if (!isNaN(numericId)) {
+        query = { id: numericId };
+    } else if (param.match(/^[a-fA-F0-9]{24}$/)) {
+        query = { _id: param };
+    } else {
+        return res.status(400).json({ error: "无效的动漫ID" });
+    }
+    const anime = await Anime.findOne(query);
     if (!anime) return res.status(404).send("Not found");
+
     const commentId = req.params.commentId;
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
+
     function deleteComment(comments) {
         for (let i = 0; i < comments.length; i++) {
             if (comments[i].id === commentId && comments[i].userId === user) {

@@ -583,7 +583,6 @@
         }
 
         // --- 动漫详情相关代码 ---
-        let animeId = window.location.pathname.split('/').pop();
         let currentAnime = null;
         let currentUserEmail = null;
 
@@ -626,12 +625,14 @@
             renderComments();
             renderRatingButtons();
         }
+
         function renderAnimeDetail() {
             const html = `<div class="anime-detail"><h1 class="title">${escapeHtml(currentAnime.title)}</h1><img src="${currentAnime.image_url}" alt="${currentAnime.title}" onerror="this.src='/images/default.jpg'"><div class="description">${escapeHtml(currentAnime.description || '暂无简介')}</div><div class="info"><p><span>推荐指数：</span>${escapeHtml(currentAnime.recommend_text || '暂无')}</p><p><span>题材：</span>${currentAnime.genre ? escapeHtml(currentAnime.genre.join('、')) : '暂无'}</p><p><span>系列：</span>${escapeHtml(currentAnime.series_title || '独立作品')}</p><p><span>首播：</span>${escapeHtml(currentAnime.season || '无')}</p></div></div>`;
             document.getElementById('animeDetail').innerHTML = html;
         }
 
-        async function renderRatingButtons() {
+        // 渲染评分按钮（高亮当前用户评分）
+        function renderRatingButtons() {
             const ratings = ['神作', '好看', '普通', '无聊', '狗屎'];
             const container = document.getElementById('ratingPanel');
             container.innerHTML = '<strong>评分：</strong> ';
@@ -649,20 +650,43 @@
             });
         }
 
+        // 评分核心：转换模式，局部更新
         async function rateAnime(ratingType, btnElement) {
             const isActive = btnElement.classList.contains('active');
             if (isActive) {
-                const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: animeId } });
+                // 取消评分
+                const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: currentAnime._id } });
                 const data = await res.json();
-                if (data.success) { showToast(`已取消 ${ratingType} 评分`); await loadAnime(); }
-                else showToast(data.error || '取消评分失败');
+                if (data.success) {
+                    showToast(`已取消 ${ratingType} 评分`);
+                    // 更新本地 currentAnime 的 ratings 和 user_ratings
+                    if (data.ratings) currentAnime.ratings = data.ratings;
+                    if (currentUserEmail && currentAnime.user_ratings) delete currentAnime.user_ratings[currentUserEmail];
+                    // 重新渲染按钮（刷新高亮和票数显示）
+                    renderRatingButtons();
+                } else {
+                    showToast(data.error || '取消评分失败');
+                }
             } else {
-                const res = await authFetch('/api/anime/rate', { method: 'POST', body: { id: animeId, ratingType } });
-                if (res.ok) { showToast(`已评为 ${ratingType}`); await loadAnime(); }
-                else { const err = await res.json(); showToast(err.error || '评分失败，请登录'); }
+                // 提交评分
+                const res = await authFetch('/api/anime/rate', { method: 'POST', body: { id: currentAnime._id, ratingType } });
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast(`已评为 ${ratingType}`);
+                    // 更新本地 currentAnime 数据
+                    if (data.ratings) currentAnime.ratings = data.ratings;
+                    if (!currentAnime.user_ratings) currentAnime.user_ratings = {};
+                    currentAnime.user_ratings[currentUserEmail] = ratingType;
+                    // 重新渲染按钮
+                    renderRatingButtons();
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || '评分失败，请登录');
+                }
             }
         }
 
+        // 评论相关
         function renderComments() {
             const container = document.getElementById('commentSection');
             container.innerHTML = '';
@@ -696,28 +720,32 @@
         }
 
         async function deleteComment(commentId) {
-            if (!currentAnime || !currentAnime.id) {
+            if (!currentAnime || !currentAnime._id) {
                 showToast('无法获取动漫ID');
                 return;
             }
-            const res = await authFetch(`/api/anime/${currentAnime.id}/comment/${commentId}`, { method: 'DELETE' });
+            const res = await authFetch(`/api/anime/${currentAnime._id}/comment/${commentId}`, { method: 'DELETE' });
             if (res.ok) {
                 showToast('评论已删除');
-                // 重新加载评论列表，不重新加载整个页面以提高效率
-                await loadCommentsOnly(); // 需要实现这个函数，或者直接调用 loadAnime() 但会刷新整个页面
-                loadAnime(); // 暂时刷新整个页面，确保数据一致
+                loadAnime(); // 重新加载以刷新评论列表
             } else {
                 const err = await res.json();
                 showToast(err.error || '删除失败');
             }
         }
+
         async function submitComment() {
             const textarea = document.getElementById('newCommentText');
             const text = textarea.value.trim();
             if (!text) return;
-            const res = await authFetch(`/api/anime/${animeId}/comment`, { method: 'POST', body: { text } });
-            if (res.ok) { textarea.value = ''; await loadAnime(); }
-            else { const err = await res.json(); showToast(err.error || '评论失败，请登录'); }
+            const res = await authFetch(`/api/anime/${currentAnime._id}/comment`, { method: 'POST', body: { text } });
+            if (res.ok) {
+                textarea.value = '';
+                loadAnime();
+            } else {
+                const err = await res.json();
+                showToast(err.error || '评论失败，请登录');
+            }
         }
 
         async function submitReply(parentId) {
@@ -725,9 +753,12 @@
             const textarea = formDiv.querySelector('textarea');
             const text = textarea.value.trim();
             if (!text) return;
-            const res = await authFetch(`/api/anime/${animeId}/comment`, { method: 'POST', body: { parentId, text } });
-            if (res.ok) { textarea.value = ''; formDiv.style.display = 'none'; loadAnime(); }
-            else showToast('回复失败');
+            const res = await authFetch(`/api/anime/${currentAnime._id}/comment`, { method: 'POST', body: { parentId, text } });
+            if (res.ok) {
+                textarea.value = '';
+                formDiv.style.display = 'none';
+                loadAnime();
+            } else showToast('回复失败');
         }
 
         const modal = document.getElementById('userModal');

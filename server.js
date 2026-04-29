@@ -342,7 +342,15 @@ app.get('/api/anime/ratings-stats', async (req, res) => {
         const ratings = anime.ratings || { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
         const score = (ratings.神作 || 0) * 5 + (ratings.好看 || 0) * 4 + (ratings.普通 || 0) * 3 + (ratings.无聊 || 0) * 2 + (ratings.狗屎 || 0) * 1;
         const totalVotes = (ratings.神作 || 0) + (ratings.好看 || 0) + (ratings.普通 || 0) + (ratings.无聊 || 0) + (ratings.狗屎 || 0);
-        return { id: anime.id, title: anime.title, image_url: anime.image_url, ratings, totalVotes, weightedScore: score };
+        return {
+            _id: anime._id,   // 关键：添加 _id 供前端使用
+            id: anime.id,
+            title: anime.title,
+            image_url: anime.image_url,
+            ratings,
+            totalVotes,
+            weightedScore: score
+        };
     });
     stats.sort((a, b) => b.weightedScore - a.weightedScore);
     res.json(stats);
@@ -363,10 +371,9 @@ app.post('/api/anime/rate', async (req, res) => {
         const anime = await findAnimeByIdentifier(id);
         if (!anime) return res.status(404).json({ error: "未找到动漫" });
 
-        // 确保 ratings 对象存在
         if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
 
-        // 规范化 user_ratings 为一个普通对象
+        // 规范化 user_ratings 为普通对象
         let ur = anime.user_ratings;
         if (!ur) ur = {};
         if (ur instanceof Map) {
@@ -376,15 +383,16 @@ app.post('/api/anime/rate', async (req, res) => {
         }
 
         const oldRating = ur[user];
+        // 如果已经评过相同的类型，拒绝重复评分
         if (oldRating === ratingType) {
             return res.json({ success: false, error: "您已经评过这个类型了" });
         }
-
         // 扣除旧票（避免负数）
-        if (oldRating && anime.ratings[oldRating] > 0) anime.ratings[oldRating]--;
+        if (oldRating && anime.ratings[oldRating] > 0) {
+            anime.ratings[oldRating]--;
+        }
         // 增加新票
         anime.ratings[ratingType] = (anime.ratings[ratingType] || 0) + 1;
-        // 更新用户记录
         ur[user] = ratingType;
         anime.user_ratings = ur;
 

@@ -257,13 +257,10 @@
             animes.forEach(anime => {
                 const card = document.createElement('div');
                 card.className = 'anime-card';
-                // 只使用数字 id
-
+                // 使用数字 id
                 const animeId = anime.id;
-                if (animeId) {
-                    card.addEventListener('click', () => {
-                        window.location.href = `/anime/${animeId}`;
-                    });
+                if (!animeId) {
+                    console.warn('动漫缺少数字id字段', anime);
                 }
                 card.innerHTML = `
                     <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">

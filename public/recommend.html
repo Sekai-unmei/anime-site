@@ -269,6 +269,7 @@
     <div id="tooltip" class="tooltip"></div>
 
     <script>
+        // 以下是脚本部分
         let godParticleInterval = null;
         let searchKeyword = '';
         let allAnime = [];
@@ -322,8 +323,7 @@
                 </div>
             `;
             const img = card.querySelector('img');
-            // 使用数字 id
-            const animeId = anime._id;
+            const animeId = anime.id;  // 使用数字 id
             if (animeId) {
                 card.addEventListener('click', () => {
                     window.location.href = `/anime/${animeId}`;

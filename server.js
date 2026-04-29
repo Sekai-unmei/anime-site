@@ -257,7 +257,7 @@ app.post('/auth/google/token', async (req, res) => {
             await user.save();
         } else {
             if (googleAvatar && !user.googleAvatar) user.googleAvatar = googleAvatar;
-            const isDefaultOrEmpty = !user.avatar || user.avatar === '/avatars/default.png';
+            const isDefaultOrEmpty = !user.avatar || user.avatar === 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
             if (googleAvatar && isDefaultOrEmpty) user.avatar = googleAvatar;
             if (!user.username) user.username = email.split('@')[0];
             await user.save();

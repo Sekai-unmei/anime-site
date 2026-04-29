@@ -427,7 +427,8 @@
     </div>
     <div id="userModal" class="modal">
         <div class="modal-content">
-            <img id="modalAvatar" class="modal-avatar" src="">
+            <img id="modalAvatar" class="modal-avatar"
+                src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp">
             <h3 id="modalUsername"></h3>
             <p id="modalBio"></p>
             <p id="modalJoinDate"></p>
@@ -545,7 +546,7 @@
 
     <!-- 左下角头像菜单 -->
     <div id="userAvatarMenu" style="position: fixed; left: 20px; bottom: 20px; z-index: 1000; cursor: pointer;">
-        <img id="avatarIcon" src="/avatars/default.png"
+        <img id="avatarIcon" src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp"
             style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #ffd700; object-fit: cover;">
         <div id="avatarBadge" class="avatar-badge"></div>
     </div>
@@ -665,7 +666,7 @@
             div.dataset.id = comment.id;
             const isOwner = (currentUserEmail && comment.userId === currentUserEmail);
             const deleteBtn = isOwner ? `<span class="delete-comment" data-id="${comment.id}">🗑️ 删除</span>` : '';
-            div.innerHTML = `<div class="comment-header"><img class="comment-avatar" src="${comment.avatar}" onerror="this.src='/avatars/default.png'" data-email="${comment.userId}"><span class="comment-username" data-email="${comment.userId}">${escapeHtml(comment.username)}</span><span class="comment-date">${new Date(comment.date).toLocaleString()}</span>${deleteBtn}</div><div class="comment-text">${escapeHtml(comment.text)}</div><div class="reply-btn" data-id="${comment.id}">💬 回复</div><div id="reply-form-${comment.id}" class="reply-form"><textarea rows="2" placeholder="回复..."></textarea><button class="comment-submit" onclick="submitReply('${comment.id}')">提交回复</button></div>`;
+            div.innerHTML = `<div class="comment-header"><img class="comment-avatar" src="${comment.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'}" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'" data-email="${comment.userId}"><span class="comment-username" data-email="${comment.userId}">${escapeHtml(comment.username)}</span><span class="comment-date">${new Date(comment.date).toLocaleString()}</span>${deleteBtn}</div><div class="comment-text">${escapeHtml(comment.text)}</div><div class="reply-btn" data-id="${comment.id}">💬 回复</div><div id="reply-form-${comment.id}" class="reply-form"><textarea rows="2" placeholder="回复..."></textarea><button class="comment-submit" onclick="submitReply('${comment.id}')">提交回复</button></div>`;
             if (isOwner) {
                 const delBtn = div.querySelector('.delete-comment');
                 delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteComment(comment.id); });
@@ -712,7 +713,7 @@
                 const res = await fetch(`/api/user/info/${encodeURIComponent(email)}`, { credentials: 'include' });
                 if (!res.ok) throw new Error();
                 const user = await res.json();
-                document.getElementById('modalAvatar').src = user.avatar;
+                document.getElementById('modalAvatar').src = user.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
                 document.getElementById('modalUsername').innerText = user.username;
                 document.getElementById('modalBio').innerText = user.bio;
                 document.getElementById('modalJoinDate').innerText = '加入于 ' + user.joinDate;
@@ -940,7 +941,7 @@
                     const div = document.createElement('div');
                     div.className = 'msg-item';
                     div.innerHTML = `
-                <img src="${friend.avatar}" class="friend-avatar" onerror="this.src='/avatars/default.png'">
+                <img src="${friend.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'}" class="friend-avatar" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
                 <span class="friend-name">${escapeHtml(displayName)}</span>
                 <button class="edit-note-btn" data-email="${friend.email}" style="float:right; background:transparent; border:none; color:#ffd700; cursor:pointer;">✏️</button>
             `;
@@ -1007,7 +1008,7 @@
                     return user.avatar;
                 }
             } catch (e) { }
-            return '/avatars/default.png';
+            return 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
         }
 
         function openChatWithFriend(friendEmail) {
@@ -1051,7 +1052,7 @@
                 div.style.marginBottom = '12px';
                 div.style.flexDirection = isMe ? 'row-reverse' : 'row';
                 div.innerHTML = `
-        <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='/avatars/default.png'">
+        <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
         <div style="max-width:70%;">
             <div style="background:${isMe ? '#2a2a2a' : '#111'}; padding:8px 12px; border-radius:12px; display:inline-block;">
                 ${escapeHtml(msg.text)}

@@ -1,4 +1,4 @@
-console.log("开始执行 server.js (最终完整版)");
+console.log("开始执行 server.js (最终完整修复版)");
 const nodemailer = require('nodemailer');
 const express = require('express');
 const session = require('express-session');
@@ -11,9 +11,7 @@ const { OAuth2Client } = require('google-auth-library');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ========== 1. 定义 mongoose 模型 (必须在连接数据库之前！) ==========
-
-// 用户模型
+// ========== 1. 定义 mongoose 模型 ==========
 const userSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true },
     username: String,
@@ -24,7 +22,6 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
-// 好友关系模型
 const friendSchema = new mongoose.Schema({
     user: String,
     friend: String,
@@ -33,7 +30,6 @@ const friendSchema = new mongoose.Schema({
 });
 const Friend = mongoose.model('Friend', friendSchema);
 
-// 通知模型
 const notificationSchema = new mongoose.Schema({
     targetUser: { type: String, required: true },
     id: String,
@@ -48,7 +44,6 @@ const notificationSchema = new mongoose.Schema({
 });
 const Notification = mongoose.model('Notification', notificationSchema);
 
-// 聊天消息模型
 const messageSchema = new mongoose.Schema({
     key: String,
     from: String,
@@ -59,7 +54,6 @@ const messageSchema = new mongoose.Schema({
 });
 const Message = mongoose.model('Message', messageSchema);
 
-// 好友备注模型
 const noteSchema = new mongoose.Schema({
     userEmail: String,
     friendEmail: String,
@@ -67,9 +61,9 @@ const noteSchema = new mongoose.Schema({
 });
 const Note = mongoose.model('Note', noteSchema);
 
-// ★★★★★ 动漫模型（核心）★★★★★
+// 关键修复：user_ratings 字段使用 Mixed 类型，同时支持 Map 和普通对象
 const animeSchema = new mongoose.Schema({
-    id: { type: Number, unique: true, required: true },
+    id: { type: Number, unique: true },
     title: String,
     image_url: String,
     description: String,
@@ -85,7 +79,7 @@ const animeSchema = new mongoose.Schema({
         无聊: { type: Number, default: 0 },
         狗屎: { type: Number, default: 0 }
     },
-    user_ratings: { type: Map, of: String, default: {} },
+    user_ratings: { type: mongoose.Schema.Types.Mixed, default: {} }, // 兼容对象和Map
     comments: [
         {
             id: String,
@@ -113,7 +107,7 @@ const Anime = mongoose.model('Anime', animeSchema);
 // ========== 2. 连接 MongoDB ==========
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
-    console.error("❌ 未设置 MONGO_URI 环境变量，请检查 Render 环境变量");
+    console.error("❌ 未设置 MONGO_URI 环境变量");
     process.exit(1);
 }
 
@@ -123,21 +117,8 @@ mongoose.connect(MONGO_URI)
         console.log(`📌 使用集合: ${Anime.collection.name}`);
         const count = await Anime.countDocuments();
         console.log(`📊 当前动漫文档数: ${count}`);
-        const EXPECTED_COUNT = 191;
-        if (count !== EXPECTED_COUNT) {
-            console.log(`⚠️ 文档数 ${count} 与预期 ${EXPECTED_COUNT} 不符，强制清空并重新导入...`);
-            try {
-                await Anime.deleteMany({});
-                const animeData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/anime.json'), 'utf8'));
-                await Anime.insertMany(animeData, { ordered: false });
-                console.log(`✅ 成功导入 ${animeData.length} 条动漫数据（预期 ${EXPECTED_COUNT}）`);
-                const newCount = await Anime.countDocuments();
-                console.log(`📊 重新导入后文档数: ${newCount}`);
-            } catch (importErr) {
-                console.error("❌ 导入失败:", importErr);
-            }
-        } else {
-            console.log(`✅ 动漫数据完整，共 ${count} 条。`);
+        if (count === 0) {
+            console.log("⚠️ 数据库为空，请导入初始数据");
         }
     })
     .catch(err => console.error("❌ MongoDB 连接失败:", err));
@@ -149,7 +130,7 @@ async function getOrCreateUserInfo(email, username = null) {
         user = new User({
             email,
             username: username || email.split('@')[0],
-            avatar: '/avatars/default.png',
+            avatar: 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp',
             bio: '这位观测者还没有留下简介',
             joinDate: new Date().toISOString().split('T')[0]
         });
@@ -161,7 +142,7 @@ async function getOrCreateUserInfo(email, username = null) {
 // 通用动漫查询函数（兼容数字 id 和 ObjectId 字符串）
 async function findAnimeByIdentifier(identifier) {
     if (!identifier) return null;
-    if (typeof identifier === 'string' && identifier.match(/^[a-fA-F0-9]{24}$/)) {
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
         try {
             return await Anime.findById(identifier);
         } catch (e) { return null; }
@@ -171,6 +152,34 @@ async function findAnimeByIdentifier(identifier) {
         return await Anime.findOne({ id: numericId });
     }
     return null;
+}
+
+// 安全读写 user_ratings 辅助函数（兼容普通对象和Map）
+function getUserRating(anime, userEmail) {
+    const ur = anime.user_ratings;
+    if (!ur) return null;
+    if (ur instanceof Map) return ur.get(userEmail);
+    if (typeof ur === 'object') return ur[userEmail];
+    return null;
+}
+function setUserRating(anime, userEmail, ratingType) {
+    let ur = anime.user_ratings;
+    if (!ur) ur = {};
+    if (ur instanceof Map) {
+        ur.set(userEmail, ratingType);
+    } else {
+        ur[userEmail] = ratingType;
+    }
+    anime.user_ratings = ur;
+}
+function deleteUserRating(anime, userEmail) {
+    let ur = anime.user_ratings;
+    if (!ur) return;
+    if (ur instanceof Map) {
+        ur.delete(userEmail);
+    } else {
+        delete ur[userEmail];
+    }
 }
 
 async function areFriends(user1, user2) {
@@ -183,7 +192,7 @@ async function areFriends(user1, user2) {
     return count > 0;
 }
 
-// ========== 配置 session 和中间件 ==========
+// ========== 中间件 ==========
 app.use(session({
     secret: process.env.SESSION_SECRET || 'kevin_secret_key',
     resave: false,
@@ -193,7 +202,7 @@ app.use(session({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
-// ========== 文件上传（头像）==========
+// ========== 头像上传 ==========
 const AVATAR_DIR = path.join(__dirname, 'public/avatars');
 if (!fs.existsSync(AVATAR_DIR)) fs.mkdirSync(AVATAR_DIR, { recursive: true });
 const storage = multer.diskStorage({
@@ -204,14 +213,7 @@ const storage = multer.diskStorage({
         cb(null, filename);
     }
 });
-const upload = multer({
-    storage,
-    limits: { fileSize: 10 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-        const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        cb(null, allowed.includes(file.mimetype));
-    }
-});
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 app.post('/api/user/avatar', upload.single('avatar'), async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "未登录" });
@@ -240,16 +242,14 @@ app.post('/auth/google/token', async (req, res) => {
         const ticket = await client.verifyIdToken({ idToken: token, audience: GOOGLE_CLIENT_ID });
         const payload = ticket.getPayload();
         const email = payload.email;
-        if (!ALLOWED_EMAILS.includes(email)) {
-            return res.json({ success: false, message: '您的邮箱未被授权访问' });
-        }
+        if (!ALLOWED_EMAILS.includes(email)) return res.json({ success: false, message: '您的邮箱未被授权访问' });
         const googleAvatar = payload.picture || null;
         let user = await User.findOne({ email });
         if (!user) {
             user = new User({
                 email,
                 username: email.split('@')[0],
-                avatar: googleAvatar || '/avatars/default.png',
+                avatar: googleAvatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp',
                 googleAvatar: googleAvatar || null,
                 bio: '这位观测者还没有留下简介',
                 joinDate: new Date().toISOString().split('T')[0]
@@ -288,9 +288,7 @@ app.get('/', (req, res) => {
         res.sendFile(path.join(__dirname, 'public/login.html'));
     }
 });
-app.get('/anime/:id', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/anime-detail.html'));
-});
+app.get('/anime/:id', (req, res) => res.sendFile(path.join(__dirname, 'public/anime-detail.html')));
 app.get('/login-failed', (req, res) => res.redirect('/unauthorized.html'));
 
 // ========== 动漫相关接口 ==========
@@ -357,122 +355,124 @@ app.get('/api/anime/:id', async (req, res) => {
 });
 
 app.post('/api/anime/rate', async (req, res) => {
-    const { id, ratingType } = req.body;
-    const user = req.session.user;
-    if (!user) return res.status(401).json({ error: "未登录" });
-
-    const anime = await findAnimeByIdentifier(id);
-    if (!anime) return res.status(404).json({ error: "未找到动漫" });
-
-    if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
-    if (!anime.user_ratings) anime.user_ratings = new Map();
-    const oldType = anime.user_ratings.get(user);
-    if (oldType) anime.ratings[oldType]--;
-    anime.ratings[ratingType] = (anime.ratings[ratingType] || 0) + 1;
-    anime.user_ratings.set(user, ratingType);
-    await anime.save();
-    res.json({ success: true, ratings: anime.ratings });
+    try {
+        const { id, ratingType } = req.body;
+        const user = req.session.user;
+        if (!user) return res.status(401).json({ error: "未登录" });
+        const anime = await findAnimeByIdentifier(id);
+        if (!anime) return res.status(404).json({ error: "未找到动漫" });
+        if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
+        const oldRating = getUserRating(anime, user);
+        if (oldRating) anime.ratings[oldRating]--;
+        anime.ratings[ratingType] = (anime.ratings[ratingType] || 0) + 1;
+        setUserRating(anime, user, ratingType);
+        await anime.save();
+        res.json({ success: true, ratings: anime.ratings });
+    } catch (err) {
+        console.error('评分出错:', err);
+        res.status(500).json({ error: '服务器内部错误', details: err.message });
+    }
 });
 
 app.post('/api/anime/unrate', async (req, res) => {
-    const { id } = req.body;
-    const user = req.session.user;
-    if (!user) return res.status(401).json({ error: "未登录" });
-
-    const anime = await findAnimeByIdentifier(id);
-    if (!anime) return res.status(404).json({ error: "未找到动漫" });
-
-    const oldRating = anime.user_ratings.get(user);
-    if (oldRating && anime.ratings[oldRating] > 0) {
-        anime.ratings[oldRating]--;
-        anime.user_ratings.delete(user);
-        await anime.save();
-        res.json({ success: true });
-    } else {
-        res.json({ success: false, error: "未评分或评分不存在" });
+    try {
+        const { id } = req.body;
+        const user = req.session.user;
+        if (!user) return res.status(401).json({ error: "未登录" });
+        const anime = await findAnimeByIdentifier(id);
+        if (!anime) return res.status(404).json({ error: "未找到动漫" });
+        const oldRating = getUserRating(anime, user);
+        if (oldRating && anime.ratings[oldRating] > 0) {
+            anime.ratings[oldRating]--;
+            deleteUserRating(anime, user);
+            await anime.save();
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: "未评分或评分不存在" });
+        }
+    } catch (err) {
+        console.error('取消评分出错:', err);
+        res.status(500).json({ error: '服务器内部错误', details: err.message });
     }
 });
 
 app.post('/api/anime/:id/comment', async (req, res) => {
-    const anime = await findAnimeByIdentifier(req.params.id);
-    if (!anime) return res.status(404).send("Not found");
-
-    const { parentId, text } = req.body;
-    const user = req.session.user;
-    if (!user) return res.status(401).json({ error: "未登录" });
-    const userInfo = await getOrCreateUserInfo(user);
-
-    if (parentId) {
-        let parentAuthor = null;
-        function findAuthor(comments) {
-            for (let c of comments) {
-                if (c.id === parentId) {
-                    parentAuthor = c.userId;
+    try {
+        const anime = await findAnimeByIdentifier(req.params.id);
+        if (!anime) return res.status(404).send("Not found");
+        const { parentId, text } = req.body;
+        const user = req.session.user;
+        if (!user) return res.status(401).json({ error: "未登录" });
+        const userInfo = await getOrCreateUserInfo(user);
+        // 回复通知逻辑（保持不变）
+        if (parentId) {
+            let parentAuthor = null;
+            function findAuthor(comments) {
+                for (let c of comments) {
+                    if (c.id === parentId) {
+                        parentAuthor = c.userId;
+                        return true;
+                    }
+                    if (c.replies && findAuthor(c.replies)) return true;
+                }
+                return false;
+            }
+            findAuthor(anime.comments);
+            if (parentAuthor && parentAuthor !== user) {
+                const shortReply = text.length > 30 ? text.substring(0, 30) + '…' : text;
+                const notification = new Notification({
+                    targetUser: parentAuthor,
+                    id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+                    type: 'comment_reply',
+                    animeId: anime.id,
+                    commentId: parentId,
+                    from: user,
+                    message: `${userInfo.username} 回复了你的评论：“${shortReply}”`,
+                    replyText: text,
+                    read: false,
+                    createdAt: new Date()
+                });
+                await notification.save();
+            }
+        }
+        const newComment = {
+            id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+            userId: user,
+            username: userInfo.username,
+            avatar: userInfo.avatar,
+            text: text.trim(),
+            date: new Date(),
+            replies: []
+        };
+        function addReply(comments) {
+            for (let i = 0; i < comments.length; i++) {
+                if (comments[i].id === parentId) {
+                    comments[i].replies.push(newComment);
                     return true;
                 }
-                if (c.replies && findAuthor(c.replies)) return true;
+                if (comments[i].replies && addReply(comments[i].replies)) return true;
             }
             return false;
         }
-        findAuthor(anime.comments);
-        if (parentAuthor && parentAuthor !== user) {
-            const shortReply = text.length > 30 ? text.substring(0, 30) + '…' : text;
-            const notification = new Notification({
-                targetUser: parentAuthor,
-                id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
-                type: 'comment_reply',
-                animeId: anime.id,
-                commentId: parentId,
-                from: user,
-                message: `${userInfo.username} 回复了你的评论：“${shortReply}”`,
-                replyText: text,
-                read: false,
-                createdAt: new Date()
-            });
-            await notification.save();
+        if (parentId) {
+            if (!addReply(anime.comments)) return res.status(404).json({ error: "父评论不存在" });
+        } else {
+            anime.comments.push(newComment);
         }
+        await anime.save();
+        res.json(anime.comments);
+    } catch (err) {
+        console.error('评论出错:', err);
+        res.status(500).json({ error: '服务器内部错误', details: err.message });
     }
-
-    const newComment = {
-        id: Date.now() + '-' + Math.random().toString(36).substr(2, 6),
-        userId: user,
-        username: userInfo.username,
-        avatar: userInfo.avatar,
-        text: text.trim(),
-        date: new Date(),
-        replies: []
-    };
-
-    function addReply(comments) {
-        for (let i = 0; i < comments.length; i++) {
-            if (comments[i].id === parentId) {
-                comments[i].replies.push(newComment);
-                return true;
-            }
-            if (comments[i].replies && addReply(comments[i].replies)) return true;
-        }
-        return false;
-    }
-
-    if (parentId) {
-        if (!addReply(anime.comments)) {
-            return res.status(404).json({ error: "父评论不存在" });
-        }
-    } else {
-        anime.comments.push(newComment);
-    }
-    await anime.save();
-    res.json(anime.comments);
 });
 
 app.delete('/api/anime/:id/comment/:commentId', async (req, res) => {
     const anime = await findAnimeByIdentifier(req.params.id);
     if (!anime) return res.status(404).send("Not found");
-
     const commentId = req.params.commentId;
     const user = req.session.user;
     if (!user) return res.status(401).json({ error: "未登录" });
-
     function deleteComment(comments) {
         for (let i = 0; i < comments.length; i++) {
             if (comments[i].id === commentId && comments[i].userId === user) {
@@ -524,7 +524,7 @@ app.post('/api/user/reset-avatar', async (req, res) => {
     const email = req.session.user;
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: "用户不存在" });
-    const defaultAvatar = user.googleAvatar || '/avatars/default.png';
+    const defaultAvatar = user.googleAvatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
     user.avatar = defaultAvatar;
     await user.save();
     res.json({ success: true, avatarUrl: defaultAvatar });
@@ -622,9 +622,7 @@ app.post('/api/messages/send', async (req, res) => {
     const { to, text } = req.body;
     if (!to || !text) return res.status(400).json({ error: "缺少参数" });
     const from = req.session.user;
-    if (!await areFriends(from, to)) {
-        return res.status(403).json({ error: "不是好友，无法发送消息" });
-    }
+    if (!await areFriends(from, to)) return res.status(403).json({ error: "不是好友，无法发送消息" });
     const key = [from, to].sort().join('_');
     const message = new Message({
         key,
@@ -653,9 +651,7 @@ app.get('/api/messages/history', async (req, res) => {
     const { friend } = req.query;
     if (!friend) return res.status(400).json({ error: "缺少好友邮箱" });
     const me = req.session.user;
-    if (!await areFriends(me, friend)) {
-        return res.status(403).json({ error: "不是好友，无法查看聊天记录" });
-    }
+    if (!await areFriends(me, friend)) return res.status(403).json({ error: "不是好友，无法查看聊天记录" });
     const key = [me, friend].sort().join('_');
     const messages = await Message.find({ key }).sort({ timestamp: 1 });
     res.json(messages);
@@ -723,18 +719,13 @@ const emailTransporter = nodemailer.createTransport({
 
 app.post('/api/report', async (req, res) => {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        console.error('邮件服务未配置：缺少 EMAIL_USER 或 EMAIL_PASS');
-        return res.status(500).json({ error: '反馈功能暂不可用，请联系管理员' });
+        console.error('邮件服务未配置');
+        return res.status(500).json({ error: '反馈功能暂不可用' });
     }
     const { type, description, imageBase64 } = req.body;
     const user = req.session.user || '匿名用户';
     if (!description) return res.status(400).json({ error: '描述不能为空' });
-    const typeMap = {
-        bug: '🐞 Bug报告',
-        optimize: '✨ 优化建议',
-        suggestion: '💡 意见',
-        question: '❓ 疑问'
-    };
+    const typeMap = { bug: '🐞 Bug报告', optimize: '✨ 优化建议', suggestion: '💡 意见', question: '❓ 疑问' };
     const subject = typeMap[type] || '意见反馈';
     let htmlContent = `
         <h2>用户反馈</h2>
@@ -748,14 +739,13 @@ app.post('/api/report', async (req, res) => {
         const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
         if (matches) {
             const ext = matches[1];
-            const base64Data = matches[2];
-            const buffer = Buffer.from(base64Data, 'base64');
+            const buffer = Buffer.from(matches[2], 'base64');
             attachments.push({ filename: `screenshot.${ext}`, content: buffer, contentType: `image/${ext}` });
         } else {
             try {
                 const buffer = Buffer.from(imageBase64, 'base64');
                 attachments.push({ filename: 'screenshot.png', content: buffer, contentType: 'image/png' });
-            } catch (err) { console.error('解析图片数据失败:', err); }
+            } catch (err) { }
         }
     }
     try {

@@ -159,8 +159,7 @@ function getUserRating(anime, userEmail) {
     const ur = anime.user_ratings;
     if (!ur) return null;
     if (ur instanceof Map) return ur.get(userEmail);
-    if (typeof ur === 'object') return ur[userEmail];
-    return null;
+    return ur[userEmail];
 }
 function setUserRating(anime, userEmail, ratingType) {
     let ur = anime.user_ratings;
@@ -371,6 +370,7 @@ app.post('/api/anime/rate', async (req, res) => {
         const anime = await findAnimeByIdentifier(id);
         if (!anime) return res.status(404).json({ error: "未找到动漫" });
 
+        // 确保 ratings 对象存在
         if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
 
         // 规范化 user_ratings 为普通对象
@@ -383,16 +383,18 @@ app.post('/api/anime/rate', async (req, res) => {
         }
 
         const oldRating = ur[user];
-        // 如果已经评过相同的类型，拒绝重复评分
         if (oldRating === ratingType) {
-            return res.json({ success: false, error: "您已经评过这个类型了" });
+            // 已经评过这个类型，不做任何改变
+            return res.json({ success: true, ratings: anime.ratings });
         }
+
         // 扣除旧票（避免负数）
         if (oldRating && anime.ratings[oldRating] > 0) {
             anime.ratings[oldRating]--;
         }
         // 增加新票
         anime.ratings[ratingType] = (anime.ratings[ratingType] || 0) + 1;
+        // 更新用户记录
         ur[user] = ratingType;
         anime.user_ratings = ur;
 

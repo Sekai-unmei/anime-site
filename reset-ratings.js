@@ -9,6 +9,6 @@ mongoose.connect(MONGO_URI).then(async () => {
             user_ratings: {}
         }
     });
-    console.log('✅ 已重置所有评分数据');
+    console.log('✅ 已成功重置所有动漫的评分数据');
     process.exit(0);
 }).catch(err => { console.error(err); process.exit(1); });

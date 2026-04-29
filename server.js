@@ -375,7 +375,7 @@ app.post('/api/anime/rate', async (req, res) => {
             anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
         }
 
-        // 规范化 user_ratings 为普通对象（兼容 Map 和 Object）
+        // 统一将 user_ratings 转为普通对象（兼容 Map）
         let ur = anime.user_ratings;
         if (!ur) ur = {};
         if (ur instanceof Map) {
@@ -383,9 +383,11 @@ app.post('/api/anime/rate', async (req, res) => {
             for (let [k, v] of ur.entries()) newUr[k] = v;
             ur = newUr;
         }
+        // 确保 ur 是普通对象
+        if (typeof ur !== 'object') ur = {};
 
         const oldRating = ur[user];
-        // 如果用户已经评过相同的类型，不做任何改变
+        // 如果已经评过相同的类型，直接返回（不做任何改变）
         if (oldRating === ratingType) {
             return res.json({ success: true, ratings: anime.ratings });
         }
@@ -396,7 +398,7 @@ app.post('/api/anime/rate', async (req, res) => {
         }
         // 增加新票
         anime.ratings[ratingType] = (anime.ratings[ratingType] || 0) + 1;
-        // 更新用户记录
+        // 更新用户评分记录
         ur[user] = ratingType;
         anime.user_ratings = ur;
 
@@ -407,6 +409,7 @@ app.post('/api/anime/rate', async (req, res) => {
         res.status(500).json({ error: '服务器内部错误' });
     }
 });
+
 app.post('/api/anime/unrate', async (req, res) => {
     try {
         const { id } = req.body;

@@ -597,13 +597,12 @@
         }
 
         async function loadAnime() {
-            const pathId = window.location.pathname.split('/').pop();   // 直接取最后一段
+            const pathId = window.location.pathname.split('/').pop();
             if (!pathId) {
                 document.getElementById('animeDetail').innerHTML = '<div>无效的动漫ID</div>';
                 return;
             }
-            const timestamp = Date.now();
-            const res = await fetch(`/api/anime/${pathId}?_=${timestamp}`, { credentials: 'include' });
+            const res = await fetch(`/api/anime/${pathId}?_=${Date.now()}`, { credentials: 'include' });
             if (!res.ok) {
                 document.getElementById('animeDetail').innerHTML = '<div>动漫加载失败</div>';
                 return;
@@ -613,7 +612,6 @@
             renderComments();
             renderRatingButtons();
         }
-
         function renderAnimeDetail() {
             const html = `<div class="anime-detail"><h1 class="title">${escapeHtml(currentAnime.title)}</h1><img src="${currentAnime.image_url}" alt="${currentAnime.title}" onerror="this.src='/images/default.jpg'"><div class="description">${escapeHtml(currentAnime.description || '暂无简介')}</div><div class="info"><p><span>推荐指数：</span>${escapeHtml(currentAnime.recommend_text || '暂无')}</p><p><span>题材：</span>${currentAnime.genre ? escapeHtml(currentAnime.genre.join('、')) : '暂无'}</p><p><span>系列：</span>${escapeHtml(currentAnime.series_title || '独立作品')}</p><p><span>首播：</span>${escapeHtml(currentAnime.season || '无')}</p></div></div>`;
             document.getElementById('animeDetail').innerHTML = html;

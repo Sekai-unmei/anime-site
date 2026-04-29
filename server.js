@@ -281,7 +281,7 @@ app.get('/', (req, res) => {
 });
 // 必须放在所有静态文件路由之前，且只匹配数字ID
 app.get('/anime/:id', (req, res) => {
-    // 直接返回 anime-detail.html，让前端负责处理 ID
+    // 直接返回详情页，让前端自行处理ID
     res.sendFile(path.join(__dirname, 'public/anime-detail.html'));
 });
 app.get('/login-failed', (req, res) => res.redirect('/unauthorized.html'));

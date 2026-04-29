@@ -218,7 +218,7 @@
                 `;
                 const img = card.querySelector('img');
                 // 使用数字 id
-                const animeId = anime._id;
+                const animeId = anime.id;
                 if (animeId) {
                     card.addEventListener('click', () => {
                         window.location.href = `/anime/${animeId}`;

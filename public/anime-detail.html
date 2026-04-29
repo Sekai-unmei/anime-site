@@ -696,11 +696,21 @@
         }
 
         async function deleteComment(commentId) {
-            const res = await authFetch(`/api/anime/${animeId}/comment/${commentId}`, { method: 'DELETE' });
-            if (res.ok) { showToast('评论已删除'); loadAnime(); }
-            else { const err = await res.json(); showToast(err.error || '删除失败'); }
+            if (!currentAnime || !currentAnime.id) {
+                showToast('无法获取动漫ID');
+                return;
+            }
+            const res = await authFetch(`/api/anime/${currentAnime.id}/comment/${commentId}`, { method: 'DELETE' });
+            if (res.ok) {
+                showToast('评论已删除');
+                // 重新加载评论列表，不重新加载整个页面以提高效率
+                await loadCommentsOnly(); // 需要实现这个函数，或者直接调用 loadAnime() 但会刷新整个页面
+                loadAnime(); // 暂时刷新整个页面，确保数据一致
+            } else {
+                const err = await res.json();
+                showToast(err.error || '删除失败');
+            }
         }
-
         async function submitComment() {
             const textarea = document.getElementById('newCommentText');
             const text = textarea.value.trim();

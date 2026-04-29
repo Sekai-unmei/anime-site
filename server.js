@@ -1,4 +1,4 @@
-console.log("开始执行 server.js (MongoDB 持久化版 - 修正顺序与集合名)");
+console.log("开始执行 server.js (最终完整版)");
 const nodemailer = require('nodemailer');
 const express = require('express');
 const session = require('express-session');
@@ -68,7 +68,6 @@ const noteSchema = new mongoose.Schema({
 const Note = mongoose.model('Note', noteSchema);
 
 // ★★★★★ 动漫模型（核心）★★★★★
-// 使用明确集合名 'animes'
 const animeSchema = new mongoose.Schema({
     id: { type: Number, unique: true, required: true },
     title: String,
@@ -121,18 +120,14 @@ if (!MONGO_URI) {
 mongoose.connect(MONGO_URI)
     .then(async () => {
         console.log("✅ MongoDB 连接成功");
-        console.log(`📌 使用集合: ${Anime.collection.name}`);  // 确认集合名
-
-        // 获取当前文档数
+        console.log(`📌 使用集合: ${Anime.collection.name}`);
         const count = await Anime.countDocuments();
         console.log(`📊 当前动漫文档数: ${count}`);
-
-        // 预期总数为 191（从本地文件读取）
         const EXPECTED_COUNT = 191;
         if (count !== EXPECTED_COUNT) {
             console.log(`⚠️ 文档数 ${count} 与预期 ${EXPECTED_COUNT} 不符，强制清空并重新导入...`);
             try {
-                await Anime.deleteMany({});   // 清空集合
+                await Anime.deleteMany({});
                 const animeData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/anime.json'), 'utf8'));
                 await Anime.insertMany(animeData, { ordered: false });
                 console.log(`✅ 成功导入 ${animeData.length} 条动漫数据（预期 ${EXPECTED_COUNT}）`);
@@ -140,7 +135,6 @@ mongoose.connect(MONGO_URI)
                 console.log(`📊 重新导入后文档数: ${newCount}`);
             } catch (importErr) {
                 console.error("❌ 导入失败:", importErr);
-                // 导入失败不退出，以便继续提供其他服务（但动漫数据为空）
             }
         } else {
             console.log(`✅ 动漫数据完整，共 ${count} 条。`);
@@ -163,12 +157,14 @@ async function getOrCreateUserInfo(email, username = null) {
     }
     return user;
 }
-// 根据传入的 id（可能是数字或 ObjectId 字符串）查找动漫
+
+// 通用动漫查询函数（兼容数字 id 和 ObjectId 字符串）
 async function findAnimeByIdentifier(identifier) {
     if (!identifier) return null;
-    // 如果是 24 位十六进制字符串，视为 ObjectId
     if (typeof identifier === 'string' && identifier.match(/^[a-fA-F0-9]{24}$/)) {
-        return await Anime.findById(identifier);
+        try {
+            return await Anime.findById(identifier);
+        } catch (e) { return null; }
     }
     const numericId = parseInt(identifier);
     if (!isNaN(numericId)) {
@@ -292,11 +288,9 @@ app.get('/', (req, res) => {
         res.sendFile(path.join(__dirname, 'public/login.html'));
     }
 });
-// 必须放在所有静态文件路由之前，且只匹配数字ID
 app.get('/anime/:id', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/anime-detail.html'));
 });
-
 app.get('/login-failed', (req, res) => res.redirect('/unauthorized.html'));
 
 // ========== 动漫相关接口 ==========
@@ -398,6 +392,7 @@ app.post('/api/anime/unrate', async (req, res) => {
         res.json({ success: false, error: "未评分或评分不存在" });
     }
 });
+
 app.post('/api/anime/:id/comment', async (req, res) => {
     const anime = await findAnimeByIdentifier(req.params.id);
     if (!anime) return res.status(404).send("Not found");
@@ -407,7 +402,6 @@ app.post('/api/anime/:id/comment', async (req, res) => {
     if (!user) return res.status(401).json({ error: "未登录" });
     const userInfo = await getOrCreateUserInfo(user);
 
-    // 处理回复通知（前面已经写过，保持不变）
     if (parentId) {
         let parentAuthor = null;
         function findAuthor(comments) {

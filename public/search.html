@@ -152,6 +152,23 @@
     <script>
         const tooltip = document.getElementById('tooltip');
         let hideTimeout = null;
+        let userRatingMap = new Map(); // 存储 { animeId: ratingType }
+
+        // ========== 获取当前用户的所有评分映射 ==========
+        async function loadUserRatings() {
+            try {
+                const res = await fetch('/api/user/ratings', { credentials: 'include' });
+                if (res.ok) {
+                    const ratedAnimes = await res.json();
+                    userRatingMap.clear();
+                    ratedAnimes.forEach(anime => {
+                        if (anime.id) userRatingMap.set(anime.id, anime.userRating);
+                    });
+                }
+            } catch (e) {
+                console.error('加载用户评分失败', e);
+            }
+        }
 
         function truncate(str, maxLen) {
             if (!str) return '';
@@ -188,6 +205,9 @@
                 const res = await fetch(url);
                 const data = await res.json();
 
+                // 先获取用户评分映射
+                await loadUserRatings();
+
                 if (data.data.length === 0) {
                     document.getElementById('no-result').style.display = 'block';
                     document.getElementById('no-result').innerHTML = '此番还尚未入库，请通知管理员哦-';
@@ -207,10 +227,19 @@
             const container = document.getElementById('anime-grid');
             container.innerHTML = '';
             animes.forEach(anime => {
+                const userRating = userRatingMap.get(anime.id) || null;
+                let ratingMark = '';
+                if (userRating) {
+                    const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
+                    ratingMark = `<span style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 20px; font-size: 12px;">${ratingMap[userRating] || '✓'}</span>`;
+                }
                 const card = document.createElement('div');
                 card.className = 'anime-card';
                 card.innerHTML = `
-                    <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
+                    <div style="position: relative;">
+                        <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
+                        ${ratingMark}
+                    </div>
                     <div class="anime-info">
                         <div class="anime-title">${truncate(anime.title, 10)}</div>
                         <div class="anime-desc">${truncate(anime.description || '', 30)}</div>

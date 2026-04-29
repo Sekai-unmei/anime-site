@@ -334,11 +334,26 @@ app.get('/api/anime/list', async (req, res) => {
         filter.genre = { $in: tags };
     }
     if (rating) filter.rating = rating;
+
     const total = await Anime.countDocuments(filter);
     const data = await Anime.find(filter).skip((page - 1) * limit).limit(limit).lean();
-    res.json({ total, page, limit, data });
-});
 
+    // 如果用户已登录，批量查询当前用户对这些动漫的评分
+    let userRatingMap = new Map();
+    if (req.session.user) {
+        const animeIds = data.map(a => a.id);
+        const votes = await Vote.find({ userId: req.session.user, animeId: { $in: animeIds } });
+        votes.forEach(v => { userRatingMap.set(v.animeId, v.type); });
+    }
+
+    // 附加 currentUserRating 到每个动漫
+    const enrichedData = data.map(anime => ({
+        ...anime,
+        currentUserRating: userRatingMap.get(anime.id) || null
+    }));
+
+    res.json({ total, page, limit, data: enrichedData });
+});
 app.get('/api/anime/series-count', async (req, res) => {
     const series = await Anime.distinct('series_title');
     const uniqueSeries = new Set(series.filter(s => s && s.trim() !== ''));

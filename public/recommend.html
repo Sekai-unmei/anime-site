@@ -269,10 +269,26 @@
     <div id="tooltip" class="tooltip"></div>
 
     <script>
-        // 以下是脚本部分
         let godParticleInterval = null;
         let searchKeyword = '';
         let allAnime = [];
+        let userRatingMap = new Map(); // 存储 { animeId: ratingType }
+
+        // ========== 获取当前用户的所有评分映射 ==========
+        async function loadUserRatings() {
+            try {
+                const res = await fetch('/api/user/ratings', { credentials: 'include' });
+                if (res.ok) {
+                    const ratedAnimes = await res.json();
+                    userRatingMap.clear();
+                    ratedAnimes.forEach(anime => {
+                        if (anime.id) userRatingMap.set(anime.id, anime.userRating);
+                    });
+                }
+            } catch (e) {
+                console.error('加载用户评分失败', e);
+            }
+        }
 
         function truncate(str, maxLen) {
             if (!str) return '';
@@ -293,6 +309,7 @@
         }
 
         async function loadRecommendations() {
+            await loadUserRatings(); // 先获取评分映射
             const godList = await fetchAnimeByRating('神作', 8);
             renderAnime(godList, 'god-anime-list');
             const goodList = await fetchAnimeByRating('好看', 8);
@@ -307,34 +324,38 @@
             if (!container) return;
             container.innerHTML = '';
             animes.forEach(anime => {
-                const card = createAnimeCard(anime);
+                const userRating = userRatingMap.get(anime.id) || null;
+                let ratingMark = '';
+                if (userRating) {
+                    const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
+                    ratingMark = `<span style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 20px; font-size: 12px;">${ratingMap[userRating] || '✓'}</span>`;
+                }
+                const card = document.createElement('div');
+                card.className = 'anime-card';
+                card.innerHTML = `
+                    <div style="position: relative;">
+                        <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
+                        ${ratingMark}
+                    </div>
+                    <div class="anime-info">
+                        <div class="anime-title">${truncate(anime.title, 10)}</div>
+                        <div class="anime-desc">${truncate(anime.description || '', 30)}</div>
+                    </div>
+                `;
+                const img = card.querySelector('img');
+                const animeId = anime._id;
+                if (animeId) {
+                    card.addEventListener('click', () => {
+                        window.location.href = `/anime/${animeId}`;
+                    });
+                } else {
+                    console.warn('动漫缺少数字 id:', anime);
+                    card.style.cursor = 'not-allowed';
+                }
+                img.addEventListener('mouseenter', (e) => showTooltip(e, anime));
+                img.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300); });
                 container.appendChild(card);
             });
-        }
-
-        function createAnimeCard(anime) {
-            const card = document.createElement('div');
-            card.className = 'anime-card';
-            card.innerHTML = `
-                <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
-                <div class="anime-info">
-                    <div class="anime-title">${truncate(anime.title, 10)}</div>
-                    <div class="anime-desc">${truncate(anime.description || '', 30)}</div>
-                </div>
-            `;
-            const img = card.querySelector('img');
-            const animeId = anime._id;
-            if (animeId) {
-                card.addEventListener('click', () => {
-                    window.location.href = `/anime/${animeId}`;
-                });
-            } else {
-                console.warn('动漫缺少数字 id:', anime);
-                card.style.cursor = 'not-allowed';
-            }
-            img.addEventListener('mouseenter', (e) => showTooltip(e, anime));
-            img.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300); });
-            return card;
         }
 
         function startGodParticles() {
@@ -417,7 +438,30 @@
             } else {
                 searchList.innerHTML = '';
                 filtered.forEach(anime => {
-                    const card = createAnimeCard(anime);
+                    const userRating = userRatingMap.get(anime.id) || null;
+                    let ratingMark = '';
+                    if (userRating) {
+                        const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
+                        ratingMark = `<span style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 20px; font-size: 12px;">${ratingMap[userRating] || '✓'}</span>`;
+                    }
+                    const card = document.createElement('div');
+                    card.className = 'anime-card';
+                    card.innerHTML = `
+                        <div style="position: relative;">
+                            <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
+                            ${ratingMark}
+                        </div>
+                        <div class="anime-info">
+                            <div class="anime-title">${truncate(anime.title, 10)}</div>
+                            <div class="anime-desc">${truncate(anime.description || '', 30)}</div>
+                        </div>
+                    `;
+                    const animeId = anime._id;
+                    if (animeId) {
+                        card.addEventListener('click', () => {
+                            window.location.href = `/anime/${animeId}`;
+                        });
+                    }
                     searchList.appendChild(card);
                 });
             }

@@ -160,13 +160,14 @@
                         <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/placeholder.png'">
                         <p>${anime.title}</p>
                     `;
-                    const animeId = anime.id || anime._id;
+                    // 使用数字 id
+                    const animeId = anime.id;
                     if (animeId) {
                         card.addEventListener('click', () => {
                             window.location.href = `/anime/${animeId}`;
                         });
                     } else {
-                        console.error('动漫缺少 ID:', anime);
+                        console.error('动漫缺少数字 id:', anime);
                         card.style.cursor = 'not-allowed';
                     }
                     container.appendChild(card);

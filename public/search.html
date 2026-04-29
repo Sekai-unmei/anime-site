@@ -217,13 +217,14 @@
                     </div>
                 `;
                 const img = card.querySelector('img');
-                const animeId = anime.id || anime._id;
+                // 使用数字 id
+                const animeId = anime.id;
                 if (animeId) {
                     card.addEventListener('click', () => {
                         window.location.href = `/anime/${animeId}`;
                     });
                 } else {
-                    console.error('动漫缺少 ID:', anime);
+                    console.error('动漫缺少数字 id:', anime);
                     card.style.cursor = 'not-allowed';
                 }
                 img.addEventListener('mouseenter', (e) => showTooltip(e, anime));

@@ -371,9 +371,11 @@ app.post('/api/anime/rate', async (req, res) => {
         if (!anime) return res.status(404).json({ error: "未找到动漫" });
 
         // 确保 ratings 对象存在
-        if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
+        if (!anime.ratings) {
+            anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
+        }
 
-        // 规范化 user_ratings 为普通对象
+        // 规范化 user_ratings 为普通对象（兼容 Map 和 Object）
         let ur = anime.user_ratings;
         if (!ur) ur = {};
         if (ur instanceof Map) {
@@ -383,12 +385,12 @@ app.post('/api/anime/rate', async (req, res) => {
         }
 
         const oldRating = ur[user];
+        // 如果用户已经评过相同的类型，不做任何改变
         if (oldRating === ratingType) {
-            // 已经评过这个类型，不做任何改变
             return res.json({ success: true, ratings: anime.ratings });
         }
 
-        // 扣除旧票（避免负数）
+        // 扣除旧票（如果存在且大于0）
         if (oldRating && anime.ratings[oldRating] > 0) {
             anime.ratings[oldRating]--;
         }
@@ -405,7 +407,6 @@ app.post('/api/anime/rate', async (req, res) => {
         res.status(500).json({ error: '服务器内部错误' });
     }
 });
-
 app.post('/api/anime/unrate', async (req, res) => {
     try {
         const { id } = req.body;

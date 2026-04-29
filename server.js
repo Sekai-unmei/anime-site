@@ -367,38 +367,32 @@ app.post('/api/anime/rate', async (req, res) => {
         const user = req.session.user;
         if (!user) return res.status(401).json({ error: "未登录" });
 
-        const anime = await findAnimeByIdentifier(id);
+        let anime = await findAnimeByIdentifier(id);
         if (!anime) return res.status(404).json({ error: "未找到动漫" });
 
-        // 确保 ratings 对象存在
-        if (!anime.ratings) {
-            anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
-        }
-
-        // 统一将 user_ratings 转为普通对象（兼容 Map）
+        // 强制确保 user_ratings 是普通对象
         let ur = anime.user_ratings;
-        if (!ur) ur = {};
+        if (!ur || typeof ur !== 'object') ur = {};
         if (ur instanceof Map) {
-            const newUr = {};
-            for (let [k, v] of ur.entries()) newUr[k] = v;
-            ur = newUr;
+            const obj = {};
+            for (let [k, v] of ur.entries()) obj[k] = v;
+            ur = obj;
         }
-        // 确保 ur 是普通对象
-        if (typeof ur !== 'object') ur = {};
+        anime.user_ratings = ur;
+
+        if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
 
         const oldRating = ur[user];
-        // 如果已经评过相同的类型，直接返回（不做任何改变）
         if (oldRating === ratingType) {
             return res.json({ success: true, ratings: anime.ratings });
         }
 
-        // 扣除旧票（如果存在且大于0）
+        // 扣除旧票
         if (oldRating && anime.ratings[oldRating] > 0) {
             anime.ratings[oldRating]--;
         }
         // 增加新票
         anime.ratings[ratingType] = (anime.ratings[ratingType] || 0) + 1;
-        // 更新用户评分记录
         ur[user] = ratingType;
         anime.user_ratings = ur;
 
@@ -416,16 +410,18 @@ app.post('/api/anime/unrate', async (req, res) => {
         const user = req.session.user;
         if (!user) return res.status(401).json({ error: "未登录" });
 
-        const anime = await findAnimeByIdentifier(id);
+        let anime = await findAnimeByIdentifier(id);
         if (!anime) return res.status(404).json({ error: "未找到动漫" });
 
         let ur = anime.user_ratings;
-        if (!ur) ur = {};
+        if (!ur || typeof ur !== 'object') ur = {};
         if (ur instanceof Map) {
-            const newUr = {};
-            for (let [k, v] of ur.entries()) newUr[k] = v;
-            ur = newUr;
+            const obj = {};
+            for (let [k, v] of ur.entries()) obj[k] = v;
+            ur = obj;
         }
+        anime.user_ratings = ur;
+
         const oldRating = ur[user];
         if (oldRating && anime.ratings[oldRating] > 0) {
             anime.ratings[oldRating]--;

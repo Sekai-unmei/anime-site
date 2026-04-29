@@ -283,6 +283,7 @@ app.get('/', (req, res) => {
 app.get('/anime/:id', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/anime-detail.html'));
 });
+
 app.get('/login-failed', (req, res) => res.redirect('/unauthorized.html'));
 
 // ========== 动漫相关接口 ==========
@@ -343,17 +344,9 @@ app.get('/api/anime/ratings-stats', async (req, res) => {
 });
 
 app.get('/api/anime/:id', async (req, res) => {
-    const param = req.params.id;
-    let query = {};
-    const numericId = parseInt(param);
-    if (!isNaN(numericId)) {
-        query = { id: numericId };
-    } else if (param.match(/^[a-fA-F0-9]{24}$/)) {
-        query = { _id: param };
-    } else {
-        return res.status(400).json({ error: "无效的ID格式" });
-    }
-    const anime = await Anime.findOne(query).lean();
+    const id = req.params.id;
+    // 直接按 _id 查询（MongoDB 自动识别 ObjectId 字符串）
+    const anime = await Anime.findById(id).lean();
     if (!anime) return res.status(404).json({ error: "未找到" });
     res.json(anime);
 });

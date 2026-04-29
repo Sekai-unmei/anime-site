@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>站长推荐 - 动漫资料库</title>
     <style>
+        /* 样式保持不变，省略... 你原来的样式即可 */
         body {
             margin: 0;
             background: #0a0a0a;
@@ -244,22 +245,17 @@
             <h1 class="glow-title">✨ 站长推荐 ✨</h1>
             <input type="text" id="search-input" class="search-box" placeholder="搜索动漫...">
         </div>
-
         <div id="search-result" style="display: none;">
             <div class="section-title" style="color: #ffd700;">🔍 搜索结果</div>
             <div id="search-anime-list" class="anime-grid"></div>
             <hr style="margin: 40px 0; border-color: #333;">
         </div>
-
         <div class="section-title god-title" id="god-title">✨ 神作推荐 ✨</div>
         <div id="god-anime-list" class="anime-grid"></div>
-
         <div class="section-title" style="color: #b19cd9; text-shadow: 0 0 10px #b19cd9;">✨ 神作之下-好看之上 ✨</div>
         <div id="mid-anime-list" class="anime-grid"></div>
-
         <div class="section-title good-title" id="good-title">🌸 好看推荐 🌸</div>
         <div id="good-anime-list" class="anime-grid"></div>
-
         <div class="circle-buttons">
             <div class="circle-btn" onclick="location.href='/popular.html'">🔥 人气</div>
             <div class="circle-btn" onclick="location.href='/rating.html'">⭐ 评分</div>
@@ -272,9 +268,8 @@
         let godParticleInterval = null;
         let searchKeyword = '';
         let allAnime = [];
-        let userRatingMap = new Map(); // 存储 { animeId: ratingType }
+        let userRatingMap = new Map(); // 独立评分映射
 
-        // ========== 获取当前用户的所有评分映射 ==========
         async function loadUserRatings() {
             try {
                 const res = await fetch('/api/user/ratings', { credentials: 'include' });
@@ -282,8 +277,11 @@
                     const ratedAnimes = await res.json();
                     userRatingMap.clear();
                     ratedAnimes.forEach(anime => {
-                        if (anime.id) userRatingMap.set(anime.id, anime.userRating);
+                        if (anime.id !== undefined && anime.id !== null) {
+                            userRatingMap.set(Number(anime.id), anime.userRating);
+                        }
                     });
+                    console.log('✅ 已加载用户评分映射:', [...userRatingMap.entries()]);
                 }
             } catch (e) {
                 console.error('加载用户评分失败', e);
@@ -309,7 +307,7 @@
         }
 
         async function loadRecommendations() {
-            await loadUserRatings(); // 先获取评分映射
+            await loadUserRatings(); // 获取最新评分映射
             const godList = await fetchAnimeByRating('神作', 8);
             renderAnime(godList, 'god-anime-list');
             const goodList = await fetchAnimeByRating('好看', 8);
@@ -323,8 +321,9 @@
             const container = document.getElementById(containerId);
             if (!container) return;
             container.innerHTML = '';
-            animes.forEach(anime => {
-                const userRating = userRatingMap.get(anime.id) || null;
+            for (const anime of animes) {
+                const animeIdNum = Number(anime.id);
+                const userRating = userRatingMap.get(animeIdNum) || null;
                 let ratingMark = '';
                 if (userRating) {
                     const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
@@ -343,19 +342,18 @@
                     </div>
                 `;
                 const img = card.querySelector('img');
-                const animeId = anime._id;
-                if (animeId) {
+                const docId = anime._id;
+                if (docId) {
                     card.addEventListener('click', () => {
-                        window.location.href = `/anime/${animeId}`;
+                        window.location.href = `/anime/${docId}`;
                     });
                 } else {
-                    console.warn('动漫缺少数字 id:', anime);
                     card.style.cursor = 'not-allowed';
                 }
                 img.addEventListener('mouseenter', (e) => showTooltip(e, anime));
                 img.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300); });
                 container.appendChild(card);
-            });
+            }
         }
 
         function startGodParticles() {
@@ -438,7 +436,8 @@
             } else {
                 searchList.innerHTML = '';
                 filtered.forEach(anime => {
-                    const userRating = userRatingMap.get(anime.id) || null;
+                    const animeIdNum = Number(anime.id);
+                    const userRating = userRatingMap.get(animeIdNum) || null;
                     let ratingMark = '';
                     if (userRating) {
                         const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
@@ -456,10 +455,10 @@
                             <div class="anime-desc">${truncate(anime.description || '', 30)}</div>
                         </div>
                     `;
-                    const animeId = anime._id;
-                    if (animeId) {
+                    const docId = anime._id;
+                    if (docId) {
                         card.addEventListener('click', () => {
-                            window.location.href = `/anime/${animeId}`;
+                            window.location.href = `/anime/${docId}`;
                         });
                     }
                     searchList.appendChild(card);

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>观测结果 - 动漫资料库</title>
     <style>
+        /* 样式保持不变，省略... 你原来的样式即可 */
         body {
             margin: 0;
             background: #0a0a0a;
@@ -150,11 +151,12 @@
     <div id="tooltip" class="tooltip"></div>
 
     <script>
+        // ========== 全局状态（完全独立，不相互污染） ==========
         const tooltip = document.getElementById('tooltip');
         let hideTimeout = null;
-        let userRatingMap = new Map(); // 存储 { animeId: ratingType }
+        let userRatingMap = new Map(); // 关键：存储每个动漫的独立评分
 
-        // ========== 获取当前用户的所有评分映射 ==========
+        // 获取当前用户的所有评分（每次渲染前都重新获取，保证最新）
         async function loadUserRatings() {
             try {
                 const res = await fetch('/api/user/ratings', { credentials: 'include' });
@@ -162,11 +164,16 @@
                     const ratedAnimes = await res.json();
                     userRatingMap.clear();
                     ratedAnimes.forEach(anime => {
-                        if (anime.id) userRatingMap.set(anime.id, anime.userRating);
+                        if (anime.id !== undefined && anime.id !== null) {
+                            userRatingMap.set(Number(anime.id), anime.userRating);
+                        }
                     });
+                    console.log('✅ 已加载用户评分映射:', [...userRatingMap.entries()]);
+                } else {
+                    console.warn('获取用户评分失败');
                 }
             } catch (e) {
-                console.error('加载用户评分失败', e);
+                console.error('加载用户评分出错', e);
             }
         }
 
@@ -205,7 +212,7 @@
                 const res = await fetch(url);
                 const data = await res.json();
 
-                // 先获取用户评分映射
+                // 每次渲染前都重新获取用户评分（确保最新，并且不依赖后端返回的 currentUserRating）
                 await loadUserRatings();
 
                 if (data.data.length === 0) {
@@ -226,13 +233,17 @@
         function renderAnime(animes) {
             const container = document.getElementById('anime-grid');
             container.innerHTML = '';
-            animes.forEach(anime => {
-                const userRating = userRatingMap.get(anime.id) || null;
+            for (const anime of animes) {
+                // 关键：使用数字 id 从 Map 中获取评分，每个动漫独立
+                const animeIdNum = Number(anime.id);
+                const userRating = userRatingMap.get(animeIdNum) || null;
+
                 let ratingMark = '';
                 if (userRating) {
                     const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
                     ratingMark = `<span style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 20px; font-size: 12px;">${ratingMap[userRating] || '✓'}</span>`;
                 }
+
                 const card = document.createElement('div');
                 card.className = 'anime-card';
                 card.innerHTML = `
@@ -246,19 +257,18 @@
                     </div>
                 `;
                 const img = card.querySelector('img');
-                const animeId = anime._id;
-                if (animeId) {
+                const docId = anime._id;
+                if (docId) {
                     card.addEventListener('click', () => {
-                        window.location.href = `/anime/${animeId}`;
+                        window.location.href = `/anime/${docId}`;
                     });
                 } else {
-                    console.error('动漫缺少数字 id:', anime);
                     card.style.cursor = 'not-allowed';
                 }
                 img.addEventListener('mouseenter', (e) => showTooltip(e, anime));
                 img.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300); });
                 container.appendChild(card);
-            });
+            }
         }
 
         function showTooltip(event, anime) {

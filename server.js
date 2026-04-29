@@ -11,6 +11,7 @@ const { OAuth2Client } = require('google-auth-library');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+
 // ========== 1. 定义 mongoose 模型 ==========
 const userSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true },
@@ -103,6 +104,16 @@ const animeSchema = new mongoose.Schema({
     ]
 }, { collection: 'animes' });
 const Anime = mongoose.model('Anime', animeSchema);
+
+const voteSchema = new mongoose.Schema({
+    userId: { type: String, required: true },
+    animeId: { type: Number, required: true }, // 使用数字 id，不是 _id
+    type: { type: String, enum: ['神作', '好看', '普通', '无聊', '狗屎'], required: true },
+    updatedAt: { type: Date, default: Date.now }
+});
+// 复合唯一索引：一个用户对一部动漫只能有一条记录
+voteSchema.index({ userId: 1, animeId: 1 }, { unique: true });
+const Vote = mongoose.model('Vote', voteSchema);
 
 // ========== 2. 连接 MongoDB ==========
 const MONGO_URI = process.env.MONGO_URI;
@@ -362,90 +373,62 @@ app.get('/api/anime/:id', async (req, res) => {
 });
 
 // 然后继续原有逻辑
+// ========== 评分路由（最终版）==========
 app.post('/api/anime/rate', async (req, res) => {
     try {
         const { id, ratingType } = req.body;
-        const user = req.session.user;
-        if (!user) return res.status(401).json({ error: "未登录" });
+        const userId = req.session.user;
+        if (!userId) return res.status(401).json({ error: "未登录" });
 
-        let anime = await findAnimeByIdentifier(id);
-        if (!anime) return res.status(404).json({ error: "未找到动漫" });
+        const anime = await Anime.findOne({ id: parseInt(id) }); // 确保 id 是数字
+        if (!anime) return res.status(404).json({ error: "动漫不存在" });
 
-        // ---------- 防护代码（放在这里）----------
-        if (Array.isArray(anime.user_ratings)) {
-            let obj = {};
-            for (let item of anime.user_ratings) {
-                if (typeof item === 'object') {
-                    for (let [email, rating] of Object.entries(item)) obj[email] = rating;
-                } else if (typeof item === 'string') {
-                    let parts = item.split(':');
-                    if (parts.length === 2) obj[parts[0]] = parts[1];
-                }
-            }
-            anime.user_ratings = obj;
-            await anime.save();
-        }
-        // 确保 user_ratings 是普通对象
-        let ur = anime.user_ratings;
-        if (!ur || typeof ur !== 'object') ur = {};
-        if (ur instanceof Map) {
-            const obj = {};
-            for (let [k, v] of ur.entries()) obj[k] = v;
-            ur = obj;
-        }
-        anime.user_ratings = ur;
+        // 原子更新 vote 记录（自动处理 insert/update）
+        const oldVote = await Vote.findOneAndUpdate(
+            { userId, animeId: anime.id },
+            { type: ratingType, updatedAt: new Date() },
+            { upsert: true, new: true }  // 返回更新后的文档
+        );
 
-        if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
-        const oldRating = ur[user];
-        if (oldRating === ratingType) {
-            return res.json({ success: true, ratings: anime.ratings });
-        }
-        if (oldRating && anime.ratings[oldRating] > 0) anime.ratings[oldRating]--;
-        anime.ratings[ratingType] = (anime.ratings[ratingType] || 0) + 1;
-        ur[user] = ratingType;
-        anime.user_ratings = ur;
-        await anime.save();
-        res.json({ success: true, ratings: anime.ratings });
+        // 重新计算该动漫的 ratings 统计（从 vote 集合聚合）
+        const stats = await Vote.aggregate([
+            { $match: { animeId: anime.id } },
+            { $group: { _id: '$type', count: { $sum: 1 } } }
+        ]);
+        const newRatings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
+        stats.forEach(s => { newRatings[s._id] = s.count; });
+
+        // 原子更新 anime 文档
+        await Anime.updateOne(
+            { id: anime.id },
+            { $set: { ratings: newRatings, user_ratings: {} } } // user_ratings 不再使用，可保留空对象
+        );
+
+        res.json({ success: true, ratings: newRatings });
     } catch (err) {
-        console.error('评分出错:', err);
-        res.status(500).json({ error: '服务器内部错误' });
+        if (err.code === 11000) {
+            // 唯一索引冲突（理论上 findOneAndUpdate 已处理，但若并发极高可能触发）
+            return res.status(409).json({ error: "请稍后重试" });
+        }
+        console.error(err);
+        res.status(500).json({ error: "服务器错误" });
     }
 });
-
-
-
+// ========== 取消评分路由 ==========
 app.post('/api/anime/unrate', async (req, res) => {
-    try {
-        const { id } = req.body;
-        const user = req.session.user;
-        if (!user) return res.status(401).json({ error: "未登录" });
+    const { id } = req.body;
+    const userId = req.session.user;
+    if (!userId) return res.status(401).json({ error: "未登录" });
+    const anime = await Anime.findOne({ id: parseInt(id) });
+    if (!anime) return res.status(404).json({ error: "动漫不存在" });
 
-        let anime = await findAnimeByIdentifier(id);
-        if (!anime) return res.status(404).json({ error: "未找到动漫" });
+    await Vote.deleteOne({ userId, animeId: anime.id });
 
-        let ur = anime.user_ratings;
-        if (!ur || typeof ur !== 'object') ur = {};
-        if (ur instanceof Map) {
-            const obj = {};
-            for (let [k, v] of ur.entries()) obj[k] = v;
-            ur = obj;
-        }
-        anime.user_ratings = ur;
-
-        const oldRating = ur[user];
-        if (oldRating && anime.ratings[oldRating] > 0) {
-            anime.ratings[oldRating]--;
-            delete ur[user];
-            anime.user_ratings = ur;
-            await anime.save();
-            res.json({ success: true });
-        } else {
-            res.json({ success: false, error: "未评分或评分不存在" });
-        }
-    } catch (err) {
-        console.error('取消评分出错:', err);
-        res.status(500).json({ error: '服务器内部错误' });
-    }
+    // 重新聚合统计（同上）
+    const stats = await Vote.aggregate([...]);
+    const newRatings = { ...};
+    await Anime.updateOne({ id: anime.id }, { $set: { ratings: newRatings } });
+    res.json({ success: true });
 });
 
 app.post('/api/anime/:id/comment', async (req, res) => {

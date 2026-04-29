@@ -359,18 +359,40 @@ app.post('/api/anime/rate', async (req, res) => {
         const { id, ratingType } = req.body;
         const user = req.session.user;
         if (!user) return res.status(401).json({ error: "未登录" });
+
         const anime = await findAnimeByIdentifier(id);
         if (!anime) return res.status(404).json({ error: "未找到动漫" });
+
+        // 确保 ratings 对象存在
         if (!anime.ratings) anime.ratings = { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 };
-        const oldRating = getUserRating(anime, user);
-        if (oldRating) anime.ratings[oldRating]--;
+
+        // 规范化 user_ratings 为一个普通对象
+        let ur = anime.user_ratings;
+        if (!ur) ur = {};
+        if (ur instanceof Map) {
+            const newUr = {};
+            for (let [k, v] of ur.entries()) newUr[k] = v;
+            ur = newUr;
+        }
+
+        const oldRating = ur[user];
+        if (oldRating === ratingType) {
+            return res.json({ success: false, error: "您已经评过这个类型了" });
+        }
+
+        // 扣除旧票（避免负数）
+        if (oldRating && anime.ratings[oldRating] > 0) anime.ratings[oldRating]--;
+        // 增加新票
         anime.ratings[ratingType] = (anime.ratings[ratingType] || 0) + 1;
-        setUserRating(anime, user, ratingType);
+        // 更新用户记录
+        ur[user] = ratingType;
+        anime.user_ratings = ur;
+
         await anime.save();
         res.json({ success: true, ratings: anime.ratings });
     } catch (err) {
         console.error('评分出错:', err);
-        res.status(500).json({ error: '服务器内部错误', details: err.message });
+        res.status(500).json({ error: '服务器内部错误' });
     }
 });
 
@@ -379,12 +401,22 @@ app.post('/api/anime/unrate', async (req, res) => {
         const { id } = req.body;
         const user = req.session.user;
         if (!user) return res.status(401).json({ error: "未登录" });
+
         const anime = await findAnimeByIdentifier(id);
         if (!anime) return res.status(404).json({ error: "未找到动漫" });
-        const oldRating = getUserRating(anime, user);
+
+        let ur = anime.user_ratings;
+        if (!ur) ur = {};
+        if (ur instanceof Map) {
+            const newUr = {};
+            for (let [k, v] of ur.entries()) newUr[k] = v;
+            ur = newUr;
+        }
+        const oldRating = ur[user];
         if (oldRating && anime.ratings[oldRating] > 0) {
             anime.ratings[oldRating]--;
-            deleteUserRating(anime, user);
+            delete ur[user];
+            anime.user_ratings = ur;
             await anime.save();
             res.json({ success: true });
         } else {
@@ -392,7 +424,7 @@ app.post('/api/anime/unrate', async (req, res) => {
         }
     } catch (err) {
         console.error('取消评分出错:', err);
-        res.status(500).json({ error: '服务器内部错误', details: err.message });
+        res.status(500).json({ error: '服务器内部错误' });
     }
 });
 

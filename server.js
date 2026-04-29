@@ -846,7 +846,37 @@ app.post('/api/report', async (req, res) => {
         res.status(500).json({ error: '邮件发送失败，请稍后重试' });
     }
 });
+// ========== 临时清理：删除当前用户所有投票并重置 ratings ==========
+app.get('/admin/reset-my-votes', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).send('请先登录');
+    }
+    const userId = req.session.user;
+    console.log(`开始清理用户 ${userId} 的投票...`);
 
+    // 1. 删除该用户的所有 vote 记录
+    const delResult = await Vote.deleteMany({ userId });
+    console.log(`删除了 ${delResult.deletedCount} 条 vote 记录`);
+
+    // 2. 重置所有动漫的 ratings 为 0（因为之前错误累积导致脏数据，全量重置最干净）
+    const resetResult = await Anime.updateMany(
+        {},
+        { $set: { ratings: { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 } } }
+    );
+    console.log(`重置了 ${resetResult.modifiedCount} 部动漫的 ratings`);
+
+    // 3. 可选：重置 user_ratings 字段（虽然不再使用，但避免干扰）
+    await Anime.updateMany({}, { $set: { user_ratings: {} } });
+
+    res.send(`
+        <html><body style="background:#000;color:#ffd700;text-align:center;padding:50px;">
+        <h2>✅ 清理完成</h2>
+        <p>已删除您名下的 <strong>${delResult.deletedCount}</strong> 条投票记录。</p>
+        <p>已重置所有动漫的票数为 0。</p>
+        <p>现在请 <a href="/recommend.html" style="color:gold;">返回推荐页</a> 重新测试评分。</p>
+        </body></html>
+    `);
+});
 // ========== 启动服务器 ==========
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

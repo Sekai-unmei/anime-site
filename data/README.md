@@ -87,7 +87,33 @@
     "user_ratings": {}
   },
 
-
+    {
+        "id": 194,
+        "title": "",
+        "series_title": "女神异闻录",
+        "season": "",
+        "aliases": [
+            "女神异闻录",
+            ""
+        ],
+        "description": "",
+        "recommend_text": ,
+        "image_url": "",
+        "rating": ,
+        "genre": [
+            "学校",
+            "战斗"
+        ],
+        "ratings": {
+            "神作": 0,
+            "好看": 0,
+            "普通": 0,
+            "无聊": 0,
+            "狗屎": 0,
+            "哲救世皇骗": 0
+        },
+        "user_ratings": {}
+    },
 {
         "id": ,
         "title": "",

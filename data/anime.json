@@ -247,7 +247,7 @@
                 "id": "1777118931095-obzjwn",
                 "userId": "游客",
                 "username": "游客",
-                "avatar": "/avatars/default.png",
+                "avatar": "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp",
                 "text": "xswl",
                 "date": "2026/4/25 14:00:31",
                 "replies": []
@@ -256,7 +256,7 @@
                 "id": "1777118931095-0ols37",
                 "userId": "游客",
                 "username": "游客",
-                "avatar": "/avatars/default.png",
+                "avatar": "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp",
                 "text": "哪里好笑了",
                 "date": "2026/4/25 14:00:50",
                 "replies": []
@@ -1991,7 +1991,7 @@
         ],
         "description": "故事以近未来被“无明领域”吞噬的东京为舞台，讲述8名少年少女驾驶“MA-Vess”机甲对抗异形“戒缚”，深入黑暗寻找光明与过往真相的剧情",
         "recommend_text": "普通-机架",
-        "image_url": "/images/普通/M3～黑钢～.png",
+        "image_url": "/images/普通/机架/M3～黑钢～.png",
         "rating": "普通",
         "genre": [
             "机架",
@@ -5579,15 +5579,16 @@
     },
     {
         "id": 191,
-        "title": " 泛而不精的我被逐出勇者队伍",
-        "series_title": " 泛而不精的我被逐出勇者队伍",
+        "title": "泛而不精的我被逐出勇者队伍",
+        "series_title": "泛而不精的我被逐出勇者队伍",
         "season": "2026-1",
         "aliases": [
-            " 泛而不精的我被逐出勇者队伍"
+            "泛而不精的我被逐出勇者队伍",
+            "泛而不精的我被逐出了勇者队伍~因为队伍需要成为赋予术士的原剑士，走向万能之路~"
         ],
         "description": "没意思,懒得看了,又是退伍,还没啥意思,大致就是退伍后当教员,带学生去地下城这样",
         "recommend_text": "无聊老套、浪费时间-异世界",
-        "image_url": "",
+        "image_url": "/images/异世界/无聊/泛而不精的我被逐出了勇者队伍.png",
         "rating": "屎",
         "genre": [
             "冒险",
@@ -5608,20 +5609,24 @@
         "user_ratings": {}
     },
     {
-        "id": ,
-        "title": "",
+        "id": 192,
+        "title": "女神异闻录 圣洁之魂",
         "series_title": "女神异闻录",
-        "season": "",
+        "season": "2008-1",
         "aliases": [
-            "女神异闻录"
+            "女神异闻录",
+            "女神异闻录 圣洁之魂",
+            "女神异闻录 ～圣洁之魂～"
         ],
-        "description": "",
-        "recommend_text": ,
-        "image_url": "",
-        "rating": ,
+        "description": "故事发生在从10年前发生了的“同时多发无气力症”的灾难中恢复的未来型新兴城市“绫风市”。相隔10年之久，高中生神乡慎与弟弟洵在绫风市遇到了担任绫风市警察署长的哥哥谅。  而这个时候，在绫风市正发生了各种各样的怪异事件。作为警察署长的神乡谅一直在追查着潜藏在这一连串怪异事件背后的神秘组织。而被卷入某件事件的神乡慎“Persona”能力和形态觉醒过来。兄弟们的命运的齿轮现在开始转动……  披着“女神异闻录”的皮，但其实剧情和“女神异闻录”没啥太大的关系，其实不仅是剧情，就连设定上都和“女神异闻录”有不小的出入，所以本作完全可以当成一部原创番来看待",
+        "recommend_text": "普通-机架",
+        "image_url": "/images/普通/机架/女神异闻录/女神异闻录-圣洁之魂.png",
+        "rating": "普通",
         "genre": [
             "学校",
-            "战斗"
+            "战斗",
+            "ntr",
+            "守护灵"
         ],
         "ratings": {
             "神作": 0,
@@ -5634,20 +5639,23 @@
         "user_ratings": {}
     },
     {
-        "id": ,
-        "title": "",
+        "id": 193,
+        "title": "女神异闻录4",
         "series_title": "女神异闻录",
-        "season": "",
+        "season": "2008-7",
         "aliases": [
-            "女神异闻录"
+            "女神异闻录",
+            "女神异闻录4",
+            "P4A"
         ],
-        "description": "",
-        "recommend_text": ,
-        "image_url": "",
-        "rating": ,
+        "description": "战胜自己,然后获得卡牌,获得同伴+1,最好一起打败最终boss,可喜可贺就这样,有点无聊",
+        "recommend_text": "无聊-战斗",
+        "image_url": "/images/普通/机架/女神异闻录/女神异闻录4.png",
+        "rating": "浪费时间",
         "genre": [
             "学校",
-            "战斗"
+            "战斗",
+            "卡牌"
         ],
         "ratings": {
             "神作": 0,
@@ -5658,31 +5666,5 @@
             "哲救世皇骗": 0
         },
         "user_ratings": {}
-    },
-    {
-        "id": ,
-        "title": "",
-        "series_title": "女神异闻录",
-        "season": "",
-        "aliases": [
-            "女神异闻录"
-        ],
-        "description": "",
-        "recommend_text": ,
-        "image_url": "",
-        "rating": ,
-        "genre": [
-            "学校",
-            "战斗"
-        ],
-        "ratings": {
-            "神作": 0,
-            "好看": 0,
-            "普通": 0,
-            "无聊": 0,
-            "狗屎": 0,
-            "哲救世皇骗": 0
-        },
-        "user_ratings": {}
-    },
+    }
 ]

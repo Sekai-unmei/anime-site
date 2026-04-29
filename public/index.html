@@ -460,7 +460,31 @@
             audio.onended = function () { window.location.href = '/logout'; };
             setTimeout(function () { if (!audio.ended) window.location.href = '/logout'; }, 3000);
         });
+        // 从服务器同步用户头像到本地和界面
+        async function syncUserAvatar() {
+            try {
+                const res = await fetch('/api/user/current', { credentials: 'include' });
+                if (res.ok) {
+                    const user = await res.json();
+                    if (user.avatar) {
+                        // 更新 localStorage
+                        let profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+                        profile.avatar = user.avatar;
+                        localStorage.setItem('user_profile', JSON.stringify(profile));
+                        // 更新头像图标
+                        const avatarIcon = document.getElementById('avatarIcon');
+                        if (avatarIcon) avatarIcon.src = user.avatar;
+                    }
+                }
+            } catch (e) {
+                console.warn('同步头像失败', e);
+            }
+        }
 
+        // 在页面加载完成后调用
+        setTimeout(() => {
+            syncUserAvatar();
+        }, 500);
         function updateAvatarIcon() {
             const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
             const avatar = profile.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
@@ -469,6 +493,7 @@
         }
         window.addEventListener('profileUpdated', () => updateAvatarIcon());
         updateAvatarIcon();
+
         // -------------------------- 通知系统与聊天 --------------------------
         let lastUnreadCount = 0;
         let pollInterval = null;

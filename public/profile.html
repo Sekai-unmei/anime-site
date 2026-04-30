@@ -124,7 +124,6 @@
             width: 100%;
         }
 
-        /* 名片卡片响应式 */
         .result-content>div[style*="background:#111"] {
             width: 90% !important;
             margin: 0 auto !important;
@@ -349,7 +348,6 @@
             transform: scale(1.02);
         }
 
-        /* 移动端操作提示 */
         .swipe-hint {
             position: fixed;
             bottom: 20px;
@@ -416,6 +414,7 @@
                 if (toast.parentNode) toast.remove();
             }, duration);
         }
+
         function loadProfile() {
             const defaultProfile = {
                 name: '', title: '', bio: '',
@@ -454,13 +453,13 @@
 
         profile = loadProfile();
 
+        // 从服务器强制同步用户信息（头像、用户名、简介）
         async function fetchCurrentAvatar() {
             try {
                 const res = await fetch('/api/user/current', { credentials: 'include' });
                 if (res.ok) {
                     const user = await res.json();
                     let needUpdate = false;
-                    // 同步所有字段
                     if (user.avatar && profile.avatar !== user.avatar) {
                         profile.avatar = user.avatar;
                         needUpdate = true;
@@ -473,17 +472,17 @@
                         profile.bio = user.bio;
                         needUpdate = true;
                     }
-                    // 还可能包括 title、planet 等，视需要添加
                     if (needUpdate) {
-                        saveProfile(profile);  // 更新 localStorage 并触发事件
+                        saveProfile(profile);
                         renderResultPanel();
-                        // 刷新外观设置模态框里的头像预览（如果打开）
+                        // 如果当前正在显示外观设置模态框，也更新头像预览
                         const avatarPreview = document.getElementById('avatarPreview');
                         if (avatarPreview) avatarPreview.src = profile.avatar;
                     }
                 }
             } catch (e) { console.warn('获取服务器用户信息失败', e); }
         }
+
         let currentCropModal = null;
 
         function uploadAvatar() {
@@ -503,10 +502,10 @@
             };
             input.click();
         }
+
         function showCropModal(img) {
             if (currentCropModal) return;
 
-            // 全屏容器
             const modalDiv = document.createElement('div');
             modalDiv.style.cssText = `
         position: fixed;
@@ -516,7 +515,6 @@
         overflow: hidden;
     `;
 
-            // 模糊背景图（铺满）
             const bgImg = document.createElement('img');
             bgImg.src = img.src;
             bgImg.style.cssText = `
@@ -531,7 +529,6 @@
     `;
             modalDiv.appendChild(bgImg);
 
-            // 清晰图层（只显示在圆圈内）
             const clearImg = document.createElement('img');
             clearImg.src = img.src;
             clearImg.style.cssText = `
@@ -546,7 +543,6 @@
     `;
             modalDiv.appendChild(clearImg);
 
-            // 圆圈框
             const circleDiv = document.createElement('div');
             circleDiv.style.cssText = `
         position:absolute;
@@ -561,7 +557,6 @@
     `;
             modalDiv.appendChild(circleDiv);
 
-            // 按钮面板
             const dragPanel = document.createElement('div');
             dragPanel.style.cssText = `
         position:fixed;
@@ -608,17 +603,14 @@
             let circleLeft = 0;
             let circleTop = 0;
 
-            // 更新清晰区域
             function updateClip() {
                 const cx = circleLeft + circleSize / 2;
                 const cy = circleTop + circleSize / 2;
                 const r = circleSize / 2;
-
                 clearImg.style.clipPath = `circle(${r}px at ${cx}px ${cy}px)`;
                 clearImg.style.webkitClipPath = `circle(${r}px at ${cx}px ${cy}px)`;
             }
 
-            // 更新圆圈
             function updateCircle() {
                 const rect = modalDiv.getBoundingClientRect();
                 containerWidth = rect.width;
@@ -642,7 +634,6 @@
                 updateClip();
             }
 
-            // ---------- 圆圈拖拽 ----------
             let draggingCircle = false;
             let startX = 0;
             let startY = 0;
@@ -663,10 +654,8 @@
             function circleDown(e) {
                 e.preventDefault();
                 draggingCircle = true;
-
                 const p = getPoint(e);
                 const rect = circleDiv.getBoundingClientRect();
-
                 startX = p.x - rect.left;
                 startY = p.y - rect.top;
             }
@@ -674,18 +663,13 @@
             function circleMove(e) {
                 if (!draggingCircle) return;
                 e.preventDefault();
-
                 const p = getPoint(e);
-
                 circleLeft = p.x - startX;
                 circleTop = p.y - startY;
-
                 circleLeft = Math.max(0, Math.min(circleLeft, containerWidth - circleSize));
                 circleTop = Math.max(0, Math.min(circleTop, containerHeight - circleSize));
-
                 circleDiv.style.left = circleLeft + 'px';
                 circleDiv.style.top = circleTop + 'px';
-
                 updateClip();
             }
 
@@ -702,7 +686,6 @@
             window.addEventListener('mouseup', circleUp);
             window.addEventListener('touchend', circleUp);
 
-            // ---------- 面板位置 ----------
             function updatePanel() {
                 dragPanel.style.left = (containerWidth - 230) + 'px';
                 dragPanel.style.top = (containerHeight - 90) + 'px';
@@ -718,21 +701,15 @@
             updateCircle();
             updatePanel();
 
-            // ---------- 确认裁剪 ----------
             confirmBtn.onclick = async () => {
                 const bgRect = bgImg.getBoundingClientRect();
-
                 const imgW = img.width;
                 const imgH = img.height;
-
                 const scale = Math.max(bgRect.width / imgW, bgRect.height / imgH);
-
                 const drawW = imgW * scale;
                 const drawH = imgH * scale;
-
                 const offsetX = (bgRect.width - drawW) / 2;
                 const offsetY = (bgRect.height - drawH) / 2;
-
                 const srcX = (circleLeft - offsetX) / scale;
                 const srcY = (circleTop - offsetY) / scale;
                 const srcSize = circleSize / scale;
@@ -742,18 +719,15 @@
                 finalCanvas.height = 400;
 
                 const ctx = finalCanvas.getContext('2d');
-
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(200, 200, 200, 0, Math.PI * 2);
                 ctx.clip();
-
                 ctx.drawImage(
                     img,
                     srcX, srcY, srcSize, srcSize,
                     0, 0, 400, 400
                 );
-
                 ctx.restore();
 
                 finalCanvas.toBlob(async (blob) => {
@@ -766,20 +740,22 @@
                             credentials: 'include',
                             body: formData
                         });
-                        // 在 fetch 成功后，更新头像预览
-                        const avatarPreview = document.getElementById('avatarPreview');
-                        if (avatarPreview) avatarPreview.src = data.avatarUrl;
                         const data = await res.json();
-
                         if (data.success) {
                             profile.avatar = data.avatarUrl;
                             saveProfile({ avatar: data.avatarUrl });
                             showToast('头像更新成功');
-                            renderResultPanel();
+                            // 刷新外观设置模态框中的头像预览
+                            const avatarPreview = document.getElementById('avatarPreview');
+                            if (avatarPreview) avatarPreview.src = data.avatarUrl;
+                            // 如果当前在名片页面，重新渲染名片
+                            if (navItems[currentIndex] === '名片') renderResultPanel();
+                            // 同步更新左下角（如果 profile.html 中有头像显示）
+                            const avatarIcon = document.getElementById('avatarIcon');
+                            if (avatarIcon) avatarIcon.src = data.avatarUrl;
                         } else {
                             showToast('上传失败');
                         }
-
                     } catch (err) {
                         showToast('网络错误');
                     } finally {
@@ -787,11 +763,9 @@
                         currentCropModal = null;
                         resizeObserver.disconnect();
                     }
-
                 }, 'image/png');
             };
 
-            // ---------- 取消 ----------
             cancelBtn.onclick = () => {
                 modalDiv.remove();
                 currentCropModal = null;
@@ -1010,7 +984,6 @@
         function initCanvasEvents() {
             canvas.addEventListener('click', onCanvasClick);
             canvas.addEventListener('wheel', onWheel);
-            // 添加触摸滑动支持
             let touchStartY = 0;
             canvas.addEventListener('touchstart', (e) => {
                 touchStartY = e.touches[0].clientY;
@@ -1020,7 +993,6 @@
                 e.preventDefault();
                 const deltaY = touchStartY - e.touches[0].clientY;
                 if (Math.abs(deltaY) > 20) {
-                    // 模拟滚轮事件
                     const fakeEvent = { deltaY: deltaY > 0 ? 100 : -100, preventDefault: () => { } };
                     onWheel(fakeEvent);
                     touchStartY = e.touches[0].clientY;
@@ -1139,6 +1111,7 @@
                 setTimeout(() => p.remove(), 1500);
             }
         }
+
         function renderResultPanel() {
             const panel = document.getElementById('resultPanel');
             const item = navItems[currentIndex];
@@ -1178,10 +1151,9 @@
             margin: 20px auto;
             display: block;
         `;
-                        btn.onclick = () => showFullscreenCard();  // 复用全屏名片函数
+                        btn.onclick = () => showFullscreenCard();
                         contentDiv.appendChild(btn);
                     } else {
-                        // 大屏幕原有卡片显示（但为了统一，也可以直接显示全屏名片按钮，但卡片更直观）
                         const locationStr = [profile.planet, profile.country, profile.region].filter(s => s).join(' · ') || '未填写';
                         contentDiv.innerHTML = `
             <div style="background:#111; border-radius:20px; padding:20px; max-width:90vw; width:auto; margin:0 auto; text-align:center; border:1px solid ${profile.avatarBorderColor}; word-break:break-word;">
@@ -1204,7 +1176,6 @@
         }
 
         function showFullscreenCard() {
-            // 创建全屏遮罩
             const modal = document.createElement('div');
             modal.style.cssText = `
         position: fixed;
@@ -1220,8 +1191,6 @@
         align-items: center;
         backdrop-filter: blur(5px);
     `;
-
-            // 名片内容容器
             const cardContainer = document.createElement('div');
             cardContainer.style.cssText = `
         background: #1a1a1a;
@@ -1233,7 +1202,6 @@
         border: 2px solid ${profile.avatarBorderColor};
         box-shadow: 0 0 30px rgba(0,0,0,0.5);
     `;
-
             const locationStr = [profile.planet, profile.country, profile.region].filter(s => s).join(' · ') || '未填写';
             cardContainer.innerHTML = `
         <img src="${profile.avatar}" style="width:120px; height:120px; border-radius:50%; border:3px solid ${profile.avatarBorderColor}; margin-bottom:20px; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
@@ -1242,8 +1210,6 @@
         <p style="color:${profile.bioColor}; margin:8px 0; font-size:1rem; line-height:1.4;">简介：${profile.bio || '未填写'}</p>
         <p style="color:#aaa; margin:8px 0;">位置：${locationStr}</p>
     `;
-
-            // 左下角返回按钮
             const backBtn = document.createElement('button');
             backBtn.textContent = '← 返回';
             backBtn.style.cssText = `
@@ -1261,12 +1227,9 @@
         backdrop-filter: blur(5px);
     `;
             backBtn.addEventListener('click', () => modal.remove());
-
             modal.appendChild(cardContainer);
             modal.appendChild(backBtn);
             document.body.appendChild(modal);
-
-            // 点击模态框背景关闭（可选）
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) modal.remove();
             });
@@ -1282,7 +1245,6 @@
         }
 
         function showMainUI() {
-            // 显示滑动提示（仅第一次）
             if (!localStorage.getItem('swipeHintShown')) {
                 const hint = document.createElement('div');
                 hint.className = 'swipe-hint';
@@ -1307,7 +1269,7 @@
             resizeCanvas();
             initCanvasEvents();
             renderResultPanel();
-            fetchCurrentAvatar();
+            fetchCurrentAvatar();  // 从服务器同步最新头像等信息
             exitAudio = new Audio('/audio/形象设置-退出.m4a');
             exitAudio.load();
         }

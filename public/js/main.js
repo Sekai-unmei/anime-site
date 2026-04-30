@@ -229,11 +229,19 @@ async function fetchWeatherData(lat, lon) {
         const g = await gRes.json();
         const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
         const locationParts = [profile.planet, profile.country, profile.region].filter(p => p && p.trim());
+
+        // 优先显示真实地理位置（真实地址不受用户自定义干扰）
+        const realLocation = `地球 · ${g.countryName} · ${g.city || g.locality || '未知地点'}`;
+
         if (locationParts.length === 0) {
-            // 只有未自定义位置时，才显示真实地理位置
-            document.getElementById('geo-display').innerText = `地球 · ${g.countryName} · ${g.city || g.locality}`;
+            // 没有自定义位置时显示真实地址
+            document.getElementById('geo-display').innerText = realLocation;
+        } else {
+            // 有自定义位置时，同时显示真实地址和自定义位置（可让用户对比）
+            document.getElementById('geo-display').innerText = `${realLocation} (自定义: ${locationParts.join(' · ')})`;
         }
-        // 天气数据获取不受影响
+
+        // 天气数据获取不变
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,cloud_cover&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
         const wRes = await fetch(url);
         const w = await wRes.json();

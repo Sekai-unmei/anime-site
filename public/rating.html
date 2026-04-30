@@ -90,10 +90,6 @@
             display: inline-block;
         }
 
-        .rating-badge span {
-            color: #ffd700;
-        }
-
         .no-data {
             text-align: center;
             color: #888;
@@ -116,6 +112,7 @@
                 const res = await fetch('/api/anime/ratings-stats');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const allStats = await res.json();
+                // 只显示有票数的动漫（totalVotes > 0）
                 const stats = allStats.filter(anime => anime.totalVotes > 0);
                 const container = document.getElementById('rating-list');
                 if (!stats.length) {
@@ -123,6 +120,7 @@
                     return;
                 }
                 container.innerHTML = '';
+                // ✅ 遍历所有符合条件的动漫，为每一个创建卡片
                 stats.forEach(anime => {
                     const ratings = anime.ratings;
                     const totalVotes = anime.totalVotes;

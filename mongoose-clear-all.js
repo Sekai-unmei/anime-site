@@ -11,6 +11,7 @@ const voteSchema = new mongoose.Schema({
 });
 const Vote = mongoose.model('Vote', voteSchema);
 
+
 // 定义 Anime 模型
 const animeSchema = new mongoose.Schema({}, { strict: false, collection: 'animes' });
 const Anime = mongoose.model('Anime', animeSchema);

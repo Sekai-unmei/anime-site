@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <title>观测结果 - 动漫资料库</title>
     <style>
-        /* 样式保持不变，你原来的样式即可 */
         body {
             margin: 0;
             background: #0a0a0a;
@@ -63,6 +62,7 @@
             overflow: hidden;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
         }
 
         .anime-card:hover {
@@ -93,6 +93,16 @@
             line-height: 1.4;
         }
 
+        .rating-mark {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
         .tooltip {
             position: absolute;
             background: rgba(0, 0, 0, 0.9);
@@ -109,26 +119,6 @@
 
         .tooltip.show {
             opacity: 1;
-        }
-
-        .tooltip-title {
-            font-size: 1rem;
-            font-weight: bold;
-            margin-bottom: 6px;
-            text-align: center;
-            color: #ffd700;
-        }
-
-        .tooltip-desc {
-            font-size: 0.8rem;
-            color: #ccc;
-            margin-bottom: 8px;
-        }
-
-        .tooltip-recommend {
-            font-size: 0.8rem;
-            color: #ffaa66;
-            text-align: right;
         }
 
         .no-result {
@@ -151,7 +141,6 @@
     <div id="tooltip" class="tooltip"></div>
 
     <script>
-        // ========== 全局独立评分映射 ==========
         let userRatingMap = new Map();
         const tooltip = document.getElementById('tooltip');
         let hideTimeout = null;
@@ -229,17 +218,17 @@
             for (const anime of animes) {
                 const animeIdNum = Number(anime.id);
                 const userRating = userRatingMap.get(animeIdNum) || null;
-                let ratingMark = '';
+                let ratingMarkHtml = '';
                 if (userRating) {
                     const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
-                    ratingMark = `<span style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 20px; font-size: 12px;">${ratingMap[userRating] || '✓'}</span>`;
+                    ratingMarkHtml = `<div class="rating-mark">${ratingMap[userRating] || '✓'}</div>`;
                 }
                 const card = document.createElement('div');
                 card.className = 'anime-card';
                 card.innerHTML = `
                     <div style="position: relative;">
                         <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
-                        ${ratingMark}
+                        ${ratingMarkHtml}
                     </div>
                     <div class="anime-info">
                         <div class="anime-title">${truncate(anime.title, 10)}</div>
@@ -274,9 +263,9 @@
             const shortDesc = truncate(img.getAttribute('data-desc'), 30);
             const recommend = img.getAttribute('data-recommend');
             tooltip.innerHTML = `
-                <div class="tooltip-title">${shortTitle}</div>
-                <div class="tooltip-desc">${shortDesc}</div>
-                <div class="tooltip-recommend">推荐指数：${recommend}</div>
+                <div class="tooltip-title" style="font-size:1rem; font-weight:bold; margin-bottom:6px; text-align:center; color:#ffd700;">${shortTitle}</div>
+                <div class="tooltip-desc" style="font-size:0.8rem; color:#ccc; margin-bottom:8px;">${shortDesc}</div>
+                <div class="tooltip-recommend" style="font-size:0.8rem; color:#ffaa66; text-align:right;">推荐指数：${recommend}</div>
             `;
             tooltip.style.visibility = 'hidden';
             tooltip.classList.add('show');

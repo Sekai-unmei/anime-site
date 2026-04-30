@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>站长推荐 - 动漫资料库</title>
     <style>
-        /* 样式保持不变，你原来的样式即可 */
+        /* 样式保持不变，可保留原有样式 */
         body {
             margin: 0;
             background: #0a0a0a;
@@ -87,6 +87,7 @@
             overflow: hidden;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
         }
 
         .anime-card:hover {
@@ -117,6 +118,17 @@
             line-height: 1.4;
         }
 
+        .rating-mark {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 2;
+        }
+
         .tooltip {
             position: absolute;
             background: rgba(0, 0, 0, 0.9);
@@ -133,26 +145,6 @@
 
         .tooltip.show {
             opacity: 1;
-        }
-
-        .tooltip-title {
-            font-size: 1rem;
-            font-weight: bold;
-            margin-bottom: 6px;
-            text-align: center;
-            color: #ffd700;
-        }
-
-        .tooltip-desc {
-            font-size: 0.8rem;
-            color: #ccc;
-            margin-bottom: 8px;
-        }
-
-        .tooltip-recommend {
-            font-size: 0.8rem;
-            color: #ffaa66;
-            text-align: right;
         }
 
         .circle-buttons {
@@ -178,12 +170,6 @@
             text-decoration: none;
             color: #ffd700;
             font-weight: bold;
-        }
-
-        .circle-btn:hover {
-            transform: scale(1.05);
-            background: rgba(255, 215, 0, 0.2);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
         }
 
         .back-home {
@@ -265,8 +251,8 @@
     <div id="tooltip" class="tooltip"></div>
 
     <script>
-        // ========== 全局独立评分映射 ==========
-        let userRatingMap = new Map();  // key = 数字 animeId，value = 评分类型
+        // 独立评分映射（全局，但只用于存储，不用于跨卡片共享状态）
+        let userRatingMap = new Map();
         let allAnime = [];
         let searchKeyword = '';
         let godParticleInterval = null;
@@ -299,14 +285,12 @@
             return str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
         }
 
-        // 获取所有动漫（用于搜索）
         async function loadAllAnime() {
             const res = await fetch('/api/anime/list?page=1&limit=1000');
             const data = await res.json();
             allAnime = data.data;
         }
 
-        // 根据评分等级获取动漫列表
         async function fetchAnimeByRating(rating, limit = 8) {
             const url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=${limit}`;
             const res = await fetch(url);
@@ -314,7 +298,18 @@
             return data.data.filter(anime => anime.rating === rating);
         }
 
-        // 核心渲染函数（使用 data-* 属性避免闭包问题）
+        async function loadRecommendations() {
+            await loadUserRatings(); // 先获取评分映射
+            const godList = await fetchAnimeByRating('神作', 8);
+            renderAnime(godList, 'god-anime-list');
+            const goodList = await fetchAnimeByRating('好看', 8);
+            renderAnime(goodList, 'good-anime-list');
+            const midList = await fetchAnimeByRating('神作之下-好看之上', 8);
+            renderAnime(midList, 'mid-anime-list');
+            startGodParticles();
+        }
+
+        // 渲染动漫列表（独立使用 userRatingMap）
         function renderAnime(animes, containerId) {
             const container = document.getElementById(containerId);
             if (!container) return;
@@ -322,17 +317,17 @@
             for (const anime of animes) {
                 const animeIdNum = Number(anime.id);
                 const userRating = userRatingMap.get(animeIdNum) || null;
-                let ratingMark = '';
+                let ratingMarkHtml = '';
                 if (userRating) {
                     const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
-                    ratingMark = `<span style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 20px; font-size: 12px;">${ratingMap[userRating] || '✓'}</span>`;
+                    ratingMarkHtml = `<div class="rating-mark">${ratingMap[userRating] || '✓'}</div>`;
                 }
                 const card = document.createElement('div');
                 card.className = 'anime-card';
                 card.innerHTML = `
                     <div style="position: relative;">
                         <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
-                        ${ratingMark}
+                        ${ratingMarkHtml}
                     </div>
                     <div class="anime-info">
                         <div class="anime-title">${truncate(anime.title, 10)}</div>
@@ -340,11 +335,10 @@
                     </div>
                 `;
                 const img = card.querySelector('img');
-                // 使用 data-* 属性存储动漫信息，避免闭包捕获错误变量
+                // 存储数据到 img 元素，用于 tooltip
                 img.setAttribute('data-title', anime.title);
                 img.setAttribute('data-desc', anime.description || '');
                 img.setAttribute('data-recommend', anime.recommend_text || '暂无');
-                // 事件监听直接绑定函数，函数内部从 img 元素读取属性
                 img.addEventListener('mouseenter', showTooltip);
                 img.addEventListener('mouseleave', () => {
                     hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300);
@@ -361,7 +355,6 @@
             }
         }
 
-        // 独立的 tooltip 显示函数（从事件目标读取数据）
         function showTooltip(event) {
             clearTimeout(hideTimeout);
             const img = event.currentTarget;
@@ -370,9 +363,9 @@
             const shortDesc = truncate(img.getAttribute('data-desc'), 30);
             const recommend = img.getAttribute('data-recommend');
             tooltip.innerHTML = `
-                <div class="tooltip-title">${shortTitle}</div>
-                <div class="tooltip-desc">${shortDesc}</div>
-                <div class="tooltip-recommend">推荐指数：${recommend}</div>
+                <div style="font-size:1rem; font-weight:bold; margin-bottom:6px; text-align:center; color:#ffd700;">${shortTitle}</div>
+                <div style="font-size:0.8rem; color:#ccc; margin-bottom:8px;">${shortDesc}</div>
+                <div style="font-size:0.8rem; color:#ffaa66; text-align:right;">推荐指数：${recommend}</div>
             `;
             tooltip.style.visibility = 'hidden';
             tooltip.classList.add('show');
@@ -401,18 +394,6 @@
             tooltip.style.visibility = 'visible';
         }
 
-        // 加载推荐页所有内容
-        async function loadRecommendations() {
-            await loadUserRatings(); // 先获取用户评分映射
-            const godList = await fetchAnimeByRating('神作', 8);
-            renderAnime(godList, 'god-anime-list');
-            const goodList = await fetchAnimeByRating('好看', 8);
-            renderAnime(goodList, 'good-anime-list');
-            const midList = await fetchAnimeByRating('神作之下-好看之上', 8);
-            renderAnime(midList, 'mid-anime-list');
-            startGodParticles();
-        }
-
         function startGodParticles() {
             if (godParticleInterval) clearInterval(godParticleInterval);
             const title = document.getElementById('god-title');
@@ -431,7 +412,6 @@
             }, 800);
         }
 
-        // 搜索功能
         function performSearch() {
             const keyword = searchKeyword.trim().toLowerCase();
             const searchResultDiv = document.getElementById('search-result');
@@ -453,17 +433,17 @@
                 filtered.forEach(anime => {
                     const animeIdNum = Number(anime.id);
                     const userRating = userRatingMap.get(animeIdNum) || null;
-                    let ratingMark = '';
+                    let ratingMarkHtml = '';
                     if (userRating) {
                         const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
-                        ratingMark = `<span style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 20px; font-size: 12px;">${ratingMap[userRating] || '✓'}</span>`;
+                        ratingMarkHtml = `<div class="rating-mark">${ratingMap[userRating] || '✓'}</div>`;
                     }
                     const card = document.createElement('div');
                     card.className = 'anime-card';
                     card.innerHTML = `
                         <div style="position: relative;">
                             <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
-                            ${ratingMark}
+                            ${ratingMarkHtml}
                         </div>
                         <div class="anime-info">
                             <div class="anime-title">${truncate(anime.title, 10)}</div>
@@ -490,21 +470,18 @@
             searchResultDiv.style.display = 'block';
         }
 
-        // 搜索输入监听
         document.getElementById('search-input')?.addEventListener('input', (e) => {
             searchKeyword = e.target.value;
             performSearch();
         });
 
-        // 初始化
+        tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+        tooltip.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+
         (async () => {
             await loadAllAnime();
             await loadRecommendations();
         })();
-
-        // 全局 tooltip 隐藏辅助
-        tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
-        tooltip.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
     </script>
 </body>
 

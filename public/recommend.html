@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>站长推荐 - 动漫资料库</title>
     <style>
-        /* 样式保持不变，省略... 你原来的样式即可 */
+        /* 样式保持不变，你原来的样式即可 */
         body {
             margin: 0;
             background: #0a0a0a;
@@ -265,11 +265,15 @@
     <div id="tooltip" class="tooltip"></div>
 
     <script>
-        let godParticleInterval = null;
-        let searchKeyword = '';
+        // ========== 全局独立评分映射 ==========
+        let userRatingMap = new Map();  // key = 数字 animeId，value = 评分类型
         let allAnime = [];
-        let userRatingMap = new Map(); // 独立评分映射
+        let searchKeyword = '';
+        let godParticleInterval = null;
+        const tooltip = document.getElementById('tooltip');
+        let hideTimeout = null;
 
+        // 从服务器获取当前用户的所有评分（独立映射）
         async function loadUserRatings() {
             try {
                 const res = await fetch('/api/user/ratings', { credentials: 'include' });
@@ -282,6 +286,8 @@
                         }
                     });
                     console.log('✅ 已加载用户评分映射:', [...userRatingMap.entries()]);
+                } else {
+                    console.warn('获取用户评分失败');
                 }
             } catch (e) {
                 console.error('加载用户评分失败', e);
@@ -293,12 +299,14 @@
             return str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
         }
 
+        // 获取所有动漫（用于搜索）
         async function loadAllAnime() {
             const res = await fetch('/api/anime/list?page=1&limit=1000');
             const data = await res.json();
             allAnime = data.data;
         }
 
+        // 根据评分等级获取动漫列表
         async function fetchAnimeByRating(rating, limit = 8) {
             const url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=${limit}`;
             const res = await fetch(url);
@@ -306,17 +314,7 @@
             return data.data.filter(anime => anime.rating === rating);
         }
 
-        async function loadRecommendations() {
-            await loadUserRatings(); // 获取最新评分映射
-            const godList = await fetchAnimeByRating('神作', 8);
-            renderAnime(godList, 'god-anime-list');
-            const goodList = await fetchAnimeByRating('好看', 8);
-            renderAnime(goodList, 'good-anime-list');
-            const midList = await fetchAnimeByRating('神作之下-好看之上', 8);
-            renderAnime(midList, 'mid-anime-list');
-            startGodParticles();
-        }
-
+        // 核心渲染函数（使用 data-* 属性避免闭包问题）
         function renderAnime(animes, containerId) {
             const container = document.getElementById(containerId);
             if (!container) return;
@@ -342,6 +340,15 @@
                     </div>
                 `;
                 const img = card.querySelector('img');
+                // 使用 data-* 属性存储动漫信息，避免闭包捕获错误变量
+                img.setAttribute('data-title', anime.title);
+                img.setAttribute('data-desc', anime.description || '');
+                img.setAttribute('data-recommend', anime.recommend_text || '暂无');
+                // 事件监听直接绑定函数，函数内部从 img 元素读取属性
+                img.addEventListener('mouseenter', showTooltip);
+                img.addEventListener('mouseleave', () => {
+                    hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300);
+                });
                 const docId = anime._id;
                 if (docId) {
                     card.addEventListener('click', () => {
@@ -350,42 +357,22 @@
                 } else {
                     card.style.cursor = 'not-allowed';
                 }
-                img.addEventListener('mouseenter', (e) => showTooltip(e, anime));
-                img.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300); });
                 container.appendChild(card);
             }
         }
 
-        function startGodParticles() {
-            if (godParticleInterval) clearInterval(godParticleInterval);
-            const title = document.getElementById('god-title');
-            if (!title) return;
-            godParticleInterval = setInterval(() => {
-                const rect = title.getBoundingClientRect();
-                for (let i = 0; i < 5; i++) {
-                    const particle = document.createElement('div');
-                    particle.className = 'god-particle';
-                    particle.style.left = rect.left + Math.random() * rect.width + 'px';
-                    particle.style.top = rect.top + Math.random() * rect.height + 'px';
-                    particle.style.background = `hsl(${200 + Math.random() * 40}, 100%, 60%)`;
-                    document.body.appendChild(particle);
-                    setTimeout(() => particle.remove(), 2000);
-                }
-            }, 800);
-        }
-
-        const tooltip = document.getElementById('tooltip');
-        let hideTimeout = null;
-
-        function showTooltip(event, anime) {
+        // 独立的 tooltip 显示函数（从事件目标读取数据）
+        function showTooltip(event) {
             clearTimeout(hideTimeout);
-            const rect = event.target.getBoundingClientRect();
-            const shortTitle = truncate(anime.title, 10);
-            const shortDesc = truncate(anime.description || '', 30);
+            const img = event.currentTarget;
+            const rect = img.getBoundingClientRect();
+            const shortTitle = truncate(img.getAttribute('data-title'), 10);
+            const shortDesc = truncate(img.getAttribute('data-desc'), 30);
+            const recommend = img.getAttribute('data-recommend');
             tooltip.innerHTML = `
                 <div class="tooltip-title">${shortTitle}</div>
                 <div class="tooltip-desc">${shortDesc}</div>
-                <div class="tooltip-recommend">推荐指数：${anime.recommend_text || '暂无'}</div>
+                <div class="tooltip-recommend">推荐指数：${recommend}</div>
             `;
             tooltip.style.visibility = 'hidden';
             tooltip.classList.add('show');
@@ -414,9 +401,37 @@
             tooltip.style.visibility = 'visible';
         }
 
-        tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
-        tooltip.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+        // 加载推荐页所有内容
+        async function loadRecommendations() {
+            await loadUserRatings(); // 先获取用户评分映射
+            const godList = await fetchAnimeByRating('神作', 8);
+            renderAnime(godList, 'god-anime-list');
+            const goodList = await fetchAnimeByRating('好看', 8);
+            renderAnime(goodList, 'good-anime-list');
+            const midList = await fetchAnimeByRating('神作之下-好看之上', 8);
+            renderAnime(midList, 'mid-anime-list');
+            startGodParticles();
+        }
 
+        function startGodParticles() {
+            if (godParticleInterval) clearInterval(godParticleInterval);
+            const title = document.getElementById('god-title');
+            if (!title) return;
+            godParticleInterval = setInterval(() => {
+                const rect = title.getBoundingClientRect();
+                for (let i = 0; i < 5; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'god-particle';
+                    particle.style.left = rect.left + Math.random() * rect.width + 'px';
+                    particle.style.top = rect.top + Math.random() * rect.height + 'px';
+                    particle.style.background = `hsl(${200 + Math.random() * 40}, 100%, 60%)`;
+                    document.body.appendChild(particle);
+                    setTimeout(() => particle.remove(), 2000);
+                }
+            }, 800);
+        }
+
+        // 搜索功能
         function performSearch() {
             const keyword = searchKeyword.trim().toLowerCase();
             const searchResultDiv = document.getElementById('search-result');
@@ -455,6 +470,14 @@
                             <div class="anime-desc">${truncate(anime.description || '', 30)}</div>
                         </div>
                     `;
+                    const img = card.querySelector('img');
+                    img.setAttribute('data-title', anime.title);
+                    img.setAttribute('data-desc', anime.description || '');
+                    img.setAttribute('data-recommend', anime.recommend_text || '暂无');
+                    img.addEventListener('mouseenter', showTooltip);
+                    img.addEventListener('mouseleave', () => {
+                        hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300);
+                    });
                     const docId = anime._id;
                     if (docId) {
                         card.addEventListener('click', () => {
@@ -467,15 +490,21 @@
             searchResultDiv.style.display = 'block';
         }
 
+        // 搜索输入监听
         document.getElementById('search-input')?.addEventListener('input', (e) => {
             searchKeyword = e.target.value;
             performSearch();
         });
 
+        // 初始化
         (async () => {
             await loadAllAnime();
             await loadRecommendations();
         })();
+
+        // 全局 tooltip 隐藏辅助
+        tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+        tooltip.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
     </script>
 </body>
 

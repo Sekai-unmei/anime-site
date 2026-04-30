@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <title>观测结果 - 动漫资料库</title>
     <style>
-        /* 样式保持不变，省略... 你原来的样式即可 */
+        /* 样式保持不变，你原来的样式即可 */
         body {
             margin: 0;
             background: #0a0a0a;
@@ -151,12 +151,11 @@
     <div id="tooltip" class="tooltip"></div>
 
     <script>
-        // ========== 全局状态（完全独立，不相互污染） ==========
+        // ========== 全局独立评分映射 ==========
+        let userRatingMap = new Map();
         const tooltip = document.getElementById('tooltip');
         let hideTimeout = null;
-        let userRatingMap = new Map(); // 关键：存储每个动漫的独立评分
 
-        // 获取当前用户的所有评分（每次渲染前都重新获取，保证最新）
         async function loadUserRatings() {
             try {
                 const res = await fetch('/api/user/ratings', { credentials: 'include' });
@@ -169,12 +168,8 @@
                         }
                     });
                     console.log('✅ 已加载用户评分映射:', [...userRatingMap.entries()]);
-                } else {
-                    console.warn('获取用户评分失败');
                 }
-            } catch (e) {
-                console.error('加载用户评分出错', e);
-            }
+            } catch (e) { console.error('加载用户评分失败', e); }
         }
 
         function truncate(str, maxLen) {
@@ -187,7 +182,6 @@
         const tag = urlParams.get('tag') || '';
         const year = urlParams.get('year') || '';
         const month = urlParams.get('month') || '';
-
         let summary = '';
         if (keyword) summary += `搜索: ${keyword} `;
         if (tag) summary += `类型: ${tag} `;
@@ -212,8 +206,7 @@
                 const res = await fetch(url);
                 const data = await res.json();
 
-                // 每次渲染前都重新获取用户评分（确保最新，并且不依赖后端返回的 currentUserRating）
-                await loadUserRatings();
+                await loadUserRatings(); // 每次渲染前获取最新评分映射
 
                 if (data.data.length === 0) {
                     document.getElementById('no-result').style.display = 'block';
@@ -234,16 +227,13 @@
             const container = document.getElementById('anime-grid');
             container.innerHTML = '';
             for (const anime of animes) {
-                // 关键：使用数字 id 从 Map 中获取评分，每个动漫独立
                 const animeIdNum = Number(anime.id);
                 const userRating = userRatingMap.get(animeIdNum) || null;
-
                 let ratingMark = '';
                 if (userRating) {
                     const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
                     ratingMark = `<span style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 20px; font-size: 12px;">${ratingMap[userRating] || '✓'}</span>`;
                 }
-
                 const card = document.createElement('div');
                 card.className = 'anime-card';
                 card.innerHTML = `
@@ -257,6 +247,13 @@
                     </div>
                 `;
                 const img = card.querySelector('img');
+                img.setAttribute('data-title', anime.title);
+                img.setAttribute('data-desc', anime.description || '');
+                img.setAttribute('data-recommend', anime.recommend_text || '暂无');
+                img.addEventListener('mouseenter', showTooltip);
+                img.addEventListener('mouseleave', () => {
+                    hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300);
+                });
                 const docId = anime._id;
                 if (docId) {
                     card.addEventListener('click', () => {
@@ -265,21 +262,21 @@
                 } else {
                     card.style.cursor = 'not-allowed';
                 }
-                img.addEventListener('mouseenter', (e) => showTooltip(e, anime));
-                img.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300); });
                 container.appendChild(card);
             }
         }
 
-        function showTooltip(event, anime) {
+        function showTooltip(event) {
             clearTimeout(hideTimeout);
-            const rect = event.target.getBoundingClientRect();
-            const shortTitle = truncate(anime.title, 10);
-            const shortDesc = truncate(anime.description || '', 30);
+            const img = event.currentTarget;
+            const rect = img.getBoundingClientRect();
+            const shortTitle = truncate(img.getAttribute('data-title'), 10);
+            const shortDesc = truncate(img.getAttribute('data-desc'), 30);
+            const recommend = img.getAttribute('data-recommend');
             tooltip.innerHTML = `
                 <div class="tooltip-title">${shortTitle}</div>
                 <div class="tooltip-desc">${shortDesc}</div>
-                <div class="tooltip-recommend">推荐指数：${anime.recommend_text || '暂无'}</div>
+                <div class="tooltip-recommend">推荐指数：${recommend}</div>
             `;
             tooltip.style.visibility = 'hidden';
             tooltip.classList.add('show');

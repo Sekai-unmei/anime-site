@@ -417,6 +417,440 @@
         }
     </style>
 </head>
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>动漫详情 - 资料库</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0a0a0a;
+            color: #fff;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #ffd700;
+            text-decoration: none;
+            border: 1px solid #ffd700;
+            padding: 8px 20px;
+            border-radius: 30px;
+            transition: 0.3s;
+        }
+
+        .back-link:hover {
+            background: #ffd700;
+            color: #000;
+        }
+
+        .anime-detail img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .title {
+            font-size: 2rem;
+            margin: 20px 0;
+            color: #ffd700;
+        }
+
+        .description {
+            line-height: 1.6;
+            color: #ccc;
+            white-space: pre-wrap;
+        }
+
+        .info {
+            margin-top: 20px;
+            color: #aaa;
+        }
+
+        .info span {
+            color: #ffd700;
+        }
+
+        .rating-section {
+            margin: 30px 0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .rating-btn {
+            background: #222;
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .rating-btn.active {
+            background: #ffd700;
+            color: #000;
+            box-shadow: 0 0 15px #ffd700;
+        }
+
+        .rating-btn:hover {
+            background: #ffd700;
+            color: #000;
+        }
+
+        .comment-section {
+            margin-top: 40px;
+            border-top: 1px solid #333;
+            padding-top: 20px;
+        }
+
+        .comment-form textarea {
+            width: 100%;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .comment-submit {
+            background: #ffd700;
+            color: #000;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 30px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .comment {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #111;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .comment-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .comment-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            cursor: pointer;
+            border: 1px solid #ffd700;
+        }
+
+        .comment-username {
+            font-weight: bold;
+            color: #ffd700;
+            cursor: pointer;
+        }
+
+        .comment-date {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .comment-text {
+            margin: 8px 0;
+            line-height: 1.4;
+        }
+
+        .reply-btn {
+            font-size: 0.8rem;
+            color: #aaa;
+            cursor: pointer;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .reply-btn:hover {
+            color: #ffd700;
+        }
+
+        .delete-comment {
+            font-size: 0.75rem;
+            color: #f66;
+            cursor: pointer;
+            margin-left: 15px;
+            float: right;
+        }
+
+        .delete-comment:hover {
+            color: #ff0000;
+        }
+
+        .replies {
+            margin-left: 50px;
+            margin-top: 15px;
+            border-left: 2px solid #333;
+            padding-left: 20px;
+        }
+
+        .reply-form {
+            margin-top: 10px;
+            display: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 300px;
+            text-align: center;
+            border: 1px solid #ffd700;
+        }
+
+        .modal-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 10px;
+        }
+
+        .friend-btn {
+            background: #ffd700;
+            color: #000;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 30px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .toast-message {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid #ffd700;
+            border-radius: 40px;
+            padding: 12px 24px;
+            color: #ffd700;
+            font-size: 1rem;
+            font-weight: bold;
+            z-index: 100000;
+            white-space: nowrap;
+            animation: fadeInOut 2s ease forwards;
+            pointer-events: none;
+        }
+
+        @keyframes fadeInOut {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+
+            15% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            85% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+        }
+
+        .avatar-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 12px;
+            height: 12px;
+            background: #ff0000;
+            border-radius: 50%;
+            border: 1px solid #000;
+            display: none;
+            z-index: 1001;
+        }
+
+        #userAvatarMenu {
+            position: relative;
+        }
+
+        .msg-tabs {
+            display: flex;
+            border-bottom: 1px solid #444;
+            margin-bottom: 15px;
+        }
+
+        .msg-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            color: #aaa;
+            transition: 0.2s;
+        }
+
+        .msg-tab.active {
+            color: #ffd700;
+            border-bottom: 2px solid #ffd700;
+        }
+
+        .msg-panel {
+            display: none;
+        }
+
+        .msg-panel.active {
+            display: block;
+        }
+
+        .msg-item {
+            padding: 12px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .msg-item:hover {
+            background: #222;
+        }
+
+        .friend-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 12px;
+            vertical-align: middle;
+        }
+
+        .friend-name {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .edit-note-btn {
+            float: right;
+            background: transparent;
+            border: none;
+            color: #ffd700;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        .edit-note-btn:hover {
+            text-shadow: 0 0 5px gold;
+        }
+
+        .red-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #ff0000;
+            border-radius: 50%;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        #notificationBar {
+            display: none;
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ffd700;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 30px;
+            z-index: 100000;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #sideMenu {
+            position: fixed;
+            left: -280px;
+            top: 0;
+            width: 280px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            transition: left 0.3s;
+            border-right: 1px solid #ffd700;
+        }
+
+        #chatModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 500px;
+            height: 70%;
+            background: #1a1a1a;
+            border: 1px solid #ffd700;
+            border-radius: 20px;
+            z-index: 100001;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chatSettingsMenu {
+            display: none;
+            position: absolute;
+            background: #222;
+            border: 1px solid #ffd700;
+            border-radius: 8px;
+            z-index: 100002;
+        }
+
+        #chatSettingsMenu div {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #fff;
+        }
+
+        #chatSettingsMenu div:hover {
+            background: #333;
+        }
+    </style>
+</head>
 
 <body>
     <div class="container">
@@ -437,7 +871,6 @@
         </div>
     </div>
 
-    <!-- 全局通知条 -->
     <div id="notificationBar"
         style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); background:#ffd700; color:#000; padding:8px 16px; border-radius:30px; z-index:100000; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
         <span id="notificationMsg"></span>
@@ -445,7 +878,6 @@
             style="margin-left:10px; background:transparent; border:none; cursor:pointer;">✖</button>
     </div>
 
-    <!-- 侧边栏消息中心 -->
     <div id="sideMenu"
         style="position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); z-index: 2000; transition: left 0.3s; border-right: 1px solid #ffd700;">
         <div style="padding: 20px; display: flex; flex-direction: column; height: 100%;">
@@ -479,7 +911,6 @@
         </div>
     </div>
 
-    <!-- 聊天模态框 -->
     <div id="chatModal" style="display: none;">
         <div
             style="padding:15px; background:#111; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
@@ -500,13 +931,12 @@
         </div>
     </div>
     <div id="chatSettingsMenu" style="display:none; position:absolute;">
-        <div id="setNoteBtn">✏️ 设置备注</div>
+        <!-- 移除了“设置备注”选项 -->
         <div id="deleteFriendBtn">删除好友</div>
         <div id="muteFriendBtn">消息免打扰</div>
         <div id="blockFriendBtn">拉黑</div>
     </div>
 
-    <!-- 反馈模态框 -->
     <div id="reportModal"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10001; backdrop-filter: blur(5px); align-items: center; justify-content: center;">
         <div
@@ -544,7 +974,6 @@
         </div>
     </div>
 
-    <!-- 左下角头像菜单 -->
     <div id="userAvatarMenu" style="position: fixed; left: 20px; bottom: 20px; z-index: 1000; cursor: pointer;">
         <img id="avatarIcon" src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp"
             style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #ffd700; object-fit: cover;">
@@ -592,12 +1021,10 @@
                 if (res.ok) {
                     const data = await res.json();
                     currentUserEmail = data.email;
-                    // 更新左下角头像
                     const avatarIcon = document.getElementById('avatarIcon');
                     if (avatarIcon && data.avatar) {
                         avatarIcon.src = data.avatar;
                     }
-                    // 同步到 localStorage
                     let profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
                     profile.avatar = data.avatar;
                     localStorage.setItem('user_profile', JSON.stringify(profile));
@@ -631,12 +1058,10 @@
             document.getElementById('animeDetail').innerHTML = html;
         }
 
-        // 渲染评分按钮（高亮当前用户评分）
         function renderRatingButtons() {
             const ratings = ['神作', '好看', '普通', '无聊', '狗屎'];
             const container = document.getElementById('ratingPanel');
             container.innerHTML = '<strong>评分：</strong> ';
-            // ★ 关键修改：使用后端返回的 currentUserRating，而不是 user_ratings
             let userRating = currentAnime.currentUserRating || null;
             ratings.forEach(r => {
                 const btn = document.createElement('button');
@@ -650,9 +1075,8 @@
 
         async function rateAnime(ratingType, btnElement) {
             const isActive = btnElement.classList.contains('active');
-            // 使用 _id 而不是 id，因为后端 findAnimeByIdentifier 能处理 ObjectId
             const animeId = currentAnime._id;
-            console.log('评分时发送的动漫 _id:', animeId);  // 调试日志
+            console.log('评分时发送的动漫 _id:', animeId);
             if (!animeId) {
                 showToast('动漫 ID 无效');
                 return;
@@ -682,6 +1106,7 @@
                 }
             }
         }
+
         // 评论相关
         function renderComments() {
             const container = document.getElementById('commentSection');
@@ -723,7 +1148,7 @@
             const res = await authFetch(`/api/anime/${currentAnime._id}/comment/${commentId}`, { method: 'DELETE' });
             if (res.ok) {
                 showToast('评论已删除');
-                loadAnime(); // 重新加载以刷新评论列表
+                loadAnime();
             } else {
                 const err = await res.json();
                 showToast(err.error || '删除失败');
@@ -823,31 +1248,31 @@
         function showQuickReplyModal(animeId, commentId, replierEmail, originalReplyText) {
             const modal = document.createElement('div');
             modal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #1a1a1a;
-        border: 1px solid #ffd700;
-        border-radius: 20px;
-        padding: 20px;
-        width: 80%;
-        max-width: 400px;
-        z-index: 100000;
-        box-shadow: 0 0 20px rgba(0,0,0,0.8);
-    `;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #1a1a1a;
+                border: 1px solid #ffd700;
+                border-radius: 20px;
+                padding: 20px;
+                width: 80%;
+                max-width: 400px;
+                z-index: 100000;
+                box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            `;
             modal.innerHTML = `
-        <h4 style="color:#ffd700;">回复 ${escapeHtml(replierEmail)}</h4>
-        <div style="margin-bottom: 10px; padding: 8px; background: #222; border-radius: 8px; color: #aaa; font-size: 0.85rem;">
-            原回复：${escapeHtml(originalReplyText) || '(无内容)'}
-        </div>
-        <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
-        <div style="display:flex; gap:10px; margin-top:15px;">
-            <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
-            <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
-            <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
-        </div>
-    `;
+                <h4 style="color:#ffd700;">回复 ${escapeHtml(replierEmail)}</h4>
+                <div style="margin-bottom: 10px; padding: 8px; background: #222; border-radius: 8px; color: #aaa; font-size: 0.85rem;">
+                    原回复：${escapeHtml(originalReplyText) || '(无内容)'}
+                </div>
+                <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
+                    <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
+                    <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
+                </div>
+            `;
             document.body.appendChild(modal);
             document.getElementById('quickReplySend').onclick = async () => {
                 const text = document.getElementById('quickReplyText').value.trim();
@@ -912,36 +1337,36 @@
             return new Promise((resolve) => {
                 const modal = document.createElement('div');
                 modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 200000;
-        `;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.85);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 200000;
+                `;
                 const box = document.createElement('div');
                 box.style.cssText = `
-            background: #1a1a1a;
-            border: 2px solid #ffd700;
-            border-radius: 20px;
-            padding: 20px;
-            max-width: 90%;
-            width: 300px;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(255,215,0,0.3);
-        `;
+                    background: #1a1a1a;
+                    border: 2px solid #ffd700;
+                    border-radius: 20px;
+                    padding: 20px;
+                    max-width: 90%;
+                    width: 300px;
+                    text-align: center;
+                    box-shadow: 0 0 20px rgba(255,215,0,0.3);
+                `;
                 box.innerHTML = `
-            <div style="color:#ffd700; font-size:1.2rem; margin-bottom:15px;">${options.title || '提示'}</div>
-            <div style="color:#fff; margin-bottom:20px;">${options.message}</div>
-            <div style="display:flex; gap:15px; justify-content:center;">
-                ${options.showCancel !== false ? `<button id="modalCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>` : ''}
-                <button id="modalConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">${options.confirmText || '确定'}</button>
-            </div>
-        `;
+                    <div style="color:#ffd700; font-size:1.2rem; margin-bottom:15px;">${options.title || '提示'}</div>
+                    <div style="color:#fff; margin-bottom:20px;">${options.message}</div>
+                    <div style="display:flex; gap:15px; justify-content:center;">
+                        ${options.showCancel !== false ? `<button id="modalCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>` : ''}
+                        <button id="modalConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">${options.confirmText || '确定'}</button>
+                    </div>
+                `;
                 modal.appendChild(box);
                 document.body.appendChild(modal);
                 const confirmBtn = box.querySelector('#modalConfirm');
@@ -974,7 +1399,7 @@
             }
         }
 
-        // ========== 好友列表（带备注编辑） ==========
+        // ========== 好友列表（带备注编辑按钮） ==========
         async function loadFriendsList() {
             const container = document.getElementById('friendsList');
             if (!container) return;
@@ -983,7 +1408,10 @@
             try {
                 const res = await fetch('/api/friends/list', { credentials: 'include' });
                 const data = await res.json();
-                if (!data.length) { container.innerHTML = '<div>暂无好友</div>'; return; }
+                if (!data.length) {
+                    container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无好友</div>';
+                    return;
+                }
                 container.innerHTML = '';
                 data.forEach(friend => {
                     const note = notes[friend.email] || '';
@@ -991,25 +1419,71 @@
                     const div = document.createElement('div');
                     div.className = 'msg-item';
                     div.innerHTML = `
-                <img src="${friend.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'}" class="friend-avatar" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-                <span class="friend-name">${escapeHtml(displayName)}</span>
-                <button class="edit-note-btn" data-email="${friend.email}" style="float:right; background:transparent; border:none; color:#ffd700; cursor:pointer;">✏️</button>
-            `;
+                        <img src="${friend.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'}" class="friend-avatar" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
+                        <span class="friend-name">${escapeHtml(displayName)}</span>
+                        <button class="edit-note-btn" data-email="${friend.email}" title="设置备注">✏️</button>
+                    `;
+                    // 编辑备注按钮的点击事件
                     div.querySelector('.edit-note-btn').onclick = async (e) => {
                         e.stopPropagation();
-                        const newNote = prompt('请输入备注名（留空为删除备注）', note);
-                        if (newNote !== null) {
+                        const currentNote = notes[friend.email] || '';
+                        // 自定义备注模态框
+                        const modalDiv = document.createElement('div');
+                        modalDiv.style.cssText = `
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            background: #1a1a1a;
+                            border: 2px solid #ffd700;
+                            border-radius: 20px;
+                            padding: 20px;
+                            width: 300px;
+                            z-index: 100000;
+                            box-shadow: 0 0 30px rgba(255,215,0,0.3);
+                        `;
+                        modalDiv.innerHTML = `
+                            <h3 style="color:#ffd700; text-align:center; margin-bottom:15px;">设置备注</h3>
+                            <input type="text" id="noteInput" placeholder="输入备注名（留空删除）" value="${escapeHtml(currentNote)}"
+                                style="width:100%; padding:10px; margin-bottom:20px; background:#111; border:1px solid #444; color:#fff; border-radius:8px;">
+                            <div style="display: flex; justify-content: center; gap: 15px;">
+                                <button id="noteConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">确认</button>
+                                <button id="noteCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>
+                            </div>
+                        `;
+                        document.body.appendChild(modalDiv);
+                        const input = modalDiv.querySelector('#noteInput');
+                        const confirmBtn = modalDiv.querySelector('#noteConfirm');
+                        const cancelBtn = modalDiv.querySelector('#noteCancel');
+                        const closeNoteModal = () => modalDiv.remove();
+                        confirmBtn.onclick = async () => {
+                            const newNote = input.value.trim();
                             const res = await authFetch('/api/friends/note', {
                                 method: 'POST',
                                 body: { friendEmail: friend.email, note: newNote || '' }
                             });
-                            if (res.ok) loadFriendsList();
-                        }
+                            if (res.ok) {
+                                showToast('备注已更新');
+                                loadFriendsList();
+                            } else {
+                                showToast('设置失败');
+                            }
+                            closeNoteModal();
+                        };
+                        cancelBtn.onclick = closeNoteModal;
+                        modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) closeNoteModal(); });
                     };
-                    div.addEventListener('click', () => openChatWithFriend(friend.email));
+                    div.addEventListener('click', (e) => {
+                        // 避免点击编辑按钮时也触发打开聊天
+                        if (e.target.classList.contains('edit-note-btn')) return;
+                        openChatWithFriend(friend.email);
+                    });
                     container.appendChild(div);
                 });
-            } catch (err) { container.innerHTML = '<div>加载失败</div>'; }
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>';
+            }
         }
 
         function updateBadge(unreadCount) {
@@ -1076,14 +1550,10 @@
             const res = await fetch(`/api/messages/history?friend=${encodeURIComponent(currentChatFriend)}`, { credentials: 'include' });
             if (!res.ok) return;
             let history = await res.json();
-            // 显式按时间戳升序排序（确保顺序正确）
             history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
             const container = document.getElementById('chatMessages');
             const prevScroll = container.scrollTop;
             const shouldAutoScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
-
-            // 完全重新渲染（避免增量追加导致顺序混乱）
             container.innerHTML = '';
             let currentUser = currentUserEmail;
             if (!currentUser) {
@@ -1094,7 +1564,6 @@
                     currentUserEmail = user.email;
                 }
             }
-
             for (const msg of history) {
                 const isMe = msg.from === currentUser;
                 const avatar = isMe ? (await getUserAvatar(currentUser)) : (await getUserAvatar(msg.from));
@@ -1105,24 +1574,24 @@
                 div.style.marginBottom = '12px';
                 div.style.flexDirection = isMe ? 'row-reverse' : 'row';
                 div.innerHTML = `
-            <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-            <div style="max-width:70%;">
-                <div style="background:${isMe ? '#2a2a2a' : '#111'}; padding:8px 12px; border-radius:12px; display:inline-block;">
-                    ${escapeHtml(msg.text)}
-                </div>
-                <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
-            </div>
-        `;
+                    <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
+                    <div style="max-width:70%;">
+                        <div style="background:${isMe ? '#2a2a2a' : '#111'}; padding:8px 12px; border-radius:12px; display:inline-block;">
+                            ${escapeHtml(msg.text)}
+                        </div>
+                        <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+                    </div>
+                `;
                 container.appendChild(div);
             }
-
-            // 恢复滚动位置（如果需要）
             if (shouldAutoScroll) {
                 container.scrollTop = container.scrollHeight;
             } else {
                 container.scrollTop = prevScroll;
             }
+            lastMessageCount = history.length;
         }
+
         async function sendMessage() {
             const text = document.getElementById('chatInput').value.trim();
             if (!text || !currentChatFriend) return;
@@ -1147,66 +1616,14 @@
             menu.style.left = rect.left + 'px';
             menu.style.top = (rect.bottom + 5) + 'px';
             menu.style.display = 'block';
-            setTimeout(() => { document.addEventListener('click', function hideMenu() { menu.style.display = 'none'; document.removeEventListener('click', hideMenu); }); }, 100);
-        });
-
-        // 设置备注
-        document.getElementById('setNoteBtn')?.addEventListener('click', async () => {
-            if (!currentChatFriend) return;
-            const notesRes = await fetch('/api/friends/notes', { credentials: 'include' });
-            const notes = await notesRes.json();
-            const currentNote = notes[currentChatFriend] || '';
-
-            // 创建自定义模态框
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #1a1a1a;
-        border: 2px solid #ffd700;
-        border-radius: 20px;
-        padding: 20px;
-        width: 300px;
-        z-index: 100000;
-        box-shadow: 0 0 30px rgba(255,215,0,0.3);
-    `;
-            modal.innerHTML = `
-        <h3 style="color:#ffd700; text-align:center; margin-bottom:15px;">设置备注</h3>
-        <input type="text" id="noteInput" placeholder="输入备注名（留空删除）" value="${escapeHtml(currentNote)}"
-               style="width:100%; padding:10px; margin-bottom:20px; background:#111; border:1px solid #444; color:#fff; border-radius:8px;">
-        <div style="display: flex; justify-content: center; gap: 15px;">
-            <button id="noteConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">确认</button>
-            <button id="noteCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>
-        </div>
-    `;
-            document.body.appendChild(modal);
-
-            const input = modal.querySelector('#noteInput');
-            const confirmBtn = modal.querySelector('#noteConfirm');
-            const cancelBtn = modal.querySelector('#noteCancel');
-
-            const closeModal = () => modal.remove();
-            confirmBtn.onclick = async () => {
-                const newNote = input.value.trim();
-                const res = await authFetch('/api/friends/note', {
-                    method: 'POST',
-                    body: { friendEmail: currentChatFriend, note: newNote || '' }
+            setTimeout(() => {
+                document.addEventListener('click', function hideMenu() {
+                    menu.style.display = 'none';
+                    document.removeEventListener('click', hideMenu);
                 });
-                if (res.ok) {
-                    showToast('备注已更新');
-                    loadFriendsList();
-                } else {
-                    showToast('设置失败');
-                }
-                closeModal();
-            };
-            cancelBtn.onclick = closeModal;
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeModal();
-            });
+            }, 100);
         });
+
         // 删除好友
         document.getElementById('deleteFriendBtn')?.addEventListener('click', async () => {
             if (!currentChatFriend) return;
@@ -1262,13 +1679,18 @@
                 document.querySelectorAll('.msg-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 document.querySelectorAll('.msg-panel').forEach(p => p.classList.remove('active'));
-                if (target === 'messages') document.getElementById('messagesPanel').classList.add('active'), loadNotificationList();
-                else if (target === 'friends') document.getElementById('friendsPanel').classList.add('active'), loadFriendsList();
-                else if (target === 'settings') document.getElementById('settingsPanel').classList.add('active');
+                if (target === 'messages') {
+                    document.getElementById('messagesPanel').classList.add('active');
+                    loadNotificationList();
+                } else if (target === 'friends') {
+                    document.getElementById('friendsPanel').classList.add('active');
+                    loadFriendsList();
+                } else if (target === 'settings') {
+                    document.getElementById('settingsPanel').classList.add('active');
+                }
             });
         });
 
-        // 启动轮询
         setTimeout(() => {
             checkNotifications();
             loadFriendsList();

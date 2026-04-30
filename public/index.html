@@ -100,6 +100,7 @@
             padding: 12px;
             border-bottom: 1px solid #333;
             cursor: pointer;
+            position: relative;
         }
 
         .msg-item:hover {
@@ -117,6 +118,20 @@
         .friend-name {
             display: inline-block;
             vertical-align: middle;
+        }
+
+        .edit-note-btn {
+            float: right;
+            background: transparent;
+            border: none;
+            color: #ffd700;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        .edit-note-btn:hover {
+            text-shadow: 0 0 5px gold;
         }
 
         .red-dot {
@@ -327,9 +342,10 @@
         <div
             style="padding:15px; background:#111; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
             <span id="chatFriendName" style="color:#ffd700;"></span>
-            <div><button id="chatSettingsBtn"
-                    style="background:transparent; border:none; color:#fff; cursor:pointer;">⚙️</button><button
-                    id="closeChatBtn"
+            <div>
+                <button id="chatSettingsBtn"
+                    style="background:transparent; border:none; color:#fff; cursor:pointer;">⚙️</button>
+                <button id="closeChatBtn"
                     style="background:transparent; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✖</button>
             </div>
         </div>
@@ -343,7 +359,6 @@
         </div>
     </div>
     <div id="chatSettingsMenu" style="display:none; position:absolute;">
-        <div id="setNoteBtn">✏️ 设置备注</div>
         <div id="deleteFriendBtn">删除好友</div>
         <div id="muteFriendBtn">消息免打扰</div>
         <div id="blockFriendBtn">拉黑</div>
@@ -361,50 +376,7 @@
             document.body.appendChild(toast);
             setTimeout(() => { if (toast.parentNode) toast.remove(); }, duration);
         }
-        // 自定义模态框（黄黑主题）
-        function showCustomModal(options) {
-            return new Promise((resolve) => {
-                const modal = document.createElement('div');
-                modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 200000;
-        `;
-                const box = document.createElement('div');
-                box.style.cssText = `
-            background: #1a1a1a;
-            border: 2px solid #ffd700;
-            border-radius: 20px;
-            padding: 20px;
-            max-width: 90%;
-            width: 300px;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(255,215,0,0.3);
-        `;
-                box.innerHTML = `
-            <div style="color:#ffd700; font-size:1.2rem; margin-bottom:15px;">${options.title || '提示'}</div>
-            <div style="color:#fff; margin-bottom:20px;">${options.message}</div>
-            <div style="display:flex; gap:15px; justify-content:center;">
-                ${options.showCancel !== false ? `<button id="modalCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>` : ''}
-                <button id="modalConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">${options.confirmText || '确定'}</button>
-            </div>
-        `;
-                modal.appendChild(box);
-                document.body.appendChild(modal);
-                const confirmBtn = box.querySelector('#modalConfirm');
-                const cancelBtn = box.querySelector('#modalCancel');
-                confirmBtn.onclick = () => { modal.remove(); resolve(true); };
-                if (cancelBtn) cancelBtn.onclick = () => { modal.remove(); resolve(false); };
-                modal.onclick = (e) => { if (e.target === modal) { modal.remove(); resolve(false); } };
-            });
-        }
+
         async function authFetch(url, options = {}) {
             options.credentials = 'include';
             if (options.body && typeof options.body === 'object') {
@@ -424,7 +396,50 @@
             });
         }
 
-        // -------------------------- 原有函数 --------------------------
+        function showCustomModal(options) {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.85);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 200000;
+                `;
+                const box = document.createElement('div');
+                box.style.cssText = `
+                    background: #1a1a1a;
+                    border: 2px solid #ffd700;
+                    border-radius: 20px;
+                    padding: 20px;
+                    max-width: 90%;
+                    width: 300px;
+                    text-align: center;
+                    box-shadow: 0 0 20px rgba(255,215,0,0.3);
+                `;
+                box.innerHTML = `
+                    <div style="color:#ffd700; font-size:1.2rem; margin-bottom:15px;">${options.title || '提示'}</div>
+                    <div style="color:#fff; margin-bottom:20px;">${options.message}</div>
+                    <div style="display:flex; gap:15px; justify-content:center;">
+                        ${options.showCancel !== false ? `<button id="modalCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>` : ''}
+                        <button id="modalConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">${options.confirmText || '确定'}</button>
+                    </div>
+                `;
+                modal.appendChild(box);
+                document.body.appendChild(modal);
+                const confirmBtn = box.querySelector('#modalConfirm');
+                const cancelBtn = box.querySelector('#modalCancel');
+                confirmBtn.onclick = () => { modal.remove(); resolve(true); };
+                if (cancelBtn) cancelBtn.onclick = () => { modal.remove(); resolve(false); };
+                modal.onclick = (e) => { if (e.target === modal) { modal.remove(); resolve(false); } };
+            });
+        }
+
         window.onload = () => { if (typeof initAll === 'function') initAll(); };
         function toggleWeather() {
             const m = document.getElementById('weather-more');
@@ -460,31 +475,24 @@
             audio.onended = function () { window.location.href = '/logout'; };
             setTimeout(function () { if (!audio.ended) window.location.href = '/logout'; }, 3000);
         });
-        // 从服务器同步用户头像到本地和界面
+
         async function syncUserAvatar() {
             try {
                 const res = await fetch('/api/user/current', { credentials: 'include' });
                 if (res.ok) {
                     const user = await res.json();
                     if (user.avatar) {
-                        // 更新 localStorage
                         let profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
                         profile.avatar = user.avatar;
                         localStorage.setItem('user_profile', JSON.stringify(profile));
-                        // 更新头像图标
                         const avatarIcon = document.getElementById('avatarIcon');
                         if (avatarIcon) avatarIcon.src = user.avatar;
                     }
                 }
-            } catch (e) {
-                console.warn('同步头像失败', e);
-            }
+            } catch (e) { console.warn('同步头像失败', e); }
         }
 
-        // 在页面加载完成后调用
-        setTimeout(() => {
-            syncUserAvatar();
-        }, 500);
+        setTimeout(() => { syncUserAvatar(); }, 500);
         function updateAvatarIcon() {
             const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
             const avatar = profile.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
@@ -500,6 +508,7 @@
         let currentChatFriend = null;
         let chatInterval = null;
         let lastMessageCount = 0;
+        let avatarCache = {};
 
         function showNotificationBar(msg) {
             const bar = document.getElementById('notificationBar');
@@ -537,31 +546,31 @@
         function showQuickReplyModal(animeId, commentId, replierEmail, originalReplyText) {
             const modal = document.createElement('div');
             modal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #1a1a1a;
-        border: 1px solid #ffd700;
-        border-radius: 20px;
-        padding: 20px;
-        width: 80%;
-        max-width: 400px;
-        z-index: 100000;
-        box-shadow: 0 0 20px rgba(0,0,0,0.8);
-    `;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #1a1a1a;
+                border: 1px solid #ffd700;
+                border-radius: 20px;
+                padding: 20px;
+                width: 80%;
+                max-width: 400px;
+                z-index: 100000;
+                box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            `;
             modal.innerHTML = `
-        <h4 style="color:#ffd700;">回复 ${escapeHtml(replierEmail)}</h4>
-        <div style="margin-bottom: 10px; padding: 8px; background: #222; border-radius: 8px; color: #aaa; font-size: 0.85rem;">
-            原回复：${escapeHtml(originalReplyText) || '(无内容)'}
-        </div>
-        <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
-        <div style="display:flex; gap:10px; margin-top:15px;">
-            <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
-            <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
-            <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
-        </div>
-    `;
+                <h4 style="color:#ffd700;">回复 ${escapeHtml(replierEmail)}</h4>
+                <div style="margin-bottom: 10px; padding: 8px; background: #222; border-radius: 8px; color: #aaa; font-size: 0.85rem;">
+                    原回复：${escapeHtml(originalReplyText) || '(无内容)'}
+                </div>
+                <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
+                    <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
+                    <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
+                </div>
+            `;
             document.body.appendChild(modal);
             document.getElementById('quickReplySend').onclick = async () => {
                 const text = document.getElementById('quickReplyText').value.trim();
@@ -581,6 +590,7 @@
                 window.location.href = `/anime/${animeId}`;
             };
         }
+
         async function loadNotificationList() {
             const container = document.getElementById('notificationList');
             if (!container) return;
@@ -642,7 +652,7 @@
                 } else showToast('操作失败');
             }
         }
-        let avatarCache = {};
+
         async function getUserAvatar(email) {
             if (avatarCache[email]) return avatarCache[email];
             try {
@@ -656,10 +666,10 @@
             return 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
         }
 
+        // 好友列表（带备注编辑按钮）
         async function loadFriendsList() {
             const container = document.getElementById('friendsList');
             if (!container) return;
-            // 获取备注
             const notesRes = await fetch('/api/friends/notes', { credentials: 'include' });
             const notes = await notesRes.json();
             try {
@@ -673,22 +683,64 @@
                     const div = document.createElement('div');
                     div.className = 'msg-item';
                     div.innerHTML = `
-                <img src="${friend.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'}" class="friend-avatar" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-                <span class="friend-name">${escapeHtml(displayName)}</span>
-                <button class="edit-note-btn" data-email="${friend.email}" style="float:right; background:transparent; border:none; color:#ffd700; cursor:pointer;">✏️</button>
-            `;
+                        <img src="${friend.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'}" class="friend-avatar" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
+                        <span class="friend-name">${escapeHtml(displayName)}</span>
+                        <button class="edit-note-btn" data-email="${friend.email}" title="设置备注">✏️</button>
+                    `;
                     div.querySelector('.edit-note-btn').onclick = async (e) => {
                         e.stopPropagation();
-                        const newNote = prompt('请输入备注名（留空为删除备注）', note);
-                        if (newNote !== null) {
+                        const currentNote = notes[friend.email] || '';
+                        // 自定义备注模态框
+                        const modal = document.createElement('div');
+                        modal.style.cssText = `
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            background: #1a1a1a;
+                            border: 2px solid #ffd700;
+                            border-radius: 20px;
+                            padding: 20px;
+                            width: 300px;
+                            z-index: 100000;
+                            box-shadow: 0 0 30px rgba(255,215,0,0.3);
+                        `;
+                        modal.innerHTML = `
+                            <h3 style="color:#ffd700; text-align:center; margin-bottom:15px;">设置备注</h3>
+                            <input type="text" id="noteInput" placeholder="输入备注名（留空删除）" value="${escapeHtml(currentNote)}"
+                                   style="width:100%; padding:10px; margin-bottom:20px; background:#111; border:1px solid #444; color:#fff; border-radius:8px;">
+                            <div style="display: flex; justify-content: center; gap: 15px;">
+                                <button id="noteConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">确认</button>
+                                <button id="noteCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                        const input = modal.querySelector('#noteInput');
+                        const confirmBtn = modal.querySelector('#noteConfirm');
+                        const cancelBtn = modal.querySelector('#noteCancel');
+                        const closeModal = () => modal.remove();
+                        confirmBtn.onclick = async () => {
+                            const newNote = input.value.trim();
                             const res = await authFetch('/api/friends/note', {
                                 method: 'POST',
                                 body: { friendEmail: friend.email, note: newNote || '' }
                             });
-                            if (res.ok) loadFriendsList();
-                        }
+                            if (res.ok) {
+                                showToast('备注已更新');
+                                loadFriendsList();
+                            } else {
+                                showToast('设置失败');
+                            }
+                            closeModal();
+                        };
+                        cancelBtn.onclick = closeModal;
+                        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
                     };
-                    div.addEventListener('click', () => openChatWithFriend(friend.email));
+                    div.addEventListener('click', (e) => {
+                        // 避免点击编辑按钮时也触发打开聊天
+                        if (e.target.classList.contains('edit-note-btn')) return;
+                        openChatWithFriend(friend.email);
+                    });
                     container.appendChild(div);
                 });
             } catch (err) { console.error(err); container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>'; }
@@ -709,14 +761,10 @@
             const res = await fetch(`/api/messages/history?friend=${encodeURIComponent(currentChatFriend)}`, { credentials: 'include' });
             if (!res.ok) return;
             let history = await res.json();
-            // 显式按时间戳升序排序（确保顺序正确）
             history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
             const container = document.getElementById('chatMessages');
             const prevScroll = container.scrollTop;
             const shouldAutoScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
-
-            // 完全重新渲染（避免增量追加导致顺序混乱）
             container.innerHTML = '';
             let currentUserEmail = null;
             try {
@@ -726,7 +774,6 @@
                     currentUserEmail = user.email;
                 }
             } catch (e) { }
-
             for (const msg of history) {
                 const isMe = msg.from === currentUserEmail;
                 const avatar = isMe ? (await getUserAvatar(currentUserEmail)) : (await getUserAvatar(msg.from));
@@ -737,27 +784,24 @@
                 div.style.marginBottom = '12px';
                 div.style.flexDirection = isMe ? 'row-reverse' : 'row';
                 div.innerHTML = `
-            <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-            <div style="max-width:70%;">
-                <div style="background:${isMe ? '#2a2a2a' : '#111'}; padding:8px 12px; border-radius:12px; display:inline-block;">
-                    ${escapeHtml(msg.text)}
-                </div>
-                <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
-            </div>
-        `;
+                    <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
+                    <div style="max-width:70%;">
+                        <div style="background:${isMe ? '#2a2a2a' : '#111'}; padding:8px 12px; border-radius:12px; display:inline-block;">
+                            ${escapeHtml(msg.text)}
+                        </div>
+                        <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+                    </div>
+                `;
                 container.appendChild(div);
             }
-
-            // 恢复滚动位置（如果需要）
             if (shouldAutoScroll) {
                 container.scrollTop = container.scrollHeight;
             } else {
                 container.scrollTop = prevScroll;
             }
-
-            // 更新最后消息计数
             lastMessageCount = history.length;
         }
+
         async function sendMessage() {
             const text = document.getElementById('chatInput').value.trim();
             if (!text || !currentChatFriend) return;
@@ -789,64 +833,8 @@
                 });
             }, 100);
         });
-        // 设置备注
-        document.getElementById('setNoteBtn')?.addEventListener('click', async () => {
-            if (!currentChatFriend) return;
-            const notesRes = await fetch('/api/friends/notes', { credentials: 'include' });
-            const notes = await notesRes.json();
-            const currentNote = notes[currentChatFriend] || '';
 
-            // 创建自定义模态框
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #1a1a1a;
-        border: 2px solid #ffd700;
-        border-radius: 20px;
-        padding: 20px;
-        width: 300px;
-        z-index: 100000;
-        box-shadow: 0 0 30px rgba(255,215,0,0.3);
-    `;
-            modal.innerHTML = `
-        <h3 style="color:#ffd700; text-align:center; margin-bottom:15px;">设置备注</h3>
-        <input type="text" id="noteInput" placeholder="输入备注名（留空删除）" value="${escapeHtml(currentNote)}"
-               style="width:100%; padding:10px; margin-bottom:20px; background:#111; border:1px solid #444; color:#fff; border-radius:8px;">
-        <div style="display: flex; justify-content: center; gap: 15px;">
-            <button id="noteConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">确认</button>
-            <button id="noteCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>
-        </div>
-    `;
-            document.body.appendChild(modal);
-
-            const input = modal.querySelector('#noteInput');
-            const confirmBtn = modal.querySelector('#noteConfirm');
-            const cancelBtn = modal.querySelector('#noteCancel');
-
-            const closeModal = () => modal.remove();
-            confirmBtn.onclick = async () => {
-                const newNote = input.value.trim();
-                const res = await authFetch('/api/friends/note', {
-                    method: 'POST',
-                    body: { friendEmail: currentChatFriend, note: newNote || '' }
-                });
-                if (res.ok) {
-                    showToast('备注已更新');
-                    loadFriendsList();
-                } else {
-                    showToast('设置失败');
-                }
-                closeModal();
-            };
-            cancelBtn.onclick = closeModal;
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeModal();
-            });
-        });
-        // 删除好友
+        // 删除好友（保留在聊天设置中）
         document.getElementById('deleteFriendBtn')?.addEventListener('click', async () => {
             if (!currentChatFriend) return;
             const confirmed = await showCustomModal({
@@ -932,7 +920,6 @@
             requestNotificationPermission();
         }, 2000);
 
-        // 头像菜单点击
         const avatarIconEl = document.getElementById('avatarIcon');
         const sideMenuEl = document.getElementById('sideMenu');
         if (avatarIconEl) {
@@ -952,7 +939,7 @@
             }
         });
 
-        // -------------------------- 原有反馈功能 --------------------------
+        // 反馈功能
         const reportModal = document.getElementById('reportModal');
         const reportType = document.getElementById('reportType');
         const reportDesc = document.getElementById('reportDesc');
@@ -989,9 +976,7 @@
             imagePreview.innerHTML = '';
         }
         if (closeReportBtn) closeReportBtn.addEventListener('click', closeModal);
-        if (reportModal) reportModal.addEventListener('click', (e) => {
-            if (e.target === reportModal) closeModal();
-        });
+        if (reportModal) reportModal.addEventListener('click', (e) => { if (e.target === reportModal) closeModal(); });
 
         function compressImage(file, maxWidth = 800, quality = 0.7) {
             return new Promise((resolve, reject) => {

@@ -653,7 +653,7 @@
             const isActive = btnElement.classList.contains('active');
             if (isActive) {
                 // 取消评分
-                const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: currentAnime._id } });
+                const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: currentAnime.id } });
                 const data = await res.json();
                 if (data.success) {
                     showToast(`已取消 ${ratingType} 评分`);
@@ -666,7 +666,7 @@
                 }
             } else {
                 // 提交评分
-                const res = await authFetch('/api/anime/rate', { method: 'POST', body: { id: currentAnime._id, ratingType } });
+                const res = await authFetch('/api/anime/rate', { method: 'POST', body: { id: currentAnime.id, ratingType } });
                 if (res.ok) {
                     const data = await res.json();
                     showToast(`已评为 ${ratingType}`);
@@ -680,6 +680,7 @@
                 }
             }
         }
+
         // 评论相关
         function renderComments() {
             const container = document.getElementById('commentSection');

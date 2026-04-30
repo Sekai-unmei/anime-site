@@ -1075,14 +1075,16 @@
             if (!currentChatFriend) return;
             const res = await fetch(`/api/messages/history?friend=${encodeURIComponent(currentChatFriend)}`, { credentials: 'include' });
             if (!res.ok) return;
-            const history = await res.json();
+            let history = await res.json();
+            // 显式按时间戳升序排序（确保顺序正确）
+            history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
             const container = document.getElementById('chatMessages');
             const prevScroll = container.scrollTop;
-            if (history.length === lastMessageCount) return;
-            lastMessageCount = history.length;
-            const shouldScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
+            const shouldAutoScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
+
+            // 完全重新渲染（避免增量追加导致顺序混乱）
             container.innerHTML = '';
-            // 重新获取当前用户邮箱（确保最新）
             let currentUser = currentUserEmail;
             if (!currentUser) {
                 const profileRes = await fetch('/api/user/current', { credentials: 'include' });
@@ -1092,7 +1094,8 @@
                     currentUserEmail = user.email;
                 }
             }
-            history.forEach(async msg => {
+
+            for (const msg of history) {
                 const isMe = msg.from === currentUser;
                 const avatar = isMe ? (await getUserAvatar(currentUser)) : (await getUserAvatar(msg.from));
                 const div = document.createElement('div');
@@ -1102,20 +1105,24 @@
                 div.style.marginBottom = '12px';
                 div.style.flexDirection = isMe ? 'row-reverse' : 'row';
                 div.innerHTML = `
-        <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-        <div style="max-width:70%;">
-            <div style="background:${isMe ? '#2a2a2a' : '#111'}; padding:8px 12px; border-radius:12px; display:inline-block;">
-                ${escapeHtml(msg.text)}
+            <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
+            <div style="max-width:70%;">
+                <div style="background:${isMe ? '#2a2a2a' : '#111'}; padding:8px 12px; border-radius:12px; display:inline-block;">
+                    ${escapeHtml(msg.text)}
+                </div>
+                <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
             </div>
-            <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
-        </div>
-    `;
+        `;
                 container.appendChild(div);
-            });
-            if (prevScroll > container.scrollHeight - 300) container.scrollTop = container.scrollHeight;
-            if (shouldScroll) container.scrollTop = container.scrollHeight;
-        }
+            }
 
+            // 恢复滚动位置（如果需要）
+            if (shouldAutoScroll) {
+                container.scrollTop = container.scrollHeight;
+            } else {
+                container.scrollTop = prevScroll;
+            }
+        }
         async function sendMessage() {
             const text = document.getElementById('chatInput').value.trim();
             if (!text || !currentChatFriend) return;
@@ -1149,8 +1156,40 @@
             const notesRes = await fetch('/api/friends/notes', { credentials: 'include' });
             const notes = await notesRes.json();
             const currentNote = notes[currentChatFriend] || '';
-            const newNote = prompt('请输入备注名（留空为删除备注）', currentNote);
-            if (newNote !== null) {
+
+            // 创建自定义模态框
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #1a1a1a;
+        border: 2px solid #ffd700;
+        border-radius: 20px;
+        padding: 20px;
+        width: 300px;
+        z-index: 100000;
+        box-shadow: 0 0 30px rgba(255,215,0,0.3);
+    `;
+            modal.innerHTML = `
+        <h3 style="color:#ffd700; text-align:center; margin-bottom:15px;">设置备注</h3>
+        <input type="text" id="noteInput" placeholder="输入备注名（留空删除）" value="${escapeHtml(currentNote)}"
+               style="width:100%; padding:10px; margin-bottom:20px; background:#111; border:1px solid #444; color:#fff; border-radius:8px;">
+        <div style="display: flex; justify-content: center; gap: 15px;">
+            <button id="noteConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">确认</button>
+            <button id="noteCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>
+        </div>
+    `;
+            document.body.appendChild(modal);
+
+            const input = modal.querySelector('#noteInput');
+            const confirmBtn = modal.querySelector('#noteConfirm');
+            const cancelBtn = modal.querySelector('#noteCancel');
+
+            const closeModal = () => modal.remove();
+            confirmBtn.onclick = async () => {
+                const newNote = input.value.trim();
                 const res = await authFetch('/api/friends/note', {
                     method: 'POST',
                     body: { friendEmail: currentChatFriend, note: newNote || '' }
@@ -1158,10 +1197,16 @@
                 if (res.ok) {
                     showToast('备注已更新');
                     loadFriendsList();
-                } else showToast('设置失败');
-            }
+                } else {
+                    showToast('设置失败');
+                }
+                closeModal();
+            };
+            cancelBtn.onclick = closeModal;
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
         });
-
         // 删除好友
         document.getElementById('deleteFriendBtn')?.addEventListener('click', async () => {
             if (!currentChatFriend) return;

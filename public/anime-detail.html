@@ -674,15 +674,27 @@
             const commentsDiv = document.getElementById('commentsList');
             commentsDiv.innerHTML = '';
             currentAnime.comments.forEach(comment => { commentsDiv.appendChild(createCommentElement(comment)); });
+            applyCommentColor();
         }
-
+        function applyCommentColor() {
+            const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+            const commentColor = profile.commentColor || '#ffffff'; // 默认白色
+            const commentTexts = document.querySelectorAll('.comment-text');
+            commentTexts.forEach(el => {
+                el.style.color = commentColor;
+            });
+        }
+        function getStoredCommentColor() {
+            const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+            return profile.commentColor || '#ffffff';
+        }
         function createCommentElement(comment, parentId = null) {
             const div = document.createElement('div');
             div.className = 'comment';
             div.dataset.id = comment.id;
             const isOwner = (currentUserEmail && comment.userId === currentUserEmail);
             const deleteBtn = isOwner ? `<span class="delete-comment" data-id="${comment.id}">🗑️ 删除</span>` : '';
-            div.innerHTML = `<div class="comment-header"><img class="comment-avatar" src="${comment.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'}" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'" data-email="${comment.userId}"><span class="comment-username" data-email="${comment.userId}">${escapeHtml(comment.username)}</span><span class="comment-date">${new Date(comment.date).toLocaleString()}</span>${deleteBtn}</div><div class="comment-text">${escapeHtml(comment.text)}</div><div class="reply-btn" data-id="${comment.id}">💬 回复</div><div id="reply-form-${comment.id}" class="reply-form"><textarea rows="2" placeholder="回复..."></textarea><button class="comment-submit" onclick="submitReply('${comment.id}')">提交回复</button></div>`;
+            div.innerHTML = `...<div class="comment-text" style="color: ${getStoredCommentColor()}">${escapeHtml(comment.text)}</div>...`;
             if (isOwner) {
                 const delBtn = div.querySelector('.delete-comment');
                 delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteComment(comment.id); });
@@ -907,6 +919,10 @@
         fetchCurrentUser();
         loadAnime();
         modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+        // 监听形象设置颜色变更，实时更新评论文字颜色
+        window.addEventListener('profileUpdated', () => {
+            applyCommentColor();
+        });
 
         // ========== 意见反馈功能 ==========
         const reportModal = document.getElementById('reportModal');

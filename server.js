@@ -409,6 +409,7 @@ app.get('/api/anime/:id', async (req, res) => {
 
 // ========== 评分路由（最终版，基于 Vote 集合，防刷票）==========
 app.post('/api/anime/rate', async (req, res) => {
+    console.log('当前动漫 ID:', currentAnime._id);
     try {
         const { id, ratingType } = req.body;
         const userId = req.session.user;

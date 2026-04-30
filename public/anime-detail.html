@@ -651,6 +651,7 @@
         // 评分核心：转换模式，局部更新
         async function rateAnime(ratingType, btnElement) {
             const isActive = btnElement.classList.contains('active');
+            console.log('当前动漫 ID:', currentAnime._id);
             // 关键：使用 currentAnime.id（数字）或 currentAnime._id（字符串）
             const animeId = currentAnime._id;
             if (!animeId) {

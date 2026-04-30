@@ -82,6 +82,21 @@
             color: #ffd700;
         }
 
+        .category-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .toggle-icon {
+            margin-right: 10px;
+            font-size: 0.8rem;
+            width: 20px;
+            display: inline-block;
+            text-align: center;
+        }
+
         .content {
             margin-left: 280px;
             flex: 1;
@@ -154,7 +169,7 @@
     </div>
 
     <script>
-        // 分类树（将“狗屎”改为“屎”）
+        // 分类树
         const categoryTree = [
             { name: "神作", children: [] },
             { name: "神作之下-好看之上", children: [] },
@@ -221,16 +236,13 @@
             allAnime = data.data;
         }
 
-        // ------------------- 移除 mapRating，直接使用原始 rating -------------------
         function showAllByRating(rating) {
-            // 直接使用 rating，不做映射
             fetch(`/api/anime/list?rating=${encodeURIComponent(rating)}&limit=1000`)
                 .then(res => res.json())
                 .then(data => renderAnime(data.data))
                 .catch(err => console.error('请求失败', err));
         }
 
-        // 展示多标签（组合）筛选
         function showAnimeByFilter(rating, tagsStr) {
             let url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=1000`;
             if (tagsStr) {
@@ -252,7 +264,6 @@
             animes.forEach(anime => {
                 const card = document.createElement('div');
                 card.className = 'anime-card';
-                // 使用 _id 作为跳转标识（因为后端支持 ObjectId）
                 const animeId = anime._id;
                 if (!animeId) {
                     console.warn('动漫缺少 _id', anime);
@@ -284,7 +295,6 @@
             });
         }
 
-        // 构建侧边栏（修正子子分类的多标签传参）
         function buildSidebar() {
             const container = document.getElementById('category-tree');
             container.innerHTML = '';
@@ -298,7 +308,6 @@
                 const isSpecial = (main.name === "神作" || main.name === "神作之下-好看之上" || main.name === "屎" || main.name === "H");
 
                 if (isSpecial) {
-                    // 直接按 rating 筛选
                     mainDiv.addEventListener('click', (e) => {
                         e.stopPropagation();
                         showAllByRating(main.name);
@@ -311,31 +320,77 @@
 
                     if (main.children && main.children.length) {
                         main.children.forEach(child => {
-                            // 为每个子项创建链接
+                            // 创建包裹容器（可选，用来放 toggle 图标和文字）
+                            const itemWrapper = document.createElement('div');
+                            itemWrapper.className = 'category-item';
+
+                            // 创建链接（用于点击文字执行筛选）
                             const link = document.createElement('a');
                             link.href = '#';
                             link.textContent = child.name;
+                            link.style.flex = '1';
                             link.setAttribute('data-rating', main.name);
-                            link.setAttribute('data-tags', child.name);  // 单标签
+                            link.setAttribute('data-tags', child.name);
+
                             if (child.sub && child.sub.length) {
-                                link.setAttribute('data-has-sub', 'true');
+                                // 如果有子分类，添加展开/收起图标
+                                const toggleSpan = document.createElement('span');
+                                toggleSpan.className = 'toggle-icon';
+                                toggleSpan.textContent = '▶'; // 收起状态
+                                toggleSpan.style.cursor = 'pointer';
+                                toggleSpan.style.userSelect = 'none';
+
+                                // 创建子子分类容器
                                 const subSubDiv = document.createElement('div');
                                 subSubDiv.className = 'sub-sub-category';
                                 subSubDiv.style.display = 'none';
+
                                 child.sub.forEach(subItem => {
                                     const subLink = document.createElement('a');
                                     subLink.href = '#';
                                     subLink.textContent = subItem;
-                                    // 关键：组合标签，格式 "父标签,子标签"
                                     const combinedTags = `${child.name},${subItem}`;
                                     subLink.setAttribute('data-rating', main.name);
                                     subLink.setAttribute('data-tags', combinedTags);
                                     subSubDiv.appendChild(subLink);
                                 });
-                                subDiv.appendChild(link);
+
+                                // 点击图标切换子子分类显示
+                                toggleSpan.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const isVisible = subSubDiv.style.display === 'block';
+                                    subSubDiv.style.display = isVisible ? 'none' : 'block';
+                                    toggleSpan.textContent = isVisible ? '▶' : '▼';
+                                });
+
+                                // 点击链接文字：如果是父项且有子分类，则展开子子分类（可选），不执行筛选（因为子项才是真正的筛选条目）
+                                link.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    // 这里可以选择展开子子分类，但不执行筛选
+                                    const isVisible = subSubDiv.style.display === 'block';
+                                    subSubDiv.style.display = isVisible ? 'none' : 'block';
+                                    toggleSpan.textContent = isVisible ? '▶' : '▼';
+                                });
+
+                                itemWrapper.appendChild(toggleSpan);
+                                itemWrapper.appendChild(link);
+                                subDiv.appendChild(itemWrapper);
                                 subDiv.appendChild(subSubDiv);
                             } else {
-                                subDiv.appendChild(link);
+                                // 无子分类，直接添加链接
+                                link.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    const rating = link.getAttribute('data-rating');
+                                    const tags = link.getAttribute('data-tags');
+                                    if (rating && tags) {
+                                        showAnimeByFilter(rating, tags);
+                                    } else if (rating) {
+                                        showAllByRating(rating);
+                                    }
+                                });
+                                itemWrapper.appendChild(link);
+                                subDiv.appendChild(itemWrapper);
                             }
                         });
                     } else {
@@ -354,21 +409,6 @@
                     container.appendChild(subDiv);
                 }
             });
-
-            // 绑定所有可点击的链接（子分类和子子分类）
-            document.querySelectorAll('.sub-category a, .sub-sub-category a').forEach(link => {
-                if (link.hasAttribute('data-has-sub')) return;
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const rating = link.getAttribute('data-rating');
-                    const tags = link.getAttribute('data-tags'); // 例如 "恋爱,学校"
-                    if (rating && tags) {
-                        showAnimeByFilter(rating, tags);
-                    } else if (rating) {
-                        showAllByRating(rating);
-                    }
-                });
-            });
         }
 
         (async () => {
@@ -376,7 +416,7 @@
             await loadSeriesCount();
             await loadAnimeData();
             buildSidebar();
-            showAllByRating('神作');  // 默认显示神作分类
+            showAllByRating('神作');
         })();
     </script>
 </body>

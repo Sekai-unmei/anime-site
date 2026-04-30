@@ -652,14 +652,14 @@
         async function rateAnime(ratingType, btnElement) {
             const isActive = btnElement.classList.contains('active');
             // 关键：使用 currentAnime.id（数字）或 currentAnime._id（字符串）
-            const animeId = currentAnime.id || currentAnime._id;  // 优先用数字 id
+            const animeId = currentAnime._id;
             if (!animeId) {
                 showToast('动漫 ID 无效');
                 return;
             }
             if (isActive) {
                 // 取消评分
-                const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: currentAnime.id } });
+                const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: currentAnime._id } });
                 const data = await res.json();
                 if (data.success) {
                     showToast(`已取消 ${ratingType} 评分`);
@@ -672,7 +672,7 @@
                 }
             } else {
                 // 提交评分
-                const res = await authFetch('/api/anime/rate', { method: 'POST', body: { id: currentAnime.id, ratingType } });
+                const res = await authFetch('/api/anime/rate', { method: 'POST', body: { id: currentAnime._id, ratingType } });
                 if (res.ok) {
                     const data = await res.json();
                     showToast(`已评为 ${ratingType}`);

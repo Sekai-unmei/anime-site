@@ -694,22 +694,66 @@
             div.dataset.id = comment.id;
             const isOwner = (currentUserEmail && comment.userId === currentUserEmail);
             const deleteBtn = isOwner ? `<span class="delete-comment" data-id="${comment.id}">🗑️ 删除</span>` : '';
-            div.innerHTML = `...<div class="comment-text" style="color: ${getStoredCommentColor()}">${escapeHtml(comment.text)}</div>...`;
+            const commentColor = getStoredCommentColor(); // 获取保存的评论颜色
+
+            div.innerHTML = `
+        <div class="comment-header">
+            <img class="comment-avatar" src="${comment.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'}" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'" data-email="${comment.userId}">
+            <span class="comment-username" data-email="${comment.userId}">${escapeHtml(comment.username)}</span>
+            <span class="comment-date">${new Date(comment.date).toLocaleString()}</span>
+            ${deleteBtn}
+        </div>
+        <div class="comment-text" style="color: ${commentColor};">${escapeHtml(comment.text)}</div>
+        <div class="reply-btn" data-id="${comment.id}">💬 回复</div>
+        <div id="reply-form-${comment.id}" class="reply-form">
+            <textarea rows="2" placeholder="回复..."></textarea>
+            <button class="comment-submit" onclick="submitReply('${comment.id}')">提交回复</button>
+        </div>
+    `;
+
+            // 删除按钮事件（仅当按钮存在时）
             if (isOwner) {
                 const delBtn = div.querySelector('.delete-comment');
-                delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteComment(comment.id); });
+                if (delBtn) {
+                    delBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteComment(comment.id);
+                    });
+                }
             }
+
+            // 回复按钮事件
             const replyBtn = div.querySelector('.reply-btn');
-            replyBtn.onclick = (e) => { e.stopPropagation(); const form = document.getElementById(`reply-form-${comment.id}`); form.style.display = form.style.display === 'block' ? 'none' : 'block'; };
-            div.querySelectorAll('.comment-avatar, .comment-username').forEach(el => { el.addEventListener('click', () => showUserInfo(el.dataset.email)); });
+            if (replyBtn) {
+                replyBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const form = document.getElementById(`reply-form-${comment.id}`);
+                    if (form) {
+                        form.style.display = form.style.display === 'block' ? 'none' : 'block';
+                    }
+                };
+            }
+
+            // 头像和用户名点击事件
+            const clickableElements = div.querySelectorAll('.comment-avatar, .comment-username');
+            clickableElements.forEach(el => {
+                if (el) {
+                    el.addEventListener('click', () => showUserInfo(el.dataset.email));
+                }
+            });
+
+            // 递归处理回复
             if (comment.replies && comment.replies.length) {
-                const repliesDiv = document.createElement('div'); repliesDiv.className = 'replies';
-                comment.replies.forEach(reply => { repliesDiv.appendChild(createCommentElement(reply, comment.id)); });
+                const repliesDiv = document.createElement('div');
+                repliesDiv.className = 'replies';
+                comment.replies.forEach(reply => {
+                    repliesDiv.appendChild(createCommentElement(reply, comment.id));
+                });
                 div.appendChild(repliesDiv);
             }
+
             return div;
         }
-
         async function deleteComment(commentId) {
             if (!currentAnime || !currentAnime._id) {
                 showToast('无法获取动漫ID');

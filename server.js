@@ -331,7 +331,8 @@ app.get('/api/anime/list', async (req, res) => {
     }
     if (tag) {
         const tags = tag.split(',').map(t => t.trim());
-        filter.genre = { $in: tags };
+        // 使用 $all 要求同时包含所有标签
+        filter.genre = { $all: tags };
     }
     if (rating) filter.rating = rating;
 

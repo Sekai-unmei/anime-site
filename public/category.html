@@ -237,16 +237,100 @@
                 .catch(err => console.error('请求失败', err));
         }
 
-        function showAnimeByFilter(rating, genre) {
-            const realRating = mapRating(rating);
-            let url = `/api/anime/list?rating=${encodeURIComponent(realRating)}&limit=1000`;
-            if (genre) url += `&tag=${encodeURIComponent(genre)}`;
-            fetch(url)
-                .then(res => res.json())
-                .then(data => renderAnime(data.data))
-                .catch(err => console.error('请求失败', err));
-        }
+        // 存储当前选中的 rating 和 tags 数组
+        let currentRatingFilter = null;
+        let currentTagsFilter = [];
 
+        // 渲染主分类和子分类时，为每个可点击项附加 data-path 属性
+        function buildSidebar() {
+            const container = document.getElementById('category-tree');
+            container.innerHTML = '';
+
+            categoryTree.forEach(main => {
+                const mainDiv = document.createElement('div');
+                mainDiv.className = 'main-category';
+                mainDiv.textContent = main.name;
+                mainDiv.setAttribute('data-rating', main.name);
+                mainDiv.setAttribute('data-tags', '');  // 顶层没有标签
+
+                const isSpecial = (main.name === "神作" || main.name === "神作之下-好看之上");
+
+                if (isSpecial) {
+                    mainDiv.addEventListener('click', () => {
+                        currentRatingFilter = main.name;
+                        currentTagsFilter = [];
+                        showAllByRating(main.name);
+                    });
+                    container.appendChild(mainDiv);
+                } else {
+                    const subDiv = document.createElement('div');
+                    subDiv.className = 'sub-category';
+                    subDiv.style.display = 'none';
+
+                    if (main.children && main.children.length) {
+                        main.children.forEach(child => {
+                            // 为每个子链接构建从main到child的标签路径
+                            const pathTags = [child.name];
+                            const link = document.createElement('a');
+                            link.href = '#';
+                            link.textContent = child.name;
+                            link.setAttribute('data-rating', main.name);
+                            link.setAttribute('data-tags', child.name);
+                            // 支持子子分类
+                            if (child.sub && child.sub.length) {
+                                link.setAttribute('data-has-sub', 'true');
+                                const subSubDiv = document.createElement('div');
+                                subSubDiv.className = 'sub-sub-category';
+                                subSubDiv.style.display = 'none';
+                                child.sub.forEach(subItem => {
+                                    const subLink = document.createElement('a');
+                                    subLink.href = '#';
+                                    subLink.textContent = subItem;
+                                    subLink.setAttribute('data-rating', main.name);
+                                    subLink.setAttribute('data-tags', `${child.name},${subItem}`);
+                                    subSubDiv.appendChild(subLink);
+                                });
+                                subDiv.appendChild(link);
+                                subDiv.appendChild(subSubDiv);
+                            } else {
+                                subDiv.appendChild(link);
+                            }
+                        });
+                    } else {
+                        const emptyMsg = document.createElement('div');
+                        emptyMsg.textContent = '暂无分类';
+                        emptyMsg.style.padding = '6px 0';
+                        emptyMsg.style.color = '#666';
+                        subDiv.appendChild(emptyMsg);
+                    }
+
+                    mainDiv.addEventListener('click', () => {
+                        subDiv.style.display = subDiv.style.display === 'block' ? 'none' : 'block';
+                    });
+                    container.appendChild(mainDiv);
+                    container.appendChild(subDiv);
+                }
+            });
+
+            // 绑定所有可点击的 a 标签（包括子分类和子子分类）
+            document.querySelectorAll('.sub-category a, .sub-sub-category a').forEach(link => {
+                if (link.hasAttribute('data-has-sub')) return;
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const rating = link.getAttribute('data-rating');
+                    const tags = link.getAttribute('data-tags'); // 例如 "恋爱,校园"
+                    currentRatingFilter = rating;
+                    currentTagsFilter = tags ? tags.split(',') : [];
+                    // 构建 URL
+                    let url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=1000`;
+                    if (tags) url += `&tag=${encodeURIComponent(tags)}`;
+                    fetch(url)
+                        .then(res => res.json())
+                        .then(data => renderAnime(data.data))
+                        .catch(console.error);
+                });
+            });
+        }
         function renderAnime(animes) {
             const grid = document.getElementById('anime-grid');
             grid.innerHTML = '';

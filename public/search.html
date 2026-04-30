@@ -144,7 +144,6 @@
         let userRatingMap = new Map();
         const tooltip = document.getElementById('tooltip');
         let hideTimeout = null;
-
         async function loadUserRatings() {
             try {
                 const res = await fetch('/api/user/ratings', { credentials: 'include' });
@@ -152,15 +151,21 @@
                     const ratedAnimes = await res.json();
                     userRatingMap.clear();
                     ratedAnimes.forEach(anime => {
+                        // 注意：检查返回的数据中是否有 id 字段
                         if (anime.id !== undefined && anime.id !== null) {
                             userRatingMap.set(Number(anime.id), anime.userRating);
+                        } else {
+                            console.warn('用户评分数据缺少 id 字段', anime);
                         }
                     });
                     console.log('✅ 已加载用户评分映射:', [...userRatingMap.entries()]);
+                } else {
+                    console.warn('获取用户评分失败');
                 }
-            } catch (e) { console.error('加载用户评分失败', e); }
+            } catch (e) {
+                console.error('加载用户评分失败', e);
+            }
         }
-
         function truncate(str, maxLen) {
             if (!str) return '';
             return str.length > maxLen ? str.substring(0, maxLen) + '...' : str;

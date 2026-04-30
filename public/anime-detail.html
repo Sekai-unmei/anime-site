@@ -648,37 +648,32 @@
             });
         }
 
-        // 评分核心：转换模式，局部更新
         async function rateAnime(ratingType, btnElement) {
             const isActive = btnElement.classList.contains('active');
-            console.log('当前动漫 ID:', currentAnime._id);
-            // 关键：使用 currentAnime.id（数字）或 currentAnime._id（字符串）
+            // 使用 _id 而不是 id，因为后端 findAnimeByIdentifier 能处理 ObjectId
             const animeId = currentAnime._id;
+            console.log('评分时发送的动漫 _id:', animeId);  // 调试日志
             if (!animeId) {
                 showToast('动漫 ID 无效');
                 return;
             }
             if (isActive) {
-                // 取消评分
-                const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: currentAnime._id } });
+                const res = await authFetch('/api/anime/unrate', { method: 'POST', body: { id: animeId } });
                 const data = await res.json();
                 if (data.success) {
                     showToast(`已取消 ${ratingType} 评分`);
                     if (data.ratings) currentAnime.ratings = data.ratings;
-                    // 清空当前用户的评分标记
                     currentAnime.currentUserRating = null;
                     renderRatingButtons();
                 } else {
                     showToast(data.error || '取消评分失败');
                 }
             } else {
-                // 提交评分
-                const res = await authFetch('/api/anime/rate', { method: 'POST', body: { id: currentAnime._id, ratingType } });
+                const res = await authFetch('/api/anime/rate', { method: 'POST', body: { id: animeId, ratingType } });
                 if (res.ok) {
                     const data = await res.json();
                     showToast(`已评为 ${ratingType}`);
                     if (data.ratings) currentAnime.ratings = data.ratings;
-                    // 保存当前用户的评分类型
                     currentAnime.currentUserRating = ratingType;
                     renderRatingButtons();
                 } else {
@@ -687,7 +682,6 @@
                 }
             }
         }
-
         // 评论相关
         function renderComments() {
             const container = document.getElementById('commentSection');

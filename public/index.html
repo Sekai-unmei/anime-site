@@ -364,83 +364,97 @@
         <div id="blockFriendBtn">拉黑</div>
     </div>
 
+    <script src="/js/common.js"></script>
     <script src="/js/main.js"></script>
     <script>
-        // === 全局函数 ===
-        function showToast(message, duration = 2000) {
-            const existingToast = document.querySelector('.toast-message');
-            if (existingToast) existingToast.remove();
-            const toast = document.createElement('div');
-            toast.className = 'toast-message';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => { if (toast.parentNode) toast.remove(); }, duration);
-        }
+        // ========== 页面特有变量 ==========
+        let currentChatFriend = null;
+        let chatInterval = null;
+        let lastMessageCount = 0;
+        let lastMessageIds = []; // 存储已显示的消息 ID（用于增量加载）
 
-        async function authFetch(url, options = {}) {
-            options.credentials = 'include';
-            if (options.body && typeof options.body === 'object') {
-                options.body = JSON.stringify(options.body);
-                options.headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-            }
-            return fetch(url, options);
-        }
+        // ========== 加载聊天历史（增量版本） ==========
+        async function loadChatHistory() {
+            if (!currentChatFriend) return;
+            const res = await fetch(`/api/messages/history?friend=${encodeURIComponent(currentChatFriend)}`, { credentials: 'include' });
+            if (!res.ok) return;
+            let history = await res.json();
+            history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str).replace(/[&<>]/g, function (m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
+            const container = document.getElementById('chatMessages');
+            const shouldScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
 
-        function showCustomModal(options) {
-            return new Promise((resolve) => {
-                const modal = document.createElement('div');
-                modal.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.85);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 200000;
-                `;
-                const box = document.createElement('div');
-                box.style.cssText = `
-                    background: #1a1a1a;
-                    border: 2px solid #ffd700;
-                    border-radius: 20px;
-                    padding: 20px;
-                    max-width: 90%;
-                    width: 300px;
-                    text-align: center;
-                    box-shadow: 0 0 20px rgba(255,215,0,0.3);
-                `;
-                box.innerHTML = `
-                    <div style="color:#ffd700; font-size:1.2rem; margin-bottom:15px;">${options.title || '提示'}</div>
-                    <div style="color:#fff; margin-bottom:20px;">${options.message}</div>
-                    <div style="display:flex; gap:15px; justify-content:center;">
-                        ${options.showCancel !== false ? `<button id="modalCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>` : ''}
-                        <button id="modalConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">${options.confirmText || '确定'}</button>
+            const displayedIds = new Set(lastMessageIds);
+            const newMessages = history.filter(msg => !displayedIds.has(msg._id));
+            if (newMessages.length === 0) return;
+
+            lastMessageIds = history.map(msg => msg._id);
+
+            let currentUserEmail = null;
+            try {
+                const profileRes = await fetch('/api/user/current', { credentials: 'include' });
+                if (profileRes.ok) {
+                    const user = await profileRes.json();
+                    currentUserEmail = user.email;
+                }
+            } catch (e) { }
+
+            for (const msg of newMessages) {
+                const isMe = msg.from === currentUserEmail;
+                const avatar = isMe ? (await getUserAvatar(currentUserEmail)) : (await getUserAvatar(msg.from));
+                const div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.alignItems = 'flex-start';
+                div.style.gap = '8px';
+                div.style.marginBottom = '12px';
+                div.style.flexDirection = isMe ? 'row-reverse' : 'row';
+                div.innerHTML = `
+                    <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
+                    <div style="max-width:70%;">
+                        <div style="background:${isMe ? '#2a2a2a' : '#111'}; padding:8px 12px; border-radius:12px; display:inline-block;">
+                            ${escapeHtml(msg.text)}
+                        </div>
+                        <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
                     </div>
                 `;
-                modal.appendChild(box);
-                document.body.appendChild(modal);
-                const confirmBtn = box.querySelector('#modalConfirm');
-                const cancelBtn = box.querySelector('#modalCancel');
-                confirmBtn.onclick = () => { modal.remove(); resolve(true); };
-                if (cancelBtn) cancelBtn.onclick = () => { modal.remove(); resolve(false); };
-                modal.onclick = (e) => { if (e.target === modal) { modal.remove(); resolve(false); } };
-            });
+                container.appendChild(div);
+            }
+
+            if (shouldScroll) {
+                container.scrollTop = container.scrollHeight;
+            }
         }
 
-        window.onload = () => { if (typeof initAll === 'function') initAll(); };
+        // ========== 头像同步与页面特有初始化 ==========
+        async function syncUserAvatar() {
+            try {
+                const res = await fetch('/api/user/current', { credentials: 'include' });
+                if (res.ok) {
+                    const user = await res.json();
+                    if (user.avatar) {
+                        let profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+                        profile.avatar = user.avatar;
+                        localStorage.setItem('user_profile', JSON.stringify(profile));
+                        const avatarIcon = document.getElementById('avatarIcon');
+                        if (avatarIcon) avatarIcon.src = user.avatar;
+                    }
+                }
+            } catch (e) { console.warn('同步头像失败', e); }
+        }
+
+        function updateAvatarIcon() {
+            const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+            const avatar = profile.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
+            const avatarIcon = document.getElementById('avatarIcon');
+            if (avatarIcon) avatarIcon.src = avatar;
+        }
+        window.addEventListener('profileUpdated', () => updateAvatarIcon());
+        updateAvatarIcon();
+
+        // ========== 页面启动 ==========
+        window.onload = () => {
+            if (typeof initAll === 'function') initAll();
+        };
         function toggleWeather() {
             const m = document.getElementById('weather-more');
             const a = document.getElementById('weather-arrow');
@@ -476,342 +490,13 @@
             setTimeout(function () { if (!audio.ended) window.location.href = '/logout'; }, 3000);
         });
 
-        async function syncUserAvatar() {
-            try {
-                const res = await fetch('/api/user/current', { credentials: 'include' });
-                if (res.ok) {
-                    const user = await res.json();
-                    if (user.avatar) {
-                        let profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
-                        profile.avatar = user.avatar;
-                        localStorage.setItem('user_profile', JSON.stringify(profile));
-                        const avatarIcon = document.getElementById('avatarIcon');
-                        if (avatarIcon) avatarIcon.src = user.avatar;
-                    }
-                }
-            } catch (e) { console.warn('同步头像失败', e); }
-        }
-
         setTimeout(() => { syncUserAvatar(); }, 500);
-        function updateAvatarIcon() {
-            const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
-            const avatar = profile.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
-            const avatarIcon = document.getElementById('avatarIcon');
-            if (avatarIcon) avatarIcon.src = avatar;
-        }
-        window.addEventListener('profileUpdated', () => updateAvatarIcon());
-        updateAvatarIcon();
 
-        // -------------------------- 通知系统与聊天 --------------------------
-        let lastUnreadCount = 0;
-        let pollInterval = null;
-        let currentChatFriend = null;
-        let chatInterval = null;
-        let lastMessageCount = 0;
-        let avatarCache = {};
+        // 初始化侧边栏事件和轮询
+        initSidebarEvents();
+        startPolling();
 
-        function showNotificationBar(msg) {
-            const bar = document.getElementById('notificationBar');
-            const span = document.getElementById('notificationMsg');
-            if (!bar || !span) return;
-            span.innerText = msg;
-            bar.style.display = 'block';
-            clearTimeout(window.notifTimeout);
-            window.notifTimeout = setTimeout(() => { bar.style.display = 'none'; }, 5000);
-        }
-
-        document.getElementById('closeNotifBtn')?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const bar = document.getElementById('notificationBar');
-            if (bar) bar.style.display = 'none';
-            clearTimeout(window.notifTimeout);
-        });
-
-        const notificationBar = document.getElementById('notificationBar');
-        if (notificationBar) {
-            notificationBar.addEventListener('click', () => {
-                const sideMenu = document.getElementById('sideMenu');
-                if (sideMenu) sideMenu.style.left = '0px';
-                document.querySelectorAll('.msg-tab').forEach(tab => {
-                    tab.classList.remove('active');
-                    if (tab.getAttribute('data-tab') === 'messages') tab.classList.add('active');
-                });
-                document.querySelectorAll('.msg-panel').forEach(panel => panel.classList.remove('active'));
-                const msgPanel = document.getElementById('messagesPanel');
-                if (msgPanel) msgPanel.classList.add('active');
-                loadNotificationList();
-            });
-        }
-
-        function showQuickReplyModal(animeId, commentId, replierEmail, originalReplyText) {
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: #1a1a1a;
-                border: 1px solid #ffd700;
-                border-radius: 20px;
-                padding: 20px;
-                width: 80%;
-                max-width: 400px;
-                z-index: 100000;
-                box-shadow: 0 0 20px rgba(0,0,0,0.8);
-            `;
-            modal.innerHTML = `
-                <h4 style="color:#ffd700;">回复 ${escapeHtml(replierEmail)}</h4>
-                <div style="margin-bottom: 10px; padding: 8px; background: #222; border-radius: 8px; color: #aaa; font-size: 0.85rem;">
-                    原回复：${escapeHtml(originalReplyText) || '(无内容)'}
-                </div>
-                <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
-                <div style="display:flex; gap:10px; margin-top:15px;">
-                    <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
-                    <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
-                    <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            document.getElementById('quickReplySend').onclick = async () => {
-                const text = document.getElementById('quickReplyText').value.trim();
-                if (!text) return showToast('请输入回复内容');
-                const res = await authFetch(`/api/anime/${animeId}/comment`, {
-                    method: 'POST',
-                    body: { parentId: commentId, text }
-                });
-                if (res.ok) {
-                    showToast('回复已发送');
-                    modal.remove();
-                    loadNotificationList();
-                } else showToast('回复失败');
-            };
-            document.getElementById('quickReplyCancel').onclick = () => modal.remove();
-            document.getElementById('quickReplyJump').onclick = () => {
-                window.location.href = `/anime/${animeId}`;
-            };
-        }
-
-        async function loadNotificationList() {
-            const container = document.getElementById('notificationList');
-            if (!container) return;
-            try {
-                const res = await fetch('/api/notifications', { credentials: 'include' });
-                if (!res.ok) throw new Error();
-                const notifs = await res.json();
-                if (!notifs.length) {
-                    container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无消息</div>';
-                    return;
-                }
-                container.innerHTML = '';
-                notifs.forEach(notif => {
-                    const div = document.createElement('div');
-                    div.className = 'msg-item';
-                    div.innerHTML = `<div>${notif.message}</div><small style="color:#888;">${new Date(notif.createdAt).toLocaleString()}</small>${!notif.read ? '<span class="red-dot"></span>' : ''}`;
-                    if (notif.replyText) div.setAttribute('data-replytext', notif.replyText);
-                    div.addEventListener('click', () => {
-                        if (notif.type === 'comment_reply' && notif.animeId) {
-                            const replyText = div.getAttribute('data-replytext') || '';
-                            showQuickReplyModal(notif.animeId, notif.commentId, notif.from, replyText);
-                        } else if (notif.type === 'friend_request') {
-                            handleFriendRequest(notif.from);
-                        } else if (notif.type === 'new_message') {
-                            openChatWithFriend(notif.from);
-                        }
-                        markNotificationRead(notif.id);
-                        div.querySelector('.red-dot')?.remove();
-                    });
-                    container.appendChild(div);
-                });
-            } catch (err) { console.error(err); container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>'; }
-        }
-
-        async function markNotificationRead(id) {
-            try {
-                await fetch('/api/notifications/mark-read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ ids: [id] }) });
-            } catch (e) { }
-        }
-
-        async function handleFriendRequest(fromEmail) {
-            const confirmed = await showCustomModal({
-                title: '好友请求',
-                message: `确定要添加 ${fromEmail} 为好友吗？`,
-                confirmText: '同意'
-            });
-            if (confirmed) {
-                const res = await fetch('/api/friends/accept', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ requestId: fromEmail })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast('已添加好友');
-                    loadNotificationList();
-                    loadFriendsList();
-                } else showToast('操作失败');
-            }
-        }
-
-        async function getUserAvatar(email) {
-            if (avatarCache[email]) return avatarCache[email];
-            try {
-                const res = await fetch(`/api/user/info/${encodeURIComponent(email)}`, { credentials: 'include' });
-                if (res.ok) {
-                    const user = await res.json();
-                    avatarCache[email] = user.avatar;
-                    return user.avatar;
-                }
-            } catch (e) { }
-            return 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
-        }
-
-        // 好友列表（带备注编辑按钮）
-        async function loadFriendsList() {
-            const container = document.getElementById('friendsList');
-            if (!container) return;
-            const notesRes = await fetch('/api/friends/notes', { credentials: 'include' });
-            const notes = await notesRes.json();
-            try {
-                const res = await fetch('/api/friends/list', { credentials: 'include' });
-                const data = await res.json();
-                if (!data.length) { container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无好友</div>'; return; }
-                container.innerHTML = '';
-                data.forEach(friend => {
-                    const note = notes[friend.email] || '';
-                    const displayName = note || friend.username || friend.email.split('@')[0];
-                    const div = document.createElement('div');
-                    div.className = 'msg-item';
-                    div.innerHTML = `
-                        <img src="${friend.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'}" class="friend-avatar" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-                        <span class="friend-name">${escapeHtml(displayName)}</span>
-                        <button class="edit-note-btn" data-email="${friend.email}" title="设置备注">✏️</button>
-                    `;
-                    div.querySelector('.edit-note-btn').onclick = async (e) => {
-                        e.stopPropagation();
-                        const currentNote = notes[friend.email] || '';
-                        // 自定义备注模态框
-                        const modal = document.createElement('div');
-                        modal.style.cssText = `
-                            position: fixed;
-                            top: 50%;
-                            left: 50%;
-                            transform: translate(-50%, -50%);
-                            background: #1a1a1a;
-                            border: 2px solid #ffd700;
-                            border-radius: 20px;
-                            padding: 20px;
-                            width: 300px;
-                            z-index: 100000;
-                            box-shadow: 0 0 30px rgba(255,215,0,0.3);
-                        `;
-                        modal.innerHTML = `
-                            <h3 style="color:#ffd700; text-align:center; margin-bottom:15px;">设置备注</h3>
-                            <input type="text" id="noteInput" placeholder="输入备注名（留空删除）" value="${escapeHtml(currentNote)}"
-                                   style="width:100%; padding:10px; margin-bottom:20px; background:#111; border:1px solid #444; color:#fff; border-radius:8px;">
-                            <div style="display: flex; justify-content: center; gap: 15px;">
-                                <button id="noteConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">确认</button>
-                                <button id="noteCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>
-                            </div>
-                        `;
-                        document.body.appendChild(modal);
-                        const input = modal.querySelector('#noteInput');
-                        const confirmBtn = modal.querySelector('#noteConfirm');
-                        const cancelBtn = modal.querySelector('#noteCancel');
-                        const closeModal = () => modal.remove();
-                        confirmBtn.onclick = async () => {
-                            const newNote = input.value.trim();
-                            const res = await authFetch('/api/friends/note', {
-                                method: 'POST',
-                                body: { friendEmail: friend.email, note: newNote || '' }
-                            });
-                            if (res.ok) {
-                                showToast('备注已更新');
-                                loadFriendsList();
-                            } else {
-                                showToast('设置失败');
-                            }
-                            closeModal();
-                        };
-                        cancelBtn.onclick = closeModal;
-                        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-                    };
-                    div.addEventListener('click', (e) => {
-                        // 避免点击编辑按钮时也触发打开聊天
-                        if (e.target.classList.contains('edit-note-btn')) return;
-                        openChatWithFriend(friend.email);
-                    });
-                    container.appendChild(div);
-                });
-            } catch (err) { console.error(err); container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>'; }
-        }
-
-        function openChatWithFriend(friendEmail) {
-            currentChatFriend = friendEmail;
-            lastMessageCount = 0;
-            document.getElementById('chatFriendName').innerText = friendEmail.split('@')[0];
-            document.getElementById('chatModal').style.display = 'flex';
-            loadChatHistory();
-            if (chatInterval) clearInterval(chatInterval);
-            chatInterval = setInterval(loadChatHistory, 3000);
-        }
-
-        async function loadChatHistory() {
-            if (!currentChatFriend) return;
-            const res = await fetch(`/api/messages/history?friend=${encodeURIComponent(currentChatFriend)}`, { credentials: 'include' });
-            if (!res.ok) return;
-            let history = await res.json();
-            history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-            const container = document.getElementById('chatMessages');
-            const prevScroll = container.scrollTop;
-            const shouldAutoScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
-            container.innerHTML = '';
-            let currentUserEmail = null;
-            try {
-                const profileRes = await fetch('/api/user/current', { credentials: 'include' });
-                if (profileRes.ok) {
-                    const user = await profileRes.json();
-                    currentUserEmail = user.email;
-                }
-            } catch (e) { }
-            for (const msg of history) {
-                const isMe = msg.from === currentUserEmail;
-                const avatar = isMe ? (await getUserAvatar(currentUserEmail)) : (await getUserAvatar(msg.from));
-                const div = document.createElement('div');
-                div.style.display = 'flex';
-                div.style.alignItems = 'flex-start';
-                div.style.gap = '8px';
-                div.style.marginBottom = '12px';
-                div.style.flexDirection = isMe ? 'row-reverse' : 'row';
-                div.innerHTML = `
-                    <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-                    <div style="max-width:70%;">
-                        <div style="background:${isMe ? '#2a2a2a' : '#111'}; padding:8px 12px; border-radius:12px; display:inline-block;">
-                            ${escapeHtml(msg.text)}
-                        </div>
-                        <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
-                    </div>
-                `;
-                container.appendChild(div);
-            }
-            if (shouldAutoScroll) {
-                container.scrollTop = container.scrollHeight;
-            } else {
-                container.scrollTop = prevScroll;
-            }
-            lastMessageCount = history.length;
-        }
-
-        async function sendMessage() {
-            const text = document.getElementById('chatInput').value.trim();
-            if (!text || !currentChatFriend) return;
-            const res = await authFetch('/api/messages/send', { method: 'POST', body: { to: currentChatFriend, text } });
-            if (res.ok) {
-                document.getElementById('chatInput').value = '';
-                loadChatHistory();
-            } else showToast('发送失败');
-        }
-
+        // 绑定聊天发送按钮
         document.getElementById('sendChatBtn')?.addEventListener('click', sendMessage);
         document.getElementById('chatInput')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
         document.getElementById('closeChatBtn')?.addEventListener('click', () => {
@@ -834,7 +519,6 @@
             }, 100);
         });
 
-        // 删除好友（保留在聊天设置中）
         document.getElementById('deleteFriendBtn')?.addEventListener('click', async () => {
             if (!currentChatFriend) return;
             const confirmed = await showCustomModal({
@@ -844,81 +528,15 @@
             });
             if (confirmed) {
                 const res = await authFetch('/api/friends/delete', { method: 'POST', body: { friend: currentChatFriend } });
-                const data = await res.json();
-                if (data.success) {
+                if (res.ok) {
                     showToast('已删除好友');
                     document.getElementById('chatModal').style.display = 'none';
                     loadFriendsList();
-                } else {
-                    showToast('删除失败');
-                }
+                } else showToast('删除失败');
             }
         });
         document.getElementById('muteFriendBtn')?.addEventListener('click', () => showToast('消息免打扰功能开发中'));
         document.getElementById('blockFriendBtn')?.addEventListener('click', () => showToast('拉黑功能开发中'));
-
-        function updateBadge(unreadCount) {
-            const badge = document.getElementById('avatarBadge');
-            if (badge) badge.style.display = unreadCount > 0 ? 'block' : 'none';
-        }
-
-        async function checkNotifications() {
-            try {
-                const res = await fetch('/api/notifications', { credentials: 'include' });
-                if (!res.ok) return;
-                const notifs = await res.json();
-                const unread = notifs.filter(n => !n.read);
-                const currentUnread = unread.length;
-                if (currentUnread > lastUnreadCount) {
-                    const newCount = currentUnread - lastUnreadCount;
-                    showNotificationBar(`您有 ${newCount} 条新消息`);
-                    if (Notification.permission === 'granted' && document.getElementById('desktopNotifyCheckbox')?.checked) {
-                        new Notification('动漫资料库', { body: `您有 ${newCount} 条新消息` });
-                    }
-                }
-                lastUnreadCount = currentUnread;
-                updateBadge(currentUnread);
-                const sideMenu = document.getElementById('sideMenu');
-                if (sideMenu && sideMenu.style.left === '0px') {
-                    const activeTab = document.querySelector('.msg-tab.active')?.getAttribute('data-tab');
-                    if (activeTab === 'messages') loadNotificationList();
-                    else if (activeTab === 'friends') loadFriendsList();
-                }
-            } catch (err) { console.error(err); }
-        }
-
-        function requestNotificationPermission() {
-            if ('Notification' in window && Notification.permission !== 'denied') Notification.requestPermission();
-        }
-
-        document.getElementById('closeSideMenuBtn')?.addEventListener('click', () => {
-            document.getElementById('sideMenu').style.left = '-280px';
-        });
-
-        document.querySelectorAll('.msg-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                const target = tab.getAttribute('data-tab');
-                document.querySelectorAll('.msg-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                document.querySelectorAll('.msg-panel').forEach(p => p.classList.remove('active'));
-                if (target === 'messages') {
-                    document.getElementById('messagesPanel').classList.add('active');
-                    loadNotificationList();
-                } else if (target === 'friends') {
-                    document.getElementById('friendsPanel').classList.add('active');
-                    loadFriendsList();
-                } else if (target === 'settings') {
-                    document.getElementById('settingsPanel').classList.add('active');
-                }
-            });
-        });
-
-        setTimeout(() => {
-            checkNotifications();
-            loadFriendsList();
-            pollInterval = setInterval(checkNotifications, 5000);
-            requestNotificationPermission();
-        }, 2000);
 
         const avatarIconEl = document.getElementById('avatarIcon');
         const sideMenuEl = document.getElementById('sideMenu');
@@ -939,7 +557,7 @@
             }
         });
 
-        // 反馈功能
+        // 意见反馈功能（保持不变）
         const reportModal = document.getElementById('reportModal');
         const reportType = document.getElementById('reportType');
         const reportDesc = document.getElementById('reportDesc');

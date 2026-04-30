@@ -629,6 +629,9 @@
                             showToast('头像更新成功');
                             const avatarPreview = document.getElementById('avatarPreview');
                             if (avatarPreview) avatarPreview.src = data.avatarUrl;
+                            // 更新实时预览中的头像
+                            const previewAvatar = document.getElementById('previewAvatar');
+                            if (previewAvatar) previewAvatar.src = data.avatarUrl;
                             if (navItems[currentIndex] === '名片') renderResultPanel();
                             const avatarIcon = document.getElementById('avatarIcon');
                             if (avatarIcon) avatarIcon.src = data.avatarUrl;
@@ -990,6 +993,37 @@
                         namePicker.addEventListener('input', updatePreview);
                         bioPicker.addEventListener('input', updatePreview);
                         updatePreview();
+
+                        // 使模态框可拖拽
+                        const modalBox = modal.querySelector('.modal-box');
+                        if (modalBox) {
+                            let isDragging = false;
+                            let dragOffsetX = 0, dragOffsetY = 0;
+                            const dragHandle = modalBox.querySelector('h3') || modalBox;
+                            dragHandle.style.cursor = 'move';
+                            dragHandle.addEventListener('mousedown', (e) => {
+                                if (e.target === modalBox.querySelector('button')) return;
+                                isDragging = true;
+                                dragOffsetX = e.clientX - modalBox.offsetLeft;
+                                dragOffsetY = e.clientY - modalBox.offsetTop;
+                                modalBox.style.position = 'absolute';
+                                modalBox.style.margin = '0';
+                                document.body.style.userSelect = 'none';
+                            });
+                            window.addEventListener('mousemove', (e) => {
+                                if (!isDragging) return;
+                                let left = e.clientX - dragOffsetX;
+                                let top = e.clientY - dragOffsetY;
+                                left = Math.min(window.innerWidth - modalBox.offsetWidth, Math.max(0, left));
+                                top = Math.min(window.innerHeight - modalBox.offsetHeight, Math.max(0, top));
+                                modalBox.style.left = left + 'px';
+                                modalBox.style.top = top + 'px';
+                            });
+                            window.addEventListener('mouseup', () => {
+                                isDragging = false;
+                                document.body.style.userSelect = '';
+                            });
+                        }
                     }, 100);
                     break;
                 case '位置':

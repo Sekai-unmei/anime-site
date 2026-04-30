@@ -323,425 +323,6 @@
             padding: 12px;
             border-bottom: 1px solid #333;
             cursor: pointer;
-        }
-
-        .msg-item:hover {
-            background: #222;
-        }
-
-        .friend-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin-right: 12px;
-            vertical-align: middle;
-        }
-
-        .friend-name {
-            display: inline-block;
-            vertical-align: middle;
-        }
-
-        .red-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: #ff0000;
-            border-radius: 50%;
-            margin-left: 8px;
-            vertical-align: middle;
-        }
-
-        #notificationBar {
-            display: none;
-            position: fixed;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #ffd700;
-            color: #000;
-            padding: 8px 16px;
-            border-radius: 30px;
-            z-index: 100000;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        #sideMenu {
-            position: fixed;
-            left: -280px;
-            top: 0;
-            width: 280px;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(10px);
-            z-index: 2000;
-            transition: left 0.3s;
-            border-right: 1px solid #ffd700;
-        }
-
-        #chatModal {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80%;
-            max-width: 500px;
-            height: 70%;
-            background: #1a1a1a;
-            border: 1px solid #ffd700;
-            border-radius: 20px;
-            z-index: 100001;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        #chatSettingsMenu {
-            display: none;
-            position: absolute;
-            background: #222;
-            border: 1px solid #ffd700;
-            border-radius: 8px;
-            z-index: 100002;
-        }
-
-        #chatSettingsMenu div {
-            padding: 10px 20px;
-            cursor: pointer;
-            color: #fff;
-        }
-
-        #chatSettingsMenu div:hover {
-            background: #333;
-        }
-    </style>
-</head>
-<!DOCTYPE html>
-<html lang="zh">
-
-<head>
-    <meta charset="UTF-8">
-    <title>动漫详情 - 资料库</title>
-    <style>
-        body {
-            margin: 0;
-            background: #0a0a0a;
-            color: #fff;
-            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-bottom: 20px;
-            color: #ffd700;
-            text-decoration: none;
-            border: 1px solid #ffd700;
-            padding: 8px 20px;
-            border-radius: 30px;
-            transition: 0.3s;
-        }
-
-        .back-link:hover {
-            background: #ffd700;
-            color: #000;
-        }
-
-        .anime-detail img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 12px;
-            margin: 20px 0;
-        }
-
-        .title {
-            font-size: 2rem;
-            margin: 20px 0;
-            color: #ffd700;
-        }
-
-        .description {
-            line-height: 1.6;
-            color: #ccc;
-            white-space: pre-wrap;
-        }
-
-        .info {
-            margin-top: 20px;
-            color: #aaa;
-        }
-
-        .info span {
-            color: #ffd700;
-        }
-
-        .rating-section {
-            margin: 30px 0;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .rating-btn {
-            background: #222;
-            border: 1px solid #ffd700;
-            color: #ffd700;
-            padding: 8px 20px;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .rating-btn.active {
-            background: #ffd700;
-            color: #000;
-            box-shadow: 0 0 15px #ffd700;
-        }
-
-        .rating-btn:hover {
-            background: #ffd700;
-            color: #000;
-        }
-
-        .comment-section {
-            margin-top: 40px;
-            border-top: 1px solid #333;
-            padding-top: 20px;
-        }
-
-        .comment-form textarea {
-            width: 100%;
-            background: #1a1a1a;
-            border: 1px solid #444;
-            color: #fff;
-            border-radius: 8px;
-            padding: 10px;
-            font-family: inherit;
-            resize: vertical;
-        }
-
-        .comment-submit {
-            background: #ffd700;
-            color: #000;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 30px;
-            margin-top: 10px;
-            cursor: pointer;
-        }
-
-        .comment {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #111;
-            border-radius: 12px;
-            position: relative;
-        }
-
-        .comment-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-
-        .comment-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            cursor: pointer;
-            border: 1px solid #ffd700;
-        }
-
-        .comment-username {
-            font-weight: bold;
-            color: #ffd700;
-            cursor: pointer;
-        }
-
-        .comment-date {
-            font-size: 0.75rem;
-            color: #888;
-        }
-
-        .comment-text {
-            margin: 8px 0;
-            line-height: 1.4;
-        }
-
-        .reply-btn {
-            font-size: 0.8rem;
-            color: #aaa;
-            cursor: pointer;
-            margin-top: 5px;
-            display: inline-block;
-        }
-
-        .reply-btn:hover {
-            color: #ffd700;
-        }
-
-        .delete-comment {
-            font-size: 0.75rem;
-            color: #f66;
-            cursor: pointer;
-            margin-left: 15px;
-            float: right;
-        }
-
-        .delete-comment:hover {
-            color: #ff0000;
-        }
-
-        .replies {
-            margin-left: 50px;
-            margin-top: 15px;
-            border-left: 2px solid #333;
-            padding-left: 20px;
-        }
-
-        .reply-form {
-            margin-top: 10px;
-            display: none;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: #1a1a1a;
-            border-radius: 12px;
-            padding: 20px;
-            max-width: 300px;
-            text-align: center;
-            border: 1px solid #ffd700;
-        }
-
-        .modal-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 10px;
-        }
-
-        .friend-btn {
-            background: #ffd700;
-            color: #000;
-            border: none;
-            padding: 6px 15px;
-            border-radius: 30px;
-            margin-top: 10px;
-            cursor: pointer;
-        }
-
-        .toast-message {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(10px);
-            border: 1px solid #ffd700;
-            border-radius: 40px;
-            padding: 12px 24px;
-            color: #ffd700;
-            font-size: 1rem;
-            font-weight: bold;
-            z-index: 100000;
-            white-space: nowrap;
-            animation: fadeInOut 2s ease forwards;
-            pointer-events: none;
-        }
-
-        @keyframes fadeInOut {
-            0% {
-                opacity: 0;
-                transform: translateX(-50%) translateY(20px);
-            }
-
-            15% {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-            }
-
-            85% {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-            }
-
-            100% {
-                opacity: 0;
-                transform: translateX(-50%) translateY(-20px);
-            }
-        }
-
-        .avatar-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            width: 12px;
-            height: 12px;
-            background: #ff0000;
-            border-radius: 50%;
-            border: 1px solid #000;
-            display: none;
-            z-index: 1001;
-        }
-
-        #userAvatarMenu {
-            position: relative;
-        }
-
-        .msg-tabs {
-            display: flex;
-            border-bottom: 1px solid #444;
-            margin-bottom: 15px;
-        }
-
-        .msg-tab {
-            flex: 1;
-            text-align: center;
-            padding: 10px;
-            cursor: pointer;
-            color: #aaa;
-            transition: 0.2s;
-        }
-
-        .msg-tab.active {
-            color: #ffd700;
-            border-bottom: 2px solid #ffd700;
-        }
-
-        .msg-panel {
-            display: none;
-        }
-
-        .msg-panel.active {
-            display: block;
-        }
-
-        .msg-item {
-            padding: 12px;
-            border-bottom: 1px solid #333;
-            cursor: pointer;
             position: relative;
         }
 
@@ -931,7 +512,6 @@
         </div>
     </div>
     <div id="chatSettingsMenu" style="display:none; position:absolute;">
-        <!-- 移除了“设置备注”选项 -->
         <div id="deleteFriendBtn">删除好友</div>
         <div id="muteFriendBtn">消息免打扰</div>
         <div id="blockFriendBtn">拉黑</div>
@@ -980,41 +560,17 @@
         <div id="avatarBadge" class="avatar-badge"></div>
     </div>
 
+    <script src="/js/common.js"></script>
     <script>
-        // === 全局函数 ===
-        function showToast(message, duration = 2000) {
-            const existingToast = document.querySelector('.toast-message');
-            if (existingToast) existingToast.remove();
-            const toast = document.createElement('div');
-            toast.className = 'toast-message';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => { if (toast.parentNode) toast.remove(); }, duration);
-        }
-
-        async function authFetch(url, options = {}) {
-            options.credentials = 'include';
-            if (options.body && typeof options.body === 'object') {
-                options.body = JSON.stringify(options.body);
-                options.headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-            }
-            return fetch(url, options);
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str).replace(/[&<>]/g, function (m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
-
-        // --- 动漫详情相关代码 ---
+        // ========== 动漫详情特有变量 ==========
         let currentAnime = null;
         let currentUserEmail = null;
+        let currentChatFriend = null;
+        let chatInterval = null;
+        let lastMessageCount = 0;
+        let lastMessageIds = [];
 
+        // ========== 获取当前用户 ==========
         async function fetchCurrentUser() {
             try {
                 const res = await fetch('/api/user/current', { credentials: 'include' });
@@ -1036,6 +592,7 @@
             }
         }
 
+        // ========== 加载动漫详情 ==========
         async function loadAnime() {
             const pathId = window.location.pathname.split('/').pop();
             if (!pathId) {
@@ -1058,6 +615,7 @@
             document.getElementById('animeDetail').innerHTML = html;
         }
 
+        // ========== 评分按钮渲染 ==========
         function renderRatingButtons() {
             const ratings = ['神作', '好看', '普通', '无聊', '狗屎'];
             const container = document.getElementById('ratingPanel');
@@ -1107,7 +665,7 @@
             }
         }
 
-        // 评论相关
+        // ========== 评论相关 ==========
         function renderComments() {
             const container = document.getElementById('commentSection');
             container.innerHTML = '';
@@ -1208,353 +766,23 @@
             else showToast(data.error || '请求失败');
         }
 
-        // ========== 通知系统 ==========
-        let lastUnreadCount = 0;
-        let pollInterval = null;
-
-        function showNotificationBar(msg) {
-            const bar = document.getElementById('notificationBar');
-            const span = document.getElementById('notificationMsg');
-            if (!bar || !span) return;
-            span.innerText = msg;
-            bar.style.display = 'block';
-            clearTimeout(window.notifTimeout);
-            window.notifTimeout = setTimeout(() => { bar.style.display = 'none'; }, 5000);
-        }
-
-        document.getElementById('closeNotifBtn')?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const bar = document.getElementById('notificationBar');
-            if (bar) bar.style.display = 'none';
-            clearTimeout(window.notifTimeout);
-        });
-
-        const notificationBar = document.getElementById('notificationBar');
-        if (notificationBar) {
-            notificationBar.addEventListener('click', () => {
-                const sideMenu = document.getElementById('sideMenu');
-                if (sideMenu) sideMenu.style.left = '0px';
-                document.querySelectorAll('.msg-tab').forEach(tab => {
-                    tab.classList.remove('active');
-                    if (tab.getAttribute('data-tab') === 'messages') tab.classList.add('active');
-                });
-                document.querySelectorAll('.msg-panel').forEach(panel => panel.classList.remove('active'));
-                const msgPanel = document.getElementById('messagesPanel');
-                if (msgPanel) msgPanel.classList.add('active');
-                loadNotificationList();
-            });
-        }
-
-        function showQuickReplyModal(animeId, commentId, replierEmail, originalReplyText) {
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: #1a1a1a;
-                border: 1px solid #ffd700;
-                border-radius: 20px;
-                padding: 20px;
-                width: 80%;
-                max-width: 400px;
-                z-index: 100000;
-                box-shadow: 0 0 20px rgba(0,0,0,0.8);
-            `;
-            modal.innerHTML = `
-                <h4 style="color:#ffd700;">回复 ${escapeHtml(replierEmail)}</h4>
-                <div style="margin-bottom: 10px; padding: 8px; background: #222; border-radius: 8px; color: #aaa; font-size: 0.85rem;">
-                    原回复：${escapeHtml(originalReplyText) || '(无内容)'}
-                </div>
-                <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
-                <div style="display:flex; gap:10px; margin-top:15px;">
-                    <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
-                    <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
-                    <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            document.getElementById('quickReplySend').onclick = async () => {
-                const text = document.getElementById('quickReplyText').value.trim();
-                if (!text) return showToast('请输入回复内容');
-                const res = await authFetch(`/api/anime/${animeId}/comment`, {
-                    method: 'POST',
-                    body: { parentId: commentId, text }
-                });
-                if (res.ok) {
-                    showToast('回复已发送');
-                    modal.remove();
-                    loadNotificationList();
-                } else showToast('回复失败');
-            };
-            document.getElementById('quickReplyCancel').onclick = () => modal.remove();
-            document.getElementById('quickReplyJump').onclick = () => {
-                window.location.href = `/anime/${animeId}`;
-            };
-        }
-
-        async function loadNotificationList() {
-            const container = document.getElementById('notificationList');
-            if (!container) return;
-            try {
-                const res = await fetch('/api/notifications', { credentials: 'include' });
-                if (!res.ok) throw new Error();
-                const notifs = await res.json();
-                if (!notifs.length) {
-                    container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无消息</div>';
-                    return;
-                }
-                container.innerHTML = '';
-                notifs.forEach(notif => {
-                    const div = document.createElement('div');
-                    div.className = 'msg-item';
-                    div.innerHTML = `<div>${notif.message}</div><small style="color:#888;">${new Date(notif.createdAt).toLocaleString()}</small>${!notif.read ? '<span class="red-dot"></span>' : ''}`;
-                    if (notif.replyText) div.setAttribute('data-replytext', notif.replyText);
-                    div.addEventListener('click', () => {
-                        if (notif.type === 'comment_reply' && notif.animeId) {
-                            const replyText = div.getAttribute('data-replytext') || '';
-                            showQuickReplyModal(notif.animeId, notif.commentId, notif.from, replyText);
-                        } else if (notif.type === 'friend_request') {
-                            handleFriendRequest(notif.from);
-                        } else if (notif.type === 'new_message') {
-                            openChatWithFriend(notif.from);
-                        }
-                        markNotificationRead(notif.id);
-                        div.querySelector('.red-dot')?.remove();
-                    });
-                    container.appendChild(div);
-                });
-            } catch (err) { console.error(err); container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>'; }
-        }
-
-        async function markNotificationRead(id) {
-            try {
-                await fetch('/api/notifications/mark-read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ ids: [id] }) });
-            } catch (e) { }
-        }
-
-        function showCustomModal(options) {
-            return new Promise((resolve) => {
-                const modal = document.createElement('div');
-                modal.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.85);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 200000;
-                `;
-                const box = document.createElement('div');
-                box.style.cssText = `
-                    background: #1a1a1a;
-                    border: 2px solid #ffd700;
-                    border-radius: 20px;
-                    padding: 20px;
-                    max-width: 90%;
-                    width: 300px;
-                    text-align: center;
-                    box-shadow: 0 0 20px rgba(255,215,0,0.3);
-                `;
-                box.innerHTML = `
-                    <div style="color:#ffd700; font-size:1.2rem; margin-bottom:15px;">${options.title || '提示'}</div>
-                    <div style="color:#fff; margin-bottom:20px;">${options.message}</div>
-                    <div style="display:flex; gap:15px; justify-content:center;">
-                        ${options.showCancel !== false ? `<button id="modalCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>` : ''}
-                        <button id="modalConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">${options.confirmText || '确定'}</button>
-                    </div>
-                `;
-                modal.appendChild(box);
-                document.body.appendChild(modal);
-                const confirmBtn = box.querySelector('#modalConfirm');
-                const cancelBtn = box.querySelector('#modalCancel');
-                confirmBtn.onclick = () => { modal.remove(); resolve(true); };
-                if (cancelBtn) cancelBtn.onclick = () => { modal.remove(); resolve(false); };
-                modal.onclick = (e) => { if (e.target === modal) { modal.remove(); resolve(false); } };
-            });
-        }
-
-        async function handleFriendRequest(fromEmail) {
-            const confirmed = await showCustomModal({
-                title: '好友请求',
-                message: `确定要添加 ${fromEmail} 为好友吗？`,
-                confirmText: '同意'
-            });
-            if (confirmed) {
-                const res = await fetch('/api/friends/accept', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ requestId: fromEmail })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast('已添加好友');
-                    loadNotificationList();
-                    loadFriendsList();
-                } else showToast('操作失败');
-            }
-        }
-
-        // ========== 好友列表（带备注编辑按钮） ==========
-        async function loadFriendsList() {
-            const container = document.getElementById('friendsList');
-            if (!container) return;
-            const notesRes = await fetch('/api/friends/notes', { credentials: 'include' });
-            const notes = await notesRes.json();
-            try {
-                const res = await fetch('/api/friends/list', { credentials: 'include' });
-                const data = await res.json();
-                if (!data.length) {
-                    container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无好友</div>';
-                    return;
-                }
-                container.innerHTML = '';
-                data.forEach(friend => {
-                    const note = notes[friend.email] || '';
-                    const displayName = note || friend.username || friend.email.split('@')[0];
-                    const div = document.createElement('div');
-                    div.className = 'msg-item';
-                    div.innerHTML = `
-                        <img src="${friend.avatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'}" class="friend-avatar" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-                        <span class="friend-name">${escapeHtml(displayName)}</span>
-                        <button class="edit-note-btn" data-email="${friend.email}" title="设置备注">✏️</button>
-                    `;
-                    // 编辑备注按钮的点击事件
-                    div.querySelector('.edit-note-btn').onclick = async (e) => {
-                        e.stopPropagation();
-                        const currentNote = notes[friend.email] || '';
-                        // 自定义备注模态框
-                        const modalDiv = document.createElement('div');
-                        modalDiv.style.cssText = `
-                            position: fixed;
-                            top: 50%;
-                            left: 50%;
-                            transform: translate(-50%, -50%);
-                            background: #1a1a1a;
-                            border: 2px solid #ffd700;
-                            border-radius: 20px;
-                            padding: 20px;
-                            width: 300px;
-                            z-index: 100000;
-                            box-shadow: 0 0 30px rgba(255,215,0,0.3);
-                        `;
-                        modalDiv.innerHTML = `
-                            <h3 style="color:#ffd700; text-align:center; margin-bottom:15px;">设置备注</h3>
-                            <input type="text" id="noteInput" placeholder="输入备注名（留空删除）" value="${escapeHtml(currentNote)}"
-                                style="width:100%; padding:10px; margin-bottom:20px; background:#111; border:1px solid #444; color:#fff; border-radius:8px;">
-                            <div style="display: flex; justify-content: center; gap: 15px;">
-                                <button id="noteConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">确认</button>
-                                <button id="noteCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>
-                            </div>
-                        `;
-                        document.body.appendChild(modalDiv);
-                        const input = modalDiv.querySelector('#noteInput');
-                        const confirmBtn = modalDiv.querySelector('#noteConfirm');
-                        const cancelBtn = modalDiv.querySelector('#noteCancel');
-                        const closeNoteModal = () => modalDiv.remove();
-                        confirmBtn.onclick = async () => {
-                            const newNote = input.value.trim();
-                            const res = await authFetch('/api/friends/note', {
-                                method: 'POST',
-                                body: { friendEmail: friend.email, note: newNote || '' }
-                            });
-                            if (res.ok) {
-                                showToast('备注已更新');
-                                loadFriendsList();
-                            } else {
-                                showToast('设置失败');
-                            }
-                            closeNoteModal();
-                        };
-                        cancelBtn.onclick = closeNoteModal;
-                        modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) closeNoteModal(); });
-                    };
-                    div.addEventListener('click', (e) => {
-                        // 避免点击编辑按钮时也触发打开聊天
-                        if (e.target.classList.contains('edit-note-btn')) return;
-                        openChatWithFriend(friend.email);
-                    });
-                    container.appendChild(div);
-                });
-            } catch (err) {
-                console.error(err);
-                container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">加载失败</div>';
-            }
-        }
-
-        function updateBadge(unreadCount) {
-            const badge = document.getElementById('avatarBadge');
-            if (badge) badge.style.display = unreadCount > 0 ? 'block' : 'none';
-        }
-
-        async function checkNotifications() {
-            try {
-                const res = await fetch('/api/notifications', { credentials: 'include' });
-                if (!res.ok) return;
-                const notifs = await res.json();
-                const unread = notifs.filter(n => !n.read);
-                const currentUnread = unread.length;
-                if (currentUnread > lastUnreadCount) {
-                    const newCount = currentUnread - lastUnreadCount;
-                    showNotificationBar(`您有 ${newCount} 条新消息`);
-                    if (Notification.permission === 'granted' && document.getElementById('desktopNotifyCheckbox')?.checked) {
-                        new Notification('动漫资料库', { body: `您有 ${newCount} 条新消息` });
-                    }
-                }
-                lastUnreadCount = currentUnread;
-                updateBadge(currentUnread);
-                const sideMenu = document.getElementById('sideMenu');
-                if (sideMenu && sideMenu.style.left === '0px') {
-                    const activeTab = document.querySelector('.msg-tab.active')?.getAttribute('data-tab');
-                    if (activeTab === 'messages') loadNotificationList();
-                    else if (activeTab === 'friends') loadFriendsList();
-                }
-            } catch (err) { console.error(err); }
-        }
-
-        // ========== 聊天相关 ==========
-        let currentChatFriend = null;
-        let chatInterval = null;
-        let lastMessageCount = 0;
-        let avatarCache = {};
-
-        async function getUserAvatar(email) {
-            if (avatarCache[email]) return avatarCache[email];
-            try {
-                const res = await fetch(`/api/user/info/${encodeURIComponent(email)}`, { credentials: 'include' });
-                if (res.ok) {
-                    const user = await res.json();
-                    avatarCache[email] = user.avatar;
-                    return user.avatar;
-                }
-            } catch (e) { }
-            return 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp';
-        }
-
-        function openChatWithFriend(friendEmail) {
-            currentChatFriend = friendEmail;
-            lastMessageCount = 0;
-            document.getElementById('chatFriendName').innerText = friendEmail;
-            document.getElementById('chatModal').style.display = 'flex';
-            loadChatHistory();
-            if (chatInterval) clearInterval(chatInterval);
-            chatInterval = setInterval(loadChatHistory, 3000);
-        }
-
+        // ========== 聊天历史（增量加载） ==========
         async function loadChatHistory() {
             if (!currentChatFriend) return;
             const res = await fetch(`/api/messages/history?friend=${encodeURIComponent(currentChatFriend)}`, { credentials: 'include' });
             if (!res.ok) return;
             let history = await res.json();
             history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
             const container = document.getElementById('chatMessages');
-            const prevScroll = container.scrollTop;
-            const shouldAutoScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
-            container.innerHTML = '';
+            const shouldScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
+
+            const displayedIds = new Set(lastMessageIds);
+            const newMessages = history.filter(msg => !displayedIds.has(msg._id));
+            if (newMessages.length === 0) return;
+
+            lastMessageIds = history.map(msg => msg._id);
+
             let currentUser = currentUserEmail;
             if (!currentUser) {
                 const profileRes = await fetch('/api/user/current', { credentials: 'include' });
@@ -1564,7 +792,8 @@
                     currentUserEmail = user.email;
                 }
             }
-            for (const msg of history) {
+
+            for (const msg of newMessages) {
                 const isMe = msg.from === currentUser;
                 const avatar = isMe ? (await getUserAvatar(currentUser)) : (await getUserAvatar(msg.from));
                 const div = document.createElement('div');
@@ -1584,24 +813,13 @@
                 `;
                 container.appendChild(div);
             }
-            if (shouldAutoScroll) {
+
+            if (shouldScroll) {
                 container.scrollTop = container.scrollHeight;
-            } else {
-                container.scrollTop = prevScroll;
             }
-            lastMessageCount = history.length;
         }
 
-        async function sendMessage() {
-            const text = document.getElementById('chatInput').value.trim();
-            if (!text || !currentChatFriend) return;
-            const res = await authFetch('/api/messages/send', { method: 'POST', body: { to: currentChatFriend, text } });
-            if (res.ok) {
-                document.getElementById('chatInput').value = '';
-                loadChatHistory();
-            } else showToast('发送失败');
-        }
-
+        // ========== 初始化页面特有事件 ==========
         document.getElementById('sendChatBtn')?.addEventListener('click', sendMessage);
         document.getElementById('chatInput')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
         document.getElementById('closeChatBtn')?.addEventListener('click', () => {
@@ -1624,7 +842,6 @@
             }, 100);
         });
 
-        // 删除好友
         document.getElementById('deleteFriendBtn')?.addEventListener('click', async () => {
             if (!currentChatFriend) return;
             const confirmed = await showCustomModal({
@@ -1634,25 +851,17 @@
             });
             if (confirmed) {
                 const res = await authFetch('/api/friends/delete', { method: 'POST', body: { friend: currentChatFriend } });
-                const data = await res.json();
-                if (data.success) {
+                if (res.ok) {
                     showToast('已删除好友');
                     document.getElementById('chatModal').style.display = 'none';
                     loadFriendsList();
-                } else {
-                    showToast('删除失败');
-                }
+                } else showToast('删除失败');
             }
         });
 
         document.getElementById('muteFriendBtn')?.addEventListener('click', () => showToast('消息免打扰功能开发中'));
         document.getElementById('blockFriendBtn')?.addEventListener('click', () => showToast('拉黑功能开发中'));
 
-        function requestNotificationPermission() {
-            if ('Notification' in window && Notification.permission !== 'denied') Notification.requestPermission();
-        }
-
-        // 头像菜单点击展开侧边栏
         const avatarIconEl = document.getElementById('avatarIcon');
         const sideMenuEl = document.getElementById('sideMenu');
         if (avatarIconEl) {
@@ -1691,14 +900,10 @@
             });
         });
 
-        setTimeout(() => {
-            checkNotifications();
-            loadFriendsList();
-            pollInterval = setInterval(checkNotifications, 5000);
-            requestNotificationPermission();
-        }, 2000);
+        // ========== 启动 ==========
+        initSidebarEvents();
+        startPolling();
 
-        // 初始化动漫详情
         fetchCurrentUser();
         loadAnime();
         modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });

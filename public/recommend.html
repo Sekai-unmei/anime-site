@@ -267,12 +267,13 @@
                     const ratedAnimes = await res.json();
                     userRatingMap.clear();
                     ratedAnimes.forEach(anime => {
-                        // 注意：检查返回的数据中是否有 id 字段
-                        if (anime.id !== undefined && anime.id !== null) {
-                            userRatingMap.set(Number(anime.id), anime.userRating);
-                        } else {
-                            console.warn('用户评分数据缺少 id 字段', anime);
+                        // 防御：如果没有 id，则跳过或提示
+                        if (anime.id === undefined || anime.id === null) {
+                            console.error('❌ 评分数据缺少 id 字段', anime);
+                            return;
                         }
+                        // 统一转换为数字类型存储
+                        userRatingMap.set(Number(anime.id), anime.userRating);
                     });
                     console.log('✅ 已加载用户评分映射:', [...userRatingMap.entries()]);
                 } else {

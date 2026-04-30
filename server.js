@@ -596,10 +596,23 @@ app.get('/api/user/ratings', async (req, res) => {
     const votes = await Vote.find({ userId: user });
     const animeIds = votes.map(v => v.animeId);
     const animes = await Anime.find({ id: { $in: animeIds } }).lean();
-    const animeWithRating = animes.map(anime => ({
-        ...anime,
-        userRating: votes.find(v => v.animeId === anime.id)?.type
-    }));
+
+    const animeWithRating = animes.map(anime => {
+        // 确保存在有效的 id 字段（数字或字符串）
+        let validId = anime.id;
+        if (validId === undefined || validId === null) {
+            // 如果数据库中没有自定义 id，则使用 _id 字符串作为临时 id（推荐尽快运行上面的脚本补全数字 id）
+            validId = anime._id.toString();
+            console.warn(`动漫 ${anime.title} 缺少数字 id，使用 _id 作为替代`);
+        }
+        return {
+            _id: anime._id,
+            id: validId,                    // 保证 id 不为 undefined
+            title: anime.title,
+            image_url: anime.image_url,
+            userRating: votes.find(v => v.animeId === anime.id)?.type || null
+        };
+    });
     res.json(animeWithRating);
 });
 

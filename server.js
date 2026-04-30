@@ -846,19 +846,17 @@ app.post('/api/report', async (req, res) => {
         res.status(500).json({ error: '邮件发送失败，请稍后重试' });
     }
 });
+
 // ========== 临时清理：删除当前用户所有投票并重置 ratings ==========
-// 临时清理：删除当前用户所有投票并重置 ratings
 app.get('/admin/purge', async (req, res) => {
     if (!req.session.user) return res.status(401).send('请先登录');
     const userId = req.session.user;
-    // 删除该用户所有投票
     const del = await Vote.deleteMany({ userId });
-    // 重置所有动漫票数为0
     const reset = await Anime.updateMany({}, { $set: { ratings: { 神作: 0, 好看: 0, 普通: 0, 无聊: 0, 狗屎: 0 } } });
-    // 清空 user_ratings 字段（不再使用）
     await Anime.updateMany({}, { $set: { user_ratings: {} } });
     res.send(`✅ 已删除 ${del.deletedCount} 条投票，重置 ${reset.modifiedCount} 部动漫票数。现在可以重新测试。`);
 });
+
 // ========== 启动服务器 ==========
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

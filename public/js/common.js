@@ -19,7 +19,7 @@ if (window._commonLoaded) {
     }, duration);
   };
 
-  // 辅助：获取有效的头像URL（如果无效则生成 Gravatar）
+  // 辅助：获取有效的头像URL（无效则生成 Gravatar）
   window.getValidAvatarUrl = function (avatarUrl, email) {
     if (
       !avatarUrl ||
@@ -35,12 +35,12 @@ if (window._commonLoaded) {
     return avatarUrl;
   };
 
-  // 辅助：头像加载失败时的回调
+  // 辅助：头像加载失败时的回退
   window.handleAvatarError = function (imgElement, email) {
-    if (imgElement.src.includes("gravatar.com")) return;
+    if (imgElement.src.includes("gravatar.com")) return; // 防止无限循环
     const validUrl = getValidAvatarUrl(null, email);
     imgElement.src = validUrl;
-    imgElement.onerror = null;
+    imgElement.onerror = null; // 避免重复触发
   };
 
   // ---------- 带 session 的 fetch ----------
@@ -157,13 +157,13 @@ if (window._commonLoaded) {
 
   // ---------- 获取当前用户信息（缓存） ----------
   let cachedUser = null;
+  // 获取当前用户（带头像修复）
   window.getCurrentUser = async function (forceRefresh = false) {
     if (!forceRefresh && cachedUser) return cachedUser;
     try {
       const res = await fetch("/api/user/current", { credentials: "include" });
       if (res.ok) {
         cachedUser = await res.json();
-        // 修复头像
         cachedUser.avatar = getValidAvatarUrl(
           cachedUser.avatar,
           cachedUser.email,
@@ -174,7 +174,7 @@ if (window._commonLoaded) {
     return null;
   };
 
-  // ---------- 同步左下角头像与 localStorage ----------
+  // 同步左下角头像
   window.syncUserAvatar = async function () {
     const user = await getCurrentUser();
     if (!user) return;

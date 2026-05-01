@@ -278,9 +278,70 @@ async function initEnvironment() {
 
 // 在 main.js 中找到 fetchWeatherData 函数，替换为以下版本
 
+// 国家英文名 -> 中文映射表
+const countryMap = {
+  Italy: "意大利",
+  "United States": "美国",
+  USA: "美国",
+  "United Kingdom": "英国",
+  UK: "英国",
+  France: "法国",
+  Germany: "德国",
+  Japan: "日本",
+  China: "中国",
+  "South Korea": "韩国",
+  Korea: "韩国",
+  Australia: "澳大利亚",
+  Canada: "加拿大",
+  India: "印度",
+  Brazil: "巴西",
+  Russia: "俄罗斯",
+  Spain: "西班牙",
+  Netherlands: "荷兰",
+  Switzerland: "瑞士",
+  Sweden: "瑞典",
+  Norway: "挪威",
+  Denmark: "丹麦",
+  Finland: "芬兰",
+  Poland: "波兰",
+  Turkey: "土耳其",
+  Greece: "希腊",
+  Portugal: "葡萄牙",
+  Belgium: "比利时",
+  Austria: "奥地利",
+  Ireland: "爱尔兰",
+  "Czech Republic": "捷克",
+  Hungary: "匈牙利",
+  Romania: "罗马尼亚",
+  Ukraine: "乌克兰",
+  Mexico: "墨西哥",
+  Argentina: "阿根廷",
+  Chile: "智利",
+  Peru: "秘鲁",
+  Colombia: "哥伦比亚",
+  Venezuela: "委内瑞拉",
+  Egypt: "埃及",
+  "South Africa": "南非",
+  Nigeria: "尼日利亚",
+  Kenya: "肯尼亚",
+  "Saudi Arabia": "沙特阿拉伯",
+  UAE: "阿联酋",
+  Israel: "以色列",
+  Iran: "伊朗",
+  Iraq: "伊拉克",
+  Pakistan: "巴基斯坦",
+  Bangladesh: "孟加拉国",
+  Thailand: "泰国",
+  Vietnam: "越南",
+  Indonesia: "印度尼西亚",
+  Malaysia: "马来西亚",
+  Philippines: "菲律宾",
+  Singapore: "新加坡",
+  "New Zealand": "新西兰",
+};
+
 async function fetchWeatherData(lat, lon) {
   try {
-    // 获取位置信息（优先自定义，其次时区推断，最后IP API）
     const profile = JSON.parse(localStorage.getItem("user_profile") || "{}");
     let country = "观测站";
     let city = "";
@@ -290,13 +351,10 @@ async function fetchWeatherData(lat, lon) {
       country = profile.country;
       city = profile.region || "";
     } else {
-      // 2. 通过时区推断国家（粗略）
+      // 2. 通过时区推断国家（简略，您已有的代码可保留）
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (
-        timezone.includes("Asia/Shanghai") ||
-        timezone.includes("Asia/Chongqing")
-      )
-        country = "中国";
+      // 可补充时区映射，但这里为了简洁，留作备用
+      if (timezone.includes("Asia/Shanghai")) country = "中国";
       else if (timezone.includes("Asia/Tokyo")) country = "日本";
       else if (timezone.includes("Asia/Seoul")) country = "韩国";
       else if (timezone.includes("America/New_York")) country = "美国";
@@ -306,7 +364,7 @@ async function fetchWeatherData(lat, lon) {
       else if (timezone.includes("Australia/Sydney")) country = "澳大利亚";
       else if (timezone.includes("Asia/Calcutta")) country = "印度";
       else {
-        // 3. 最后尝试备用 IP API (ipapi.co 通常不会被墙)
+        // 3. 使用 ipapi.co 获取地理位置（返回中文需要映射）
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -316,15 +374,21 @@ async function fetchWeatherData(lat, lon) {
           clearTimeout(timeoutId);
           if (res.ok) {
             const data = await res.json();
-            country = data.country_name || "未知";
+            const rawCountry = data.country_name || "";
+            // 英文转中文
+            country = countryMap[rawCountry] || rawCountry || "未知";
             city = data.city || "";
+          } else {
+            throw new Error("IP API 失败");
           }
-        } catch (e) {
-          console.warn("备用IP API失败", e);
+        } catch (err) {
+          console.warn("获取地理位置失败，使用默认", err);
+          country = "观测站";
         }
       }
     }
 
+    // 拼接显示字符串
     const locationParts = [
       profile.planet,
       profile.country,
@@ -339,7 +403,7 @@ async function fetchWeatherData(lat, lon) {
         : realLocation;
     }
 
-    // 获取天气数据（使用传入的经纬度或尝试从 ipapi 获取）
+    // 获取天气数据（使用传入的经纬度，如果无效则从 ipapi 获取）
     let weatherLat = lat,
       weatherLon = lon;
     if (!weatherLat || !weatherLon) {
@@ -379,7 +443,6 @@ async function fetchWeatherData(lat, lon) {
     });
   }
 }
-
 // 在 initEnvironment 中增加超时和错误处理
 async function initEnvironment() {
   try {

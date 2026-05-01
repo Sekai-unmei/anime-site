@@ -247,16 +247,18 @@ function initSearchBox() {
       const val = newBox.value.trim();
       if (!val) return;
 
-      // 定义 JOJO 系列关键词白名单（只有这些才跳转系列页）
+      // 定义 JOJO 系列关键词白名单（不区分大小写）
       const jojoKeywords = [
+        "jo",
         "jojo",
         "jojo的奇妙冒险",
         "jojo's bizarre adventure",
         "jojo的奇妙",
         "ジョジョ",
       ];
+      const lowerVal = val.toLowerCase();
       const isJojo = jojoKeywords.some((kw) =>
-        val.toLowerCase().includes(kw.toLowerCase()),
+        lowerVal.includes(kw.toLowerCase()),
       );
 
       if (isJojo) {
@@ -795,7 +797,7 @@ function renderArchive(state) {
 function buildScene(state, centerX, centerY) {
   if (state === "root") {
     moveCamera(centerX, centerY);
-    createNode("时间", centerX - 350, centerY, "main circle", () =>
+    createNode("时间", centerX - 200, centerY, "main circle", () =>
       renderArchive("time"),
     );
     createNode("类型", centerX, centerY, "main circle", () =>
@@ -803,7 +805,7 @@ function buildScene(state, centerX, centerY) {
     );
     createNode(
       "推荐",
-      centerX + 350,
+      centerX + 200,
       centerY,
       "main circle",
       () => (window.location.href = "/recommend.html"),
@@ -1644,14 +1646,6 @@ function resetCamera() {
   if (camera) {
     camX = 0;
     camY = 0;
-    camera.style.transform = "translate(0px, 0px)";
-  }
-}
-
-function resetCamera() {
-  const camera = document.getElementById("camera");
-  if (camera) {
-    // 仅将相机变换归零，但不改变 camX/camY 变量（避免冲突）
     camera.style.transform = "translate(0px, 0px)";
   }
 }

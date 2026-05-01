@@ -225,29 +225,41 @@ async function initEnvironment() {
 
 async function fetchWeatherData(lat, lon) {
     try {
-        const gRes = await fetch(`https://ipapi.co/json/`);
+        // 1. 获取真实 IP 地理位置（中文）
+        const gRes = await fetch(`https://ip-api.com/json/?lang=zh-CN`);
         const g = await gRes.json();
+
+        // 2. 读取用户自定义位置（形象设置中填写的）
         const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
         const locationParts = [profile.planet, profile.country, profile.region].filter(p => p && p.trim());
 
-        const realLocation = `地球 · ${g.country_name} · ${g.city || g.region || '未知地点'}`;
+        // 3. 构造真实地理位置字符串（优先使用城市，如果没有则用地区或国家）
+        let realLocation = `地球 · ${g.country}`;
+        if (g.city) {
+            realLocation += ` · ${g.city}`;
+        } else if (g.regionName) {
+            realLocation += ` · ${g.regionName}`;
+        }
 
+        // 4. 显示地理位置
         if (locationParts.length === 0) {
             document.getElementById('geo-display').innerText = realLocation;
         } else {
             document.getElementById('geo-display').innerText = `${realLocation} (自定义: ${locationParts.join(' · ')})`;
         }
 
-        // 天气数据获取不变（注意：需要用到经纬度参数，但 ip-api 不返回经纬度，你可以使用原来的 lat,lon 继续获取天气）
+        // 5. 天气数据获取（使用浏览器传回的经纬度，保持原样）
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,cloud_cover&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
         const wRes = await fetch(url);
         const w = await wRes.json();
         renderWeatherUI(w);
     } catch (e) {
+        console.error("天气/位置获取失败", e);
         document.getElementById('geo-display').innerText = "星际同步中断";
         renderWeatherUI({ current: { temperature_2m: 25, weather_code: 0, relative_humidity_2m: 50, wind_speed_10m: 5, wind_direction_10m: 180, uv_index: 3, cloud_cover: 20 }, daily: { temperature_2m_max: [28], temperature_2m_min: [18] } });
     }
 }
+
 
 function windDirection(deg) {
     const dirs = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];

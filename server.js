@@ -169,18 +169,38 @@ mongoose
   .catch((err) => console.error("❌ MongoDB 连接失败:", err));
 
 // ========== 辅助函数 ==========
+const crypto = require("crypto"); // 在文件顶部添加这行
+
 async function getOrCreateUserInfo(email, username = null) {
   let user = await User.findOne({ email });
   if (!user) {
+    const emailMd5 = crypto
+      .createHash("md5")
+      .update(email.trim().toLowerCase())
+      .digest("hex");
+    const gravatarUrl = `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
     user = new User({
       email,
       username: username || email.split("@")[0],
-      avatar:
-        "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp",
+      avatar: gravatarUrl,
       bio: "这位观测者还没有留下简介",
       joinDate: new Date().toISOString().split("T")[0],
     });
     await user.save();
+  } else {
+    // 补全缺的头像
+    if (
+      !user.avatar ||
+      user.avatar ===
+        "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp"
+    ) {
+      const emailMd5 = crypto
+        .createHash("md5")
+        .update(email.trim().toLowerCase())
+        .digest("hex");
+      user.avatar = `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
+      await user.save();
+    }
   }
   return user;
 }

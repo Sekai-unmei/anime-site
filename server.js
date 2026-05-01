@@ -188,7 +188,7 @@ async function getOrCreateUserInfo(email, username = null) {
     });
     await user.save();
   } else {
-    // 补全缺的头像
+    // 如果用户存在但头像为空或为默认灰图，补上 Gravatar
     if (
       !user.avatar ||
       user.avatar ===

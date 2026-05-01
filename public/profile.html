@@ -547,49 +547,55 @@
           const srcSize = circleSize / scale;
 
           const finalCanvas = document.createElement("canvas");
-          finalCanvas.width = 400;
-          finalCanvas.height = 400;
+          finalCanvas.width = 200; // 200x200 足够清晰且体积小
+          finalCanvas.height = 200;
           const ctx = finalCanvas.getContext("2d");
           ctx.save();
           ctx.beginPath();
-          ctx.arc(200, 200, 200, 0, Math.PI * 2);
+          ctx.arc(100, 100, 100, 0, Math.PI * 2);
           ctx.clip();
-          ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, 400, 400);
+          ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, 200, 200);
           ctx.restore();
 
-          finalCanvas.toBlob(async (blob) => {
-            const formData = new FormData();
-            formData.append("avatar", blob, "avatar.png");
-            try {
-              const res = await fetch("/api/user/avatar", {
-                method: "POST",
-                credentials: "include",
-                body: formData,
-              });
-              const data = await res.json();
-              if (data.success) {
-                profile.avatar = data.avatarUrl;
-                saveProfile({ avatar: data.avatarUrl });
-                showToast("头像更新成功");
-                // 更新预览
-                const avatarPreview = document.getElementById("avatarPreview");
-                if (avatarPreview) avatarPreview.src = data.avatarUrl;
-                const previewAvatar = document.getElementById("previewAvatar");
-                if (previewAvatar) previewAvatar.src = data.avatarUrl;
-                if (navItems[currentIndex] === "名片") renderResultPanel();
-              } else {
-                showToast("上传失败：" + (data.error || "未知错误"));
-              }
-            } catch (err) {
-              showToast("网络错误");
-            } finally {
-              modalDiv.remove();
-              currentCropModal = null;
-              resizeObserver.disconnect();
-            }
-          }, "image/png");
-        };
+          const base64 = finalCanvas.toDataURL("image/png");
+          // 限制大小 150KB（200x200 PNG 一般不超过 80KB）
+          if (base64.length > 150 * 1024) {
+            showToast("图片太大，请选择更小的图片");
+            return;
+          }
 
+          try {
+            const res = await fetch("/api/user/update", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ avatar: base64 }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              profile.avatar = base64;
+              saveProfile({ avatar: base64 });
+              showToast("头像已永久保存");
+              // 更新当前页面预览
+              const avatarPreview = document.getElementById("avatarPreview");
+              if (avatarPreview) avatarPreview.src = base64;
+              const previewAvatar = document.getElementById("previewAvatar");
+              if (previewAvatar) previewAvatar.src = base64;
+              if (navItems[currentIndex] === "名片") renderResultPanel();
+              // 立即同步左下角头像（如果在形象设置页面）
+              const avatarIcon = document.getElementById("avatarIcon");
+              if (avatarIcon) avatarIcon.src = base64;
+            } else {
+              showToast("保存失败：" + (data.error || "未知错误"));
+            }
+          } catch (err) {
+            showToast("网络错误");
+          } finally {
+            modalDiv.remove();
+            currentCropModal = null;
+            resizeObserver.disconnect();
+          }
+        };
         cancelBtn.onclick = () => {
           modalDiv.remove();
           currentCropModal = null;

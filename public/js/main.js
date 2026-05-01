@@ -402,9 +402,8 @@ async function fetchWeatherData(lat, lon, useGps = false) {
     if (city && city.trim()) realLocation += ` · ${city}`;
     const geoDisplay = document.getElementById("geo-display");
     if (geoDisplay) {
-      geoDisplay.innerText = locationParts.length
-        ? `${realLocation} (自定义: ${locationParts.join(" · ")})`
-        : realLocation;
+      // 始终只显示 realLocation，不再附加自定义部分
+      geoDisplay.innerText = realLocation;
     }
 
     // 获取天气数据（如果有经纬度就用，否则用默认北京）
@@ -733,9 +732,8 @@ function renderArchive(state) {
     centerX = 2500,
     centerY = 2500;
   if (!svgCache) {
-    camera.innerHTML =
-      '<svg id="link-svg" style="position:absolute; width:5000px; height:5000px; pointer-events:none;"></svg>';
-    svgCache = document.getElementById("link-svg");
+    // 初始创建时可能相机位置未设置，这里设置一次
+    moveCamera(centerX, centerY);
   }
   svgCache
     .querySelectorAll("line, linearGradient")
@@ -1619,12 +1617,19 @@ function resetCamera() {
   }
 }
 
+function resetCamera() {
+  const camera = document.getElementById("camera");
+  if (camera) {
+    // 仅将相机变换归零，但不改变 camX/camY 变量（避免冲突）
+    camera.style.transform = "translate(0px, 0px)";
+  }
+}
+
 function showSection(id) {
   const isArchive = id === "archive";
   if (!isArchive) {
-    // 离开档案模式时重置相机位置，并确保 root 视图正常
+    // 离开 archive 模式时，重置相机并清除粒子、框架等
     resetCamera();
-    // 如果当前存在粒子系统，可以选择停止（但保留）
     if (window.particleSystem) {
       if (window.particleSystem.linkInterval)
         clearInterval(window.particleSystem.linkInterval);
@@ -1632,24 +1637,30 @@ function showSection(id) {
         clearInterval(window.particleSystem.frameInterval);
       window.particleSystem.particles = [];
     }
-    // 清除年度框架残留
     document
       .querySelectorAll("#camera .year-frame-outer, #camera .year-frame-inner")
       .forEach((el) => el.remove());
     currentFrameBounds = null;
+    // 显示首页元素，隐藏 archive-stage
+    document
+      .querySelectorAll(".top-left, .search-area, .poem-right")
+      .forEach((el) => (el.style.display = "block"));
+    document.getElementById("archive-stage").style.display = "none";
+    document.getElementById("confirm-btn").style.display = "none";
+  } else {
+    // 进入 archive 模式
+    document
+      .querySelectorAll(".top-left, .search-area, .poem-right")
+      .forEach((el) => (el.style.display = "none"));
+    document.getElementById("archive-stage").style.display = "block";
+    document.getElementById("confirm-btn").style.display = "block";
+    // 重置相机偏移变量（重要！）
+    camX = 0;
+    camY = 0;
+    renderArchive("root");
   }
-  // 原有显示/隐藏逻辑...
-  document
-    .querySelectorAll(".top-left, .search-area, .poem-right")
-    .forEach((el) => (el.style.display = isArchive ? "none" : "block"));
-  document.getElementById("archive-stage").style.display = isArchive
-    ? "block"
-    : "none";
-  document.getElementById("confirm-btn").style.display = isArchive
-    ? "block"
-    : "none";
-  if (isArchive) renderArchive("root");
 }
+
 async function checkLoginAndRedirect() {
   try {
     const res = await fetch("/api/user/current", { credentials: "include" });

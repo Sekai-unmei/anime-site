@@ -107,7 +107,7 @@ if (window._commonLoaded) {
     });
   };
 
-  // ---------- 获取用户头像（带缓存，直接返回服务器存储的URL） ----------
+  // ---------- 获取用户头像（带缓存，直接从服务器读取） ----------
   let avatarCache = {};
   window.getUserAvatar = async function (email) {
     if (avatarCache[email]) return avatarCache[email];
@@ -129,7 +129,7 @@ if (window._commonLoaded) {
     return "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
   };
 
-  // ---------- 获取当前用户信息（不强制修改头像） ----------
+  // ---------- 获取当前用户信息（直接返回服务器数据，不做任何修改） ----------
   let cachedUser = null;
   window.getCurrentUser = async function (forceRefresh = false) {
     if (!forceRefresh && cachedUser) return cachedUser;
@@ -137,14 +137,14 @@ if (window._commonLoaded) {
       const res = await fetch("/api/user/current", { credentials: "include" });
       if (res.ok) {
         cachedUser = await res.json();
-        // 不再强制使用 Gravatar，保留服务器返回的头像（可能是上传的）
+        // 完全信任服务器返回的头像（可能是用户上传的 Base64 或 Gravatar）
         return cachedUser;
       }
     } catch (e) {}
     return null;
   };
 
-  // 同步左下角头像（使用用户实际保存的头像）
+  // 同步左下角头像（使用用户实际保存在服务器的头像）
   window.syncUserAvatar = async function () {
     const user = await window.getCurrentUser(true);
     if (!user) return;
@@ -168,7 +168,6 @@ if (window._commonLoaded) {
     }
   };
 
-  // 以下为您的通知、好友、聊天函数（完整保留）
   // ---------- 通知条 ----------
   let notifTimeout = null;
   window.showNotificationBar = function (msg) {

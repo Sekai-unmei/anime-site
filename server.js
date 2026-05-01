@@ -316,9 +316,10 @@ app.post("/auth/google/token", async (req, res) => {
       return res.json({ success: false, message: "您的邮箱未被授权访问" });
     const googleAvatar = payload.picture || null;
 
-    // 使用统一的用户创建/获取函数，确保有初始 Gravatar
+    // 使用统一的用户创建/获取函数，确保 avatar 有初始值（Gravatar）
     let user = await getOrCreateUserInfo(email);
     if (googleAvatar && !user.googleAvatar) user.googleAvatar = googleAvatar;
+    // 只有当当前头像为默认灰图时，才用 Google 头像替换（可选）
     const isDefaultAvatar =
       !user.avatar ||
       user.avatar ===

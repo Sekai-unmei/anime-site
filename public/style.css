@@ -391,9 +391,9 @@ body {
 }
 
 .main.circle {
-    width: 110px;
-    height: 110px;
-    font-size: 1.1rem;
+    width: 80px;
+    height: 80px;
+    font-size: 0.9rem;
     border-width: 2px;
     color: var(--gold);
 }

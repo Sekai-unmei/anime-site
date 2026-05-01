@@ -746,7 +746,7 @@ function renderArchive(state) {
     return;
   }
 
-  // 确保 svgCache 存在（用于绘制连线）
+  // 确保 svgCache 存在
   if (!svgCache) {
     camera.innerHTML =
       '<svg id="link-svg" style="position:absolute; width:5000px; height:5000px; pointer-events:none;"></svg>';
@@ -755,7 +755,6 @@ function renderArchive(state) {
       console.error("Failed to create svgCache");
       return;
     }
-    moveCamera(centerX, centerY); // 初次设置相机位置
   }
 
   // 清除旧连线
@@ -768,6 +767,11 @@ function renderArchive(state) {
     window.particleSystem = new ParticleSystem();
   } else if (!camera.contains(window.particleSystem.canvas)) {
     camera.appendChild(window.particleSystem.canvas);
+  }
+
+  // ★ 关键：进入 root 状态时强制相机对准中心
+  if (state === "root") {
+    resetCameraToCenter();
   }
 
   // 状态切换时重建场景
@@ -793,11 +797,20 @@ function renderArchive(state) {
   lastState = state;
   updateConfirmBtn();
 }
+function resetCameraToCenter() {
+  const camera = document.getElementById("camera");
+  if (!camera) return;
+  const centerX = 2500;
+  const centerY = 2500;
+  camX = window.innerWidth / 2 - centerX;
+  camY = window.innerHeight / 2 - centerY;
+  camera.style.transform = `translate(${camX}px, ${camY}px)`;
+}
 
 function buildScene(state, centerX, centerY) {
   if (state === "root") {
-    moveCamera(centerX, centerY);
-    createNode("时间", centerX - 200, centerY, "main circle", () =>
+    moveCamera(centerX, centerY); // 可以保留，但 resetCameraToCenter 已经做了更好
+    createNode("时间", centerX - 150, centerY, "main circle", () =>
       renderArchive("time"),
     );
     createNode("类型", centerX, centerY, "main circle", () =>
@@ -805,7 +818,7 @@ function buildScene(state, centerX, centerY) {
     );
     createNode(
       "推荐",
-      centerX + 200,
+      centerX + 150,
       centerY,
       "main circle",
       () => (window.location.href = "/recommend.html"),
@@ -1641,15 +1654,6 @@ function updateConfirmBtn(immediate = false) {
   }
 }
 
-function resetCamera() {
-  const camera = document.getElementById("camera");
-  if (camera) {
-    camX = 0;
-    camY = 0;
-    camera.style.transform = "translate(0px, 0px)";
-  }
-}
-
 function showSection(id) {
   const isArchive = id === "archive";
   if (!isArchive) {
@@ -1674,12 +1678,13 @@ function showSection(id) {
     document.getElementById("confirm-btn").style.display = "none";
   } else {
     // 进入 archive 模式
+    // 进入 archive 模式
     document
       .querySelectorAll(".top-left, .search-area, .poem-right")
       .forEach((el) => (el.style.display = "none"));
     document.getElementById("archive-stage").style.display = "block";
     document.getElementById("confirm-btn").style.display = "block";
-    // 重置相机偏移变量（重要！）
+    // 重置相机偏移变量
     camX = 0;
     camY = 0;
     renderArchive("root");

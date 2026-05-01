@@ -223,40 +223,43 @@ async function initEnvironment() {
     navigator.geolocation.getCurrentPosition(success, error, { timeout: 5000 });
 }
 
-async function fetchWeatherData(lat, lon) {
+async function fetchCurrentUser() {
     try {
-        // 1. 获取真实 IP 地理位置（中文）
-        const gRes = await fetch(`https://ip-api.com/json/?lang=zh-CN`);
-        const g = await gRes.json();
-
-        // 2. 读取用户自定义位置（形象设置中填写的）
-        const profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
-        const locationParts = [profile.planet, profile.country, profile.region].filter(p => p && p.trim());
-
-        // 3. 构造真实地理位置字符串（优先使用城市，如果没有则用地区或国家）
-        let realLocation = `地球 · ${g.country}`;
-        if (g.city) {
-            realLocation += ` · ${g.city}`;
-        } else if (g.regionName) {
-            realLocation += ` · ${g.regionName}`;
+        // 第一步：立即从 localStorage 显示头像（避免黑块）
+        const localProfile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+        if (localProfile.avatar && localProfile.avatar !== 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp') {
+            const avatarIcon = document.getElementById('avatarIcon');
+            if (avatarIcon) avatarIcon.src = localProfile.avatar;
         }
 
-        // 4. 显示地理位置
-        if (locationParts.length === 0) {
-            document.getElementById('geo-display').innerText = realLocation;
+        // 第二步：从服务器获取最新用户信息
+        const res = await fetch('/api/user/current', { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            currentUserEmail = data.email;
+
+            // 更新本地存储（仅当服务器返回的头像不是默认头像，且与本地不同）
+            if (data.avatar && data.avatar !== 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp') {
+                let profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+                if (profile.avatar !== data.avatar) {
+                    profile.avatar = data.avatar;
+                    localStorage.setItem('user_profile', JSON.stringify(profile));
+                    // 触发全局事件，通知其他组件（如名片）更新
+                    window.dispatchEvent(new CustomEvent('profileUpdated', { detail: profile }));
+                }
+            }
+
+            // 更新左下角头像（如果服务器返回了有效头像）
+            const avatarIcon = document.getElementById('avatarIcon');
+            if (avatarIcon && data.avatar) {
+                avatarIcon.src = data.avatar;
+            }
         } else {
-            document.getElementById('geo-display').innerText = `${realLocation} (自定义: ${locationParts.join(' · ')})`;
+            currentUserEmail = null;
         }
-
-        // 5. 天气数据获取（使用浏览器传回的经纬度，保持原样）
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,cloud_cover&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
-        const wRes = await fetch(url);
-        const w = await wRes.json();
-        renderWeatherUI(w);
     } catch (e) {
-        console.error("天气/位置获取失败", e);
-        document.getElementById('geo-display').innerText = "星际同步中断";
-        renderWeatherUI({ current: { temperature_2m: 25, weather_code: 0, relative_humidity_2m: 50, wind_speed_10m: 5, wind_direction_10m: 180, uv_index: 3, cloud_cover: 20 }, daily: { temperature_2m_max: [28], temperature_2m_min: [18] } });
+        currentUserEmail = null;
+        console.warn('获取用户信息失败', e);
     }
 }
 

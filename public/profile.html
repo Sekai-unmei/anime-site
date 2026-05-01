@@ -611,6 +611,9 @@
                 finalCanvas.width = 400;
                 finalCanvas.height = 400;
                 const ctx = finalCanvas.getContext('2d');
+                // 在 confirmBtn.onclick 中，上传成功后应包含：
+                profile.avatar = data.avatarUrl;
+                saveProfile({ avatar: data.avatarUrl }); // 这个函数会更新 localStorage 并触发 profileUpdated 事件
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(200, 200, 200, 0, Math.PI * 2);

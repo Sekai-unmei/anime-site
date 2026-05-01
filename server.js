@@ -7,7 +7,7 @@ const path = require("path");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const { OAuth2Client } = require("google-auth-library");
-
+const crypto = require("crypto");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -188,7 +188,7 @@ async function getOrCreateUserInfo(email, username = null) {
     });
     await user.save();
   } else {
-    // 如果用户存在但头像为空或为默认灰图，补上 Gravatar
+    // 如果已有用户但 avatar 为空或为默认灰图，也补上 Gravatar（不覆盖已上传的 Base64）
     if (
       !user.avatar ||
       user.avatar ===

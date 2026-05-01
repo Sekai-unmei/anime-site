@@ -19,6 +19,30 @@ if (window._commonLoaded) {
     }, duration);
   };
 
+  // 辅助：获取有效的头像URL（如果无效则生成 Gravatar）
+  window.getValidAvatarUrl = function (avatarUrl, email) {
+    if (
+      !avatarUrl ||
+      avatarUrl ===
+        "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp" ||
+      avatarUrl.includes("gravatar.com/avatar/00000")
+    ) {
+      const emailMd5 = md5 ? md5((email || "").trim().toLowerCase()) : "";
+      if (emailMd5)
+        return `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
+      return "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
+    }
+    return avatarUrl;
+  };
+
+  // 辅助：头像加载失败时的回调
+  window.handleAvatarError = function (imgElement, email) {
+    if (imgElement.src.includes("gravatar.com")) return;
+    const validUrl = getValidAvatarUrl(null, email);
+    imgElement.src = validUrl;
+    imgElement.onerror = null;
+  };
+
   // ---------- 带 session 的 fetch ----------
   window.authFetch = async function (url, options = {}) {
     options.credentials = "include";
@@ -139,18 +163,11 @@ if (window._commonLoaded) {
       const res = await fetch("/api/user/current", { credentials: "include" });
       if (res.ok) {
         cachedUser = await res.json();
-        // 如果头像无效，补全 Gravatar
-        if (
-          !cachedUser.avatar ||
-          cachedUser.avatar ===
-            "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp"
-        ) {
-          const emailMd5 = md5
-            ? md5(cachedUser.email.trim().toLowerCase())
-            : "";
-          if (emailMd5)
-            cachedUser.avatar = `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
-        }
+        // 修复头像
+        cachedUser.avatar = getValidAvatarUrl(
+          cachedUser.avatar,
+          cachedUser.email,
+        );
         return cachedUser;
       }
     } catch (e) {}
@@ -161,18 +178,12 @@ if (window._commonLoaded) {
   window.syncUserAvatar = async function () {
     const user = await getCurrentUser();
     if (!user) return;
-    let avatarUrl = user.avatar;
-    if (
-      !avatarUrl ||
-      avatarUrl ===
-        "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp"
-    ) {
-      const emailMd5 = md5 ? md5(user.email.trim().toLowerCase()) : "";
-      if (emailMd5)
-        avatarUrl = `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
-    }
+    const avatarUrl = getValidAvatarUrl(user.avatar, user.email);
     const avatarIcon = document.getElementById("avatarIcon");
-    if (avatarIcon) avatarIcon.src = avatarUrl;
+    if (avatarIcon) {
+      avatarIcon.src = avatarUrl;
+      avatarIcon.onerror = () => handleAvatarError(avatarIcon, user.email);
+    }
     let profile = JSON.parse(localStorage.getItem("user_profile") || "{}");
     if (profile.avatar !== avatarUrl) {
       profile.avatar = avatarUrl;

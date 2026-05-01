@@ -272,7 +272,7 @@ async function initEnvironment() {
     fetchWeatherData(position.coords.latitude, position.coords.longitude);
   } catch (e) {
     console.warn("浏览器定位失败，使用IP定位或默认坐标", e);
-    fetchWeatherData(39.9042, 116.4074);
+    fetchWeatherData(null, null);
   }
 }
 
@@ -280,29 +280,51 @@ async function initEnvironment() {
 
 async function fetchWeatherData(lat, lon) {
   try {
-    // 1. 获取真实地理位置（增加超时和降级）
-    let country = "观测站",
-      city = "";
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      const gRes = await fetch("https://ip-api.com/json/?lang=zh-CN", {
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      if (gRes.ok) {
-        const g = await gRes.json();
-        country = g.country || "未知国家";
-        city = g.city || g.regionName || "";
-      } else {
-        throw new Error("IP定位失败");
+    // 获取位置信息（优先自定义，其次时区推断，最后IP API）
+    const profile = JSON.parse(localStorage.getItem("user_profile") || "{}");
+    let country = "观测站";
+    let city = "";
+
+    // 1. 优先使用用户自定义国家
+    if (profile.country) {
+      country = profile.country;
+      city = profile.region || "";
+    } else {
+      // 2. 通过时区推断国家（粗略）
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (
+        timezone.includes("Asia/Shanghai") ||
+        timezone.includes("Asia/Chongqing")
+      )
+        country = "中国";
+      else if (timezone.includes("Asia/Tokyo")) country = "日本";
+      else if (timezone.includes("Asia/Seoul")) country = "韩国";
+      else if (timezone.includes("America/New_York")) country = "美国";
+      else if (timezone.includes("Europe/London")) country = "英国";
+      else if (timezone.includes("Europe/Paris")) country = "法国";
+      else if (timezone.includes("Europe/Berlin")) country = "德国";
+      else if (timezone.includes("Australia/Sydney")) country = "澳大利亚";
+      else if (timezone.includes("Asia/Calcutta")) country = "印度";
+      else {
+        // 3. 最后尝试备用 IP API (ipapi.co 通常不会被墙)
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          const res = await fetch("https://ipapi.co/json/", {
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            const data = await res.json();
+            country = data.country_name || "未知";
+            city = data.city || "";
+          }
+        } catch (e) {
+          console.warn("备用IP API失败", e);
+        }
       }
-    } catch (e) {
-      console.warn("IP定位失败，使用默认名称", e);
-      country = "观测站";
     }
 
-    const profile = JSON.parse(localStorage.getItem("user_profile") || "{}");
     const locationParts = [
       profile.planet,
       profile.country,
@@ -317,13 +339,24 @@ async function fetchWeatherData(lat, lon) {
         : realLocation;
     }
 
-    // 2. 获取天气数据（使用传入的经纬度，如果无效则使用默认北京）
+    // 获取天气数据（使用传入的经纬度或尝试从 ipapi 获取）
     let weatherLat = lat,
       weatherLon = lon;
     if (!weatherLat || !weatherLon) {
-      weatherLat = 39.9042;
-      weatherLon = 116.4074;
+      try {
+        const ipRes = await fetch("https://ipapi.co/json/");
+        if (ipRes.ok) {
+          const ipData = await ipRes.json();
+          weatherLat = ipData.latitude;
+          weatherLon = ipData.longitude;
+        }
+      } catch (e) {}
+      if (!weatherLat) {
+        weatherLat = 39.9042;
+        weatherLon = 116.4074;
+      }
     }
+
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${weatherLat}&longitude=${weatherLon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,cloud_cover&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
     const wRes = await fetch(url);
     const w = await wRes.json();

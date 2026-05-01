@@ -14,7 +14,6 @@
     />
     <link rel="stylesheet" href="/style.css" />
     <style>
-      /* profile 特有样式 */
       body {
         overflow: hidden;
         height: 100vh;
@@ -220,7 +219,6 @@
         opacity: 0;
         transition: opacity 0.5s;
       }
-      /* 裁剪模态框样式 */
       .crop-modal {
         position: fixed;
         top: 0;
@@ -230,11 +228,6 @@
         background: black;
         z-index: 10000;
         overflow: hidden;
-      }
-      .crop-container {
-        position: relative;
-        width: 100%;
-        height: 100%;
       }
       .crop-bg-img {
         position: absolute;
@@ -301,7 +294,7 @@
     </div>
     <script src="/js/common.js"></script>
     <script>
-      // profile 特有逻辑（完整保留扇形菜单，并修复头像裁剪）
+      // ========== 扇形菜单逻辑（保持不变） ==========
       const navItems = [
         "名字",
         "称号",
@@ -323,8 +316,6 @@
       let glowAnimationFrame = null,
         glowIntensity = 0,
         glowDirection = 1;
-      let particles = [],
-        particleAnimationFrame = null;
       const PROFILE_KEY = "user_profile";
       let currentCropModal = null;
 
@@ -375,38 +366,14 @@
       }
       profile = loadProfile();
 
-      // 修复：根据邮箱生成 Gravatar 头像（使用 blueimp-md5）
-      // 从 localStorage 或 后端 API 获取用户自定义头像
-      const userCustomAvatar = profile.avatar; // 假设这是用户上传的头像URL
-
-      // 生成 Gravatar URL
-      const getGravatarUrl = (email) => {
-        if (!email) return null;
-        const emailMd5 = md5(email.trim().toLowerCase());
-        return `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
-      };
-
-      // 最终显示的头像
-      const finalAvatarUrl =
-        userCustomAvatar ||
-        getGravatarUrl(userEmail) ||
-        "/images/default-avatar.png";
       async function fetchCurrentAvatar() {
-        // 强制刷新用户信息（不读缓存），确保拿到最新的 email 和 Gravatar
         const user = await getCurrentUser(true);
         if (!user) return;
-
-        // getCurrentUser 内部已调用 getValidAvatarUrl(null, email) 返回正确的 Gravatar URL
-        const gravatarUrl = user.avatar;
-
-        // 如果当前 profile 中的头像与 Gravatar 不一致，则更新
-        if (profile.avatar !== gravatarUrl) {
-          profile.avatar = gravatarUrl;
-          saveProfile({ avatar: gravatarUrl });
-          renderResultPanel(); // 刷新右侧面板（例如名片中的头像）
+        if (profile.avatar !== user.avatar) {
+          profile.avatar = user.avatar;
+          saveProfile({ avatar: user.avatar });
+          renderResultPanel();
         }
-
-        // 同步用户名和简介（如果服务器有更新）
         if (user.username && profile.name !== user.username) {
           profile.name = user.username;
           saveProfile({ name: user.username });
@@ -418,9 +385,219 @@
           renderResultPanel();
         }
       }
-      // ========== 完整头像裁剪功能（修复版） ==========
 
-      // ========== 扇形菜单渲染（与原版一致，略作保留） ==========
+      // ========== 头像裁剪与上传（通过 /api/user/avatar 接口） ==========
+      function uploadAvatar() {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/jpeg,image/png,image/gif,image/webp";
+        input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => showCropModal(img);
+            img.src = ev.target.result;
+          };
+          reader.readAsDataURL(file);
+        };
+        input.click();
+      }
+
+      function showCropModal(img) {
+        if (currentCropModal) return;
+        const modalDiv = document.createElement("div");
+        modalDiv.className = "crop-modal";
+
+        const bgImg = document.createElement("img");
+        bgImg.src = img.src;
+        bgImg.className = "crop-bg-img";
+        modalDiv.appendChild(bgImg);
+
+        const clearImg = document.createElement("img");
+        clearImg.src = img.src;
+        clearImg.className = "crop-clear-img";
+        modalDiv.appendChild(clearImg);
+
+        const circleDiv = document.createElement("div");
+        circleDiv.className = "crop-circle";
+        modalDiv.appendChild(circleDiv);
+
+        const panel = document.createElement("div");
+        panel.className = "crop-panel";
+        const confirmBtn = document.createElement("button");
+        confirmBtn.textContent = "确认";
+        const cancelBtn = document.createElement("button");
+        cancelBtn.textContent = "取消";
+        panel.appendChild(confirmBtn);
+        panel.appendChild(cancelBtn);
+        modalDiv.appendChild(panel);
+
+        document.body.appendChild(modalDiv);
+        currentCropModal = modalDiv;
+
+        let containerWidth = 0,
+          containerHeight = 0,
+          circleSize = 0,
+          circleLeft = 0,
+          circleTop = 0;
+
+        function updateClip() {
+          const cx = circleLeft + circleSize / 2;
+          const cy = circleTop + circleSize / 2;
+          const r = circleSize / 2;
+          clearImg.style.clipPath = `circle(${r}px at ${cx}px ${cy}px)`;
+        }
+
+        function updateCircle() {
+          const rect = modalDiv.getBoundingClientRect();
+          containerWidth = rect.width;
+          containerHeight = rect.height;
+          circleSize = Math.min(containerWidth, containerHeight) * 0.7;
+          if (circleLeft === 0 && circleTop === 0) {
+            circleLeft = (containerWidth - circleSize) / 2;
+            circleTop = (containerHeight - circleSize) / 2;
+          }
+          circleLeft = Math.max(
+            0,
+            Math.min(circleLeft, containerWidth - circleSize),
+          );
+          circleTop = Math.max(
+            0,
+            Math.min(circleTop, containerHeight - circleSize),
+          );
+          circleDiv.style.width = circleSize + "px";
+          circleDiv.style.height = circleSize + "px";
+          circleDiv.style.left = circleLeft + "px";
+          circleDiv.style.top = circleTop + "px";
+          updateClip();
+        }
+
+        let dragging = false,
+          startX = 0,
+          startY = 0;
+        function getPoint(e) {
+          const client = e.touches ? e.touches[0] : e;
+          return { x: client.clientX, y: client.clientY };
+        }
+        function onPointerDown(e) {
+          e.preventDefault();
+          dragging = true;
+          const p = getPoint(e);
+          const rect = circleDiv.getBoundingClientRect();
+          startX = p.x - rect.left;
+          startY = p.y - rect.top;
+        }
+        function onPointerMove(e) {
+          if (!dragging) return;
+          e.preventDefault();
+          const p = getPoint(e);
+          let newLeft = p.x - startX;
+          let newTop = p.y - startY;
+          newLeft = Math.max(0, Math.min(newLeft, containerWidth - circleSize));
+          newTop = Math.max(0, Math.min(newTop, containerHeight - circleSize));
+          circleLeft = newLeft;
+          circleTop = newTop;
+          circleDiv.style.left = circleLeft + "px";
+          circleDiv.style.top = circleTop + "px";
+          updateClip();
+        }
+        function onPointerUp() {
+          dragging = false;
+        }
+
+        circleDiv.addEventListener("mousedown", onPointerDown);
+        circleDiv.addEventListener("touchstart", onPointerDown, {
+          passive: false,
+        });
+        window.addEventListener("mousemove", onPointerMove);
+        window.addEventListener("touchmove", onPointerMove, { passive: false });
+        window.addEventListener("mouseup", onPointerUp);
+        window.addEventListener("touchend", onPointerUp);
+
+        const resizeObserver = new ResizeObserver(() => {
+          updateCircle();
+          updatePanelPosition();
+        });
+        resizeObserver.observe(modalDiv);
+
+        function updatePanelPosition() {
+          panel.style.left = containerWidth - 230 + "px";
+          panel.style.top = containerHeight - 90 + "px";
+        }
+
+        updateCircle();
+        updatePanelPosition();
+
+        // ========== 关键：裁剪确认后通过 /api/user/avatar 上传 ==========
+        confirmBtn.onclick = async () => {
+          const bgRect = bgImg.getBoundingClientRect();
+          const imgW = img.width,
+            imgH = img.height;
+          const scaleX = bgRect.width / imgW;
+          const scaleY = bgRect.height / imgH;
+          const scale = Math.max(scaleX, scaleY);
+          const drawW = imgW * scale,
+            drawH = imgH * scale;
+          const offsetX = (bgRect.width - drawW) / 2;
+          const offsetY = (bgRect.height - drawH) / 2;
+          const srcX = (circleLeft - offsetX) / scale;
+          const srcY = (circleTop - offsetY) / scale;
+          const srcSize = circleSize / scale;
+
+          const finalCanvas = document.createElement("canvas");
+          finalCanvas.width = 400;
+          finalCanvas.height = 400;
+          const ctx = finalCanvas.getContext("2d");
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(200, 200, 200, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, 400, 400);
+          ctx.restore();
+
+          finalCanvas.toBlob(async (blob) => {
+            const formData = new FormData();
+            formData.append("avatar", blob, "avatar.png");
+            try {
+              const res = await fetch("/api/user/avatar", {
+                method: "POST",
+                credentials: "include",
+                body: formData,
+              });
+              const data = await res.json();
+              if (data.success) {
+                profile.avatar = data.avatarUrl;
+                saveProfile({ avatar: data.avatarUrl });
+                showToast("头像更新成功");
+                // 更新预览
+                const avatarPreview = document.getElementById("avatarPreview");
+                if (avatarPreview) avatarPreview.src = data.avatarUrl;
+                const previewAvatar = document.getElementById("previewAvatar");
+                if (previewAvatar) previewAvatar.src = data.avatarUrl;
+                if (navItems[currentIndex] === "名片") renderResultPanel();
+              } else {
+                showToast("上传失败：" + (data.error || "未知错误"));
+              }
+            } catch (err) {
+              showToast("网络错误");
+            } finally {
+              modalDiv.remove();
+              currentCropModal = null;
+              resizeObserver.disconnect();
+            }
+          }, "image/png");
+        };
+
+        cancelBtn.onclick = () => {
+          modalDiv.remove();
+          currentCropModal = null;
+          resizeObserver.disconnect();
+        };
+      }
+
+      // ========== 扇形菜单渲染函数（保留原有完整实现） ==========
       function resizeCanvas() {
         if (!wrapper || !canvas) return;
         const winHeight = window.innerHeight;
@@ -612,8 +789,7 @@
         animate();
       }
       function openModalForItem(index) {
-        /* 与原逻辑一致，但外观设置中绑定裁剪事件 */ const item =
-          navItems[index];
+        const item = navItems[index];
         if (item === "返回") return;
         if (activeModal) return;
         activeModal = true;
@@ -657,29 +833,29 @@
           };
         } else if (item === "外观设置") {
           innerHtml = `
-    <div class="modal-box">
-      <div class="avatar-upload-area">
-        <img id="avatarPreview" src="${profile.avatar}" class="avatar-preview" style="cursor:default;">
-        <div class="avatar-hint">头像来自 Gravatar（基于邮箱）</div>
-      </div>
-      <div><label>边框颜色</label><input type="color" id="borderColor" value="${profile.avatarBorderColor}"></div>
-      <div><label>名字颜色</label><input type="color" id="nameColor" value="${profile.nameColor}"></div>
-      <div><label>简介颜色</label><input type="color" id="bioColor" value="${profile.bioColor}"></div>
-      <div><label>评论颜色</label><input type="color" id="commentColor" value="${profile.commentColor}"></div>
-      <div style="margin-top:20px;">
-        <div style="text-align:center;">实时预览</div>
-        <div id="colorPreview" style="background:#111; border-radius:20px; padding:15px; text-align:center; border:2px solid ${profile.avatarBorderColor};">
-          <img id="previewAvatar" src="${profile.avatar}" style="width:60px; height:60px; border-radius:50%; border:2px solid ${profile.avatarBorderColor};">
-          <div id="previewName" style="color:${profile.nameColor};">${profile.name || "你的名字"}</div>
-          <div id="previewBio" style="color:${profile.bioColor};">${profile.bio || "你的简介"}</div>
-        </div>
-      </div>
-      <div style="display:flex; gap:10px; margin-top:20px;">
-        <button id="modalSave">保存外观</button>
-        <button id="resetAvatarBtn" style="background:#444;">刷新 Gravatar</button>
-      </div>
-    </div>
-  `;
+            <div class="modal-box">
+              <div class="avatar-upload-area">
+                <img id="avatarPreview" src="${profile.avatar}" class="avatar-preview" onclick="window.uploadAvatar && window.uploadAvatar()">
+                <div class="avatar-hint">点击头像更换（支持裁剪）</div>
+              </div>
+              <div><label>边框颜色</label><input type="color" id="borderColor" value="${profile.avatarBorderColor}"></div>
+              <div><label>名字颜色</label><input type="color" id="nameColor" value="${profile.nameColor}"></div>
+              <div><label>简介颜色</label><input type="color" id="bioColor" value="${profile.bioColor}"></div>
+              <div><label>评论颜色</label><input type="color" id="commentColor" value="${profile.commentColor}"></div>
+              <div style="margin-top:20px;">
+                <div style="text-align:center;">实时预览</div>
+                <div id="colorPreview" style="background:#111; border-radius:20px; padding:15px; text-align:center; border:2px solid ${profile.avatarBorderColor};">
+                  <img id="previewAvatar" src="${profile.avatar}" style="width:60px; height:60px; border-radius:50%; border:2px solid ${profile.avatarBorderColor};">
+                  <div id="previewName" style="color:${profile.nameColor};">${profile.name || "你的名字"}</div>
+                  <div id="previewBio" style="color:${profile.bioColor};">${profile.bio || "你的简介"}</div>
+                </div>
+              </div>
+              <div style="display:flex; gap:10px; margin-top:20px;">
+                <button id="modalSave">保存外观</button>
+                <button id="resetAvatarBtn" style="background:#444;">重置为默认</button>
+              </div>
+            </div>
+          `;
           onSave = () => {
             const colors = {
               avatarBorderColor: document.getElementById("borderColor").value,
@@ -694,25 +870,26 @@
             showToast("外观已保存");
           };
           setTimeout(() => {
-            // 移除头像上传监听，改为刷新 Gravatar
+            window.uploadAvatar = uploadAvatar; // 暴露给内联 onclick
             document
               .getElementById("resetAvatarBtn")
               ?.addEventListener("click", async () => {
-                const user = await getCurrentUser(true);
-                if (user && user.email) {
-                  const emailMd5 = md5(user.email.trim().toLowerCase());
-                  const gravatarUrl = `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
-                  profile.avatar = gravatarUrl;
-                  saveProfile({ avatar: gravatarUrl });
-                  document.getElementById("avatarPreview").src = gravatarUrl;
-                  document.getElementById("previewAvatar").src = gravatarUrl;
-                  showToast("头像已从 Gravatar 刷新");
+                const res = await fetch("/api/user/reset-avatar", {
+                  method: "POST",
+                  credentials: "include",
+                });
+                const data = await res.json();
+                if (data.success) {
+                  profile.avatar = data.avatarUrl;
+                  saveProfile({ avatar: data.avatarUrl });
+                  document.getElementById("avatarPreview").src = data.avatarUrl;
+                  document.getElementById("previewAvatar").src = data.avatarUrl;
+                  showToast("已恢复默认头像");
                   renderResultPanel();
                 } else {
-                  showToast("无法获取邮箱，请重新登录");
+                  showToast("重置失败");
                 }
               });
-            // 颜色预览逻辑
             const borderPicker = document.getElementById("borderColor");
             const namePicker = document.getElementById("nameColor");
             const bioPicker = document.getElementById("bioColor");

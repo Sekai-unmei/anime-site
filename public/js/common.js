@@ -1,4 +1,4 @@
-// ==================== 公共函数（最终无错版） ====================
+// ==================== 公共函数（完整无删减，支持自定义头像） ====================
 if (window._commonLoaded) {
   console.warn("common.js 已加载，跳过重复执行");
 } else {
@@ -17,20 +17,11 @@ if (window._commonLoaded) {
     }, duration);
   };
 
-  // 辅助：获取有效的头像URL（强制 Gravatar）
-  window.getValidAvatarUrl = function (avatarUrl, email) {
-    const emailMd5 = md5 ? md5((email || "").trim().toLowerCase()) : "";
-    if (emailMd5) {
-      return `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
-    }
-    return "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
-  };
-
-  // 辅助：头像加载失败时的回退
-  window.handleAvatarError = function (imgElement, email) {
+  // 辅助：头像加载失败时的回退（仅用于显示默认灰图，不强制 Gravatar）
+  window.handleAvatarError = function (imgElement) {
     if (imgElement.src.includes("gravatar.com")) return;
-    const validUrl = window.getValidAvatarUrl(null, email);
-    imgElement.src = validUrl;
+    imgElement.src =
+      "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
     imgElement.onerror = null;
   };
 
@@ -116,19 +107,29 @@ if (window._commonLoaded) {
     });
   };
 
-  // ---------- 获取用户头像（带缓存，强制 Gravatar） ----------
+  // ---------- 获取用户头像（带缓存，直接返回服务器存储的URL） ----------
   let avatarCache = {};
   window.getUserAvatar = async function (email) {
     if (avatarCache[email]) return avatarCache[email];
-    const emailMd5 = md5 ? md5((email || "").trim().toLowerCase()) : "";
-    const gravatarUrl = emailMd5
-      ? `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`
-      : "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
-    avatarCache[email] = gravatarUrl;
-    return gravatarUrl;
+    try {
+      const res = await fetch(`/api/user/info/${encodeURIComponent(email)}`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const user = await res.json();
+        let avatarUrl = user.avatar;
+        if (!avatarUrl) {
+          avatarUrl =
+            "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
+        }
+        avatarCache[email] = avatarUrl;
+        return avatarUrl;
+      }
+    } catch (e) {}
+    return "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
   };
 
-  // ---------- 获取当前用户信息（强制 Gravatar） ----------
+  // ---------- 获取当前用户信息（不强制修改头像） ----------
   let cachedUser = null;
   window.getCurrentUser = async function (forceRefresh = false) {
     if (!forceRefresh && cachedUser) return cachedUser;
@@ -136,23 +137,26 @@ if (window._commonLoaded) {
       const res = await fetch("/api/user/current", { credentials: "include" });
       if (res.ok) {
         cachedUser = await res.json();
-        cachedUser.avatar = window.getValidAvatarUrl(null, cachedUser.email);
+        // 不再强制使用 Gravatar，保留服务器返回的头像（可能是上传的）
         return cachedUser;
       }
     } catch (e) {}
     return null;
   };
 
-  // 同步左下角头像
+  // 同步左下角头像（使用用户实际保存的头像）
   window.syncUserAvatar = async function () {
     const user = await window.getCurrentUser(true);
     if (!user) return;
-    const avatarUrl = user.avatar;
+    let avatarUrl = user.avatar;
+    if (!avatarUrl) {
+      avatarUrl =
+        "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
+    }
     const avatarIcon = document.getElementById("avatarIcon");
     if (avatarIcon) {
       avatarIcon.src = avatarUrl;
-      avatarIcon.onerror = () =>
-        window.handleAvatarError(avatarIcon, user.email);
+      avatarIcon.onerror = () => window.handleAvatarError(avatarIcon);
     }
     let profile = JSON.parse(localStorage.getItem("user_profile") || "{}");
     if (profile.avatar !== avatarUrl) {

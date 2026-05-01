@@ -644,9 +644,17 @@ app.delete("/api/anime/:id/comment/:commentId", async (req, res) => {
 });
 
 // ========== 用户资料相关 ==========
+// User 模型（avatar 字段保持 String，可以存 URL 或 data:image 字符串）
+// 无需修改 schema，只需确保更新时接受任何字符串。
+
+// 修改 /api/user/update 接口，增加对 Base64 长度的保护（限制大小）
 app.post("/api/user/update", async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: "未登录" });
   const { username, avatar, bio } = req.body;
+  // 如果 avatar 是 Base64 且太大，可以拒绝（例如超过 500KB）
+  if (avatar && avatar.startsWith("data:image") && avatar.length > 600 * 1024) {
+    return res.status(400).json({ error: "头像图片太大，请压缩后上传" });
+  }
   await User.updateOne({ email: req.session.user }, { username, avatar, bio });
   res.json({ success: true });
 });

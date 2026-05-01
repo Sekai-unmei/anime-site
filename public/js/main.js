@@ -263,38 +263,75 @@ function initSearchBox() {
 }
 
 async function initEnvironment() {
-  const success = (pos) =>
-    fetchWeatherData(pos.coords.latitude, pos.coords.longitude);
-  const error = () => fetchWeatherData(39.9042, 116.4074);
-  navigator.geolocation.getCurrentPosition(success, error, { timeout: 5000 });
+  try {
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        timeout: 5000,
+      });
+    });
+    fetchWeatherData(position.coords.latitude, position.coords.longitude);
+  } catch (e) {
+    console.warn("浏览器定位失败，使用IP定位或默认坐标", e);
+    fetchWeatherData(39.9042, 116.4074);
+  }
 }
+
+// 在 main.js 中找到 fetchWeatherData 函数，替换为以下版本
 
 async function fetchWeatherData(lat, lon) {
   try {
-    const gRes = await fetch("https://ip-api.com/json/?lang=zh-CN");
-    const g = await gRes.json();
+    // 1. 获取真实地理位置（增加超时和降级）
+    let country = "观测站",
+      city = "";
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const gRes = await fetch("https://ip-api.com/json/?lang=zh-CN", {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (gRes.ok) {
+        const g = await gRes.json();
+        country = g.country || "未知国家";
+        city = g.city || g.regionName || "";
+      } else {
+        throw new Error("IP定位失败");
+      }
+    } catch (e) {
+      console.warn("IP定位失败，使用默认名称", e);
+      country = "观测站";
+    }
+
     const profile = JSON.parse(localStorage.getItem("user_profile") || "{}");
     const locationParts = [
       profile.planet,
       profile.country,
       profile.region,
     ].filter((p) => p && p.trim());
-    let realLocation = `地球 · ${g.country || "未知"}`;
-    if (g.city) realLocation += ` · ${g.city}`;
+    let realLocation = `地球 · ${country}`;
+    if (city) realLocation += ` · ${city}`;
     const geoDisplay = document.getElementById("geo-display");
-    if (geoDisplay)
+    if (geoDisplay) {
       geoDisplay.innerText = locationParts.length
         ? `${realLocation} (自定义: ${locationParts.join(" · ")})`
         : realLocation;
+    }
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,cloud_cover&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+    // 2. 获取天气数据（使用传入的经纬度，如果无效则使用默认北京）
+    let weatherLat = lat,
+      weatherLon = lon;
+    if (!weatherLat || !weatherLon) {
+      weatherLat = 39.9042;
+      weatherLon = 116.4074;
+    }
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${weatherLat}&longitude=${weatherLon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,cloud_cover&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
     const wRes = await fetch(url);
     const w = await wRes.json();
     renderWeatherUI(w);
   } catch (e) {
-    console.error(e);
+    console.error("天气/位置获取失败", e);
     const geoDisplay = document.getElementById("geo-display");
-    if (geoDisplay) geoDisplay.innerText = "星际同步中断";
+    if (geoDisplay) geoDisplay.innerText = "星际同步中断（使用默认天气）";
     renderWeatherUI({
       current: {
         temperature_2m: 25,
@@ -307,6 +344,22 @@ async function fetchWeatherData(lat, lon) {
       },
       daily: { temperature_2m_max: [28], temperature_2m_min: [18] },
     });
+  }
+}
+
+// 在 initEnvironment 中增加超时和错误处理
+async function initEnvironment() {
+  try {
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        timeout: 5000,
+      });
+    });
+    fetchWeatherData(position.coords.latitude, position.coords.longitude);
+  } catch (e) {
+    console.warn("浏览器定位失败，使用IP定位或默认坐标", e);
+    // 尝试 IP 定位获取经纬度（可选，这里简单使用北京默认）
+    fetchWeatherData(39.9042, 116.4074);
   }
 }
 

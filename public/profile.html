@@ -21,7 +21,6 @@
         width: 100vw;
         background: #000;
       }
-
       .intro-overlay {
         position: fixed;
         top: 0;
@@ -33,7 +32,6 @@
         overflow: visible;
         pointer-events: none;
       }
-
       .dynamic-text {
         position: absolute;
         color: white;
@@ -45,24 +43,20 @@
         z-index: 2001;
         animation: fadeOut 0.8s forwards;
       }
-
       .dynamic-text.vertical {
         writing-mode: vertical-rl;
         white-space: normal;
       }
-
       @keyframes fadeOut {
         0% {
           opacity: 0.9;
           transform: scale(1);
         }
-
         100% {
           opacity: 0;
           transform: scale(1.5);
         }
       }
-
       .main-container {
         display: none;
         width: 100%;
@@ -70,7 +64,6 @@
         background: #000;
         position: relative;
       }
-
       .left-panel {
         position: absolute;
         left: 0;
@@ -80,14 +73,12 @@
         overflow: visible;
         pointer-events: none;
       }
-
       .canvas-wrapper {
         position: relative;
         width: 100%;
         height: 100%;
         pointer-events: none;
       }
-
       canvas {
         position: absolute;
         left: 0;
@@ -97,7 +88,6 @@
         pointer-events: auto;
         cursor: pointer;
       }
-
       .result-panel {
         position: absolute;
         right: 0;
@@ -115,19 +105,16 @@
         justify-content: center;
         align-items: center;
       }
-
       .result-content {
         text-align: center;
         width: 100%;
       }
-
       .name-display {
         font-size: 2rem;
         text-shadow: 0 0 30px rgba(255, 255, 255, 0.9);
         margin: 20px 0;
         color: #fff;
       }
-
       .fullscreen-modal {
         position: fixed;
         top: 0;
@@ -141,7 +128,6 @@
         justify-content: center;
         flex-direction: column;
       }
-
       .modal-box {
         background: rgba(10, 10, 10, 0.95);
         border: 1px solid #ffd700;
@@ -152,7 +138,6 @@
         box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
         backdrop-filter: blur(5px);
       }
-
       .modal-box input,
       .modal-box textarea {
         width: 100%;
@@ -164,7 +149,6 @@
         font-size: 1rem;
         margin-top: 10px;
       }
-
       .modal-box button {
         margin-top: 20px;
         background: #ffd700;
@@ -174,7 +158,6 @@
         border-radius: 30px;
         cursor: pointer;
       }
-
       .avatar-upload-area {
         display: flex;
         flex-direction: column;
@@ -182,7 +165,6 @@
         gap: 15px;
         margin-bottom: 20px;
       }
-
       .avatar-preview {
         width: 120px;
         height: 120px;
@@ -192,16 +174,13 @@
         cursor: pointer;
         transition: 0.2s;
       }
-
       .avatar-preview:hover {
         opacity: 0.8;
       }
-
       .avatar-hint {
         font-size: 0.8rem;
         color: #aaa;
       }
-
       .flash-overlay {
         position: fixed;
         top: 0;
@@ -212,21 +191,17 @@
         z-index: 3000;
         animation: flash 0.3s ease-out;
       }
-
       @keyframes flash {
         0% {
           background: rgba(255, 255, 255, 0);
         }
-
         50% {
           background: rgba(255, 255, 255, 0.9);
         }
-
         100% {
           background: rgba(255, 255, 255, 0);
         }
       }
-
       .swipe-hint {
         position: fixed;
         bottom: 20px;
@@ -245,9 +220,73 @@
         opacity: 0;
         transition: opacity 0.5s;
       }
+      /* 裁剪模态框样式 */
+      .crop-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: black;
+        z-index: 10000;
+        overflow: hidden;
+      }
+      .crop-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+      .crop-bg-img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: blur(10px) brightness(0.45);
+        transform: scale(1.08);
+        pointer-events: none;
+      }
+      .crop-clear-img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        pointer-events: none;
+        clip-path: circle(0px at 50% 50%);
+      }
+      .crop-circle {
+        position: absolute;
+        border: 3px solid #ffd700;
+        border-radius: 50%;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+        cursor: grab;
+        z-index: 10001;
+        touch-action: none;
+      }
+      .crop-panel {
+        position: fixed;
+        display: flex;
+        gap: 18px;
+        padding: 10px 20px;
+        border: 1px solid #ffd700;
+        border-radius: 60px;
+        background: rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(8px);
+        z-index: 10002;
+        touch-action: none;
+      }
+      .crop-panel button {
+        border: none;
+        padding: 10px 26px;
+        border-radius: 30px;
+        background: #ffd700;
+        color: #000;
+        font-weight: bold;
+        cursor: pointer;
+      }
     </style>
   </head>
-
   <body>
     <div id="introOverlay" class="intro-overlay"></div>
     <div class="main-container" id="mainContainer">
@@ -262,7 +301,7 @@
     </div>
     <script src="/js/common.js"></script>
     <script>
-      // profile 特有逻辑（保留所有原有功能，但引用公共函数）
+      // profile 特有逻辑（完整保留扇形菜单，并修复头像裁剪）
       const navItems = [
         "名字",
         "称号",
@@ -287,6 +326,8 @@
       let particles = [],
         particleAnimationFrame = null;
       const PROFILE_KEY = "user_profile";
+      let currentCropModal = null;
+
       function loadProfile() {
         const defaultProfile = {
           name: "",
@@ -333,14 +374,27 @@
         } catch (e) {}
       }
       profile = loadProfile();
+
+      // 修复：根据邮箱生成 Gravatar 头像（使用 blueimp-md5）
+      function getGravatarUrl(email, size = 200) {
+        if (!email)
+          return "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
+        const emailMd5 = md5(email.trim().toLowerCase());
+        return `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=${size}`;
+      }
+
       async function fetchCurrentAvatar() {
         const user = await getCurrentUser();
         if (user) {
           let avatarUrl = user.avatar;
-          if (!avatarUrl || avatarUrl.includes("gravatar.com/avatar/00000")) {
-            const emailMd5 = md5 ? md5(user.email) : "";
-            if (emailMd5)
-              avatarUrl = `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
+          // 如果服务器返回的是默认图片或无效，则使用 Gravatar
+          if (
+            !avatarUrl ||
+            avatarUrl ===
+              "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp" ||
+            avatarUrl.includes("gravatar.com/avatar/00000")
+          ) {
+            avatarUrl = getGravatarUrl(user.email);
           }
           if (avatarUrl && profile.avatar !== avatarUrl) {
             profile.avatar = avatarUrl;
@@ -359,6 +413,8 @@
           }
         }
       }
+
+      // ========== 完整头像裁剪功能（修复版） ==========
       function uploadAvatar() {
         const input = document.createElement("input");
         input.type = "file";
@@ -376,11 +432,202 @@
         };
         input.click();
       }
+
       function showCropModal(img) {
-        /* 完整裁剪逻辑，与原版一致，为了节省篇幅此处保留原有实现（略）实际项目中请从原文件复制完整函数 */ alert(
-          "裁剪功能需完整实现，请从原文件复制",
-        );
+        if (currentCropModal) return;
+        const modalDiv = document.createElement("div");
+        modalDiv.className = "crop-modal";
+
+        // 背景模糊图
+        const bgImg = document.createElement("img");
+        bgImg.src = img.src;
+        bgImg.className = "crop-bg-img";
+        modalDiv.appendChild(bgImg);
+
+        // 清晰的前景图（将被裁剪）
+        const clearImg = document.createElement("img");
+        clearImg.src = img.src;
+        clearImg.className = "crop-clear-img";
+        modalDiv.appendChild(clearImg);
+
+        // 可拖拽的圆形选区
+        const circleDiv = document.createElement("div");
+        circleDiv.className = "crop-circle";
+        modalDiv.appendChild(circleDiv);
+
+        // 底部操作面板
+        const panel = document.createElement("div");
+        panel.className = "crop-panel";
+        const confirmBtn = document.createElement("button");
+        confirmBtn.textContent = "确认";
+        const cancelBtn = document.createElement("button");
+        cancelBtn.textContent = "取消";
+        panel.appendChild(confirmBtn);
+        panel.appendChild(cancelBtn);
+        modalDiv.appendChild(panel);
+
+        document.body.appendChild(modalDiv);
+        currentCropModal = modalDiv;
+
+        let containerWidth = 0,
+          containerHeight = 0,
+          circleSize = 0,
+          circleLeft = 0,
+          circleTop = 0;
+
+        function updateClip() {
+          const cx = circleLeft + circleSize / 2;
+          const cy = circleTop + circleSize / 2;
+          const r = circleSize / 2;
+          clearImg.style.clipPath = `circle(${r}px at ${cx}px ${cy}px)`;
+        }
+
+        function updateCircle() {
+          const rect = modalDiv.getBoundingClientRect();
+          containerWidth = rect.width;
+          containerHeight = rect.height;
+          circleSize = Math.min(containerWidth, containerHeight) * 0.7;
+          if (circleLeft === 0 && circleTop === 0) {
+            circleLeft = (containerWidth - circleSize) / 2;
+            circleTop = (containerHeight - circleSize) / 2;
+          }
+          circleLeft = Math.max(
+            0,
+            Math.min(circleLeft, containerWidth - circleSize),
+          );
+          circleTop = Math.max(
+            0,
+            Math.min(circleTop, containerHeight - circleSize),
+          );
+          circleDiv.style.width = circleSize + "px";
+          circleDiv.style.height = circleSize + "px";
+          circleDiv.style.left = circleLeft + "px";
+          circleDiv.style.top = circleTop + "px";
+          updateClip();
+        }
+
+        let dragging = false,
+          startX = 0,
+          startY = 0;
+        function getPoint(e) {
+          const client = e.touches ? e.touches[0] : e;
+          return { x: client.clientX, y: client.clientY };
+        }
+        function onPointerDown(e) {
+          e.preventDefault();
+          dragging = true;
+          const p = getPoint(e);
+          const rect = circleDiv.getBoundingClientRect();
+          startX = p.x - rect.left;
+          startY = p.y - rect.top;
+        }
+        function onPointerMove(e) {
+          if (!dragging) return;
+          e.preventDefault();
+          const p = getPoint(e);
+          let newLeft = p.x - startX;
+          let newTop = p.y - startY;
+          newLeft = Math.max(0, Math.min(newLeft, containerWidth - circleSize));
+          newTop = Math.max(0, Math.min(newTop, containerHeight - circleSize));
+          circleLeft = newLeft;
+          circleTop = newTop;
+          circleDiv.style.left = circleLeft + "px";
+          circleDiv.style.top = circleTop + "px";
+          updateClip();
+        }
+        function onPointerUp() {
+          dragging = false;
+        }
+
+        circleDiv.addEventListener("mousedown", onPointerDown);
+        circleDiv.addEventListener("touchstart", onPointerDown, {
+          passive: false,
+        });
+        window.addEventListener("mousemove", onPointerMove);
+        window.addEventListener("touchmove", onPointerMove, { passive: false });
+        window.addEventListener("mouseup", onPointerUp);
+        window.addEventListener("touchend", onPointerUp);
+
+        const resizeObserver = new ResizeObserver(() => {
+          updateCircle();
+          updatePanelPosition();
+        });
+        resizeObserver.observe(modalDiv);
+
+        function updatePanelPosition() {
+          panel.style.left = containerWidth - 230 + "px";
+          panel.style.top = containerHeight - 90 + "px";
+        }
+
+        updateCircle();
+        updatePanelPosition();
+
+        confirmBtn.onclick = async () => {
+          const bgRect = bgImg.getBoundingClientRect();
+          const imgW = img.width,
+            imgH = img.height;
+          const scaleX = bgRect.width / imgW;
+          const scaleY = bgRect.height / imgH;
+          const scale = Math.max(scaleX, scaleY);
+          const drawW = imgW * scale,
+            drawH = imgH * scale;
+          const offsetX = (bgRect.width - drawW) / 2;
+          const offsetY = (bgRect.height - drawH) / 2;
+          const srcX = (circleLeft - offsetX) / scale;
+          const srcY = (circleTop - offsetY) / scale;
+          const srcSize = circleSize / scale;
+
+          const finalCanvas = document.createElement("canvas");
+          finalCanvas.width = 400;
+          finalCanvas.height = 400;
+          const ctx = finalCanvas.getContext("2d");
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(200, 200, 200, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, 400, 400);
+          ctx.restore();
+
+          finalCanvas.toBlob(async (blob) => {
+            const formData = new FormData();
+            formData.append("avatar", blob, "avatar.png");
+            try {
+              const res = await fetch("/api/user/avatar", {
+                method: "POST",
+                credentials: "include",
+                body: formData,
+              });
+              const data = await res.json();
+              if (data.success) {
+                profile.avatar = data.avatarUrl;
+                saveProfile({ avatar: data.avatarUrl });
+                showToast("头像更新成功");
+                const avatarPreview = document.getElementById("avatarPreview");
+                if (avatarPreview) avatarPreview.src = data.avatarUrl;
+                const previewAvatar = document.getElementById("previewAvatar");
+                if (previewAvatar) previewAvatar.src = data.avatarUrl;
+                if (navItems[currentIndex] === "名片") renderResultPanel();
+              } else {
+                showToast("上传失败");
+              }
+            } catch (err) {
+              showToast("网络错误");
+            } finally {
+              modalDiv.remove();
+              currentCropModal = null;
+              resizeObserver.disconnect();
+            }
+          }, "image/png");
+        };
+
+        cancelBtn.onclick = () => {
+          modalDiv.remove();
+          currentCropModal = null;
+          resizeObserver.disconnect();
+        };
       }
+
+      // ========== 扇形菜单渲染（与原版一致，略作保留） ==========
       function resizeCanvas() {
         if (!wrapper || !canvas) return;
         const winHeight = window.innerHeight;
@@ -572,7 +819,8 @@
         animate();
       }
       function openModalForItem(index) {
-        const item = navItems[index];
+        /* 与原逻辑一致，但外观设置中绑定裁剪事件 */ const item =
+          navItems[index];
         if (item === "返回") return;
         if (activeModal) return;
         activeModal = true;

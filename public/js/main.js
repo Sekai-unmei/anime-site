@@ -246,16 +246,24 @@ function initSearchBox() {
     if (e.key === "Enter") {
       const val = newBox.value.trim();
       if (!val) return;
-      try {
-        const res = await fetch(
-          `/api/anime/series?title=${encodeURIComponent(val)}`,
-        );
-        const seriesData = await res.json();
-        if (seriesData.length > 0)
-          window.location.href = `/series.html?title=${encodeURIComponent(seriesData[0].series_title || seriesData[0].title)}`;
-        else
-          window.location.href = `/search.html?keyword=${encodeURIComponent(val)}`;
-      } catch (err) {
+
+      // 定义 JOJO 系列关键词白名单（只有这些才跳转系列页）
+      const jojoKeywords = [
+        "jojo",
+        "jojo的奇妙冒险",
+        "jojo's bizarre adventure",
+        "jojo的奇妙",
+        "ジョジョ",
+      ];
+      const isJojo = jojoKeywords.some((kw) =>
+        val.toLowerCase().includes(kw.toLowerCase()),
+      );
+
+      if (isJojo) {
+        // 跳转到 JOJO 系列页
+        window.location.href = `/series.html?title=${encodeURIComponent("jojo的奇妙冒险")}`;
+      } else {
+        // 否则跳转到普通搜索页
         window.location.href = `/search.html?keyword=${encodeURIComponent(val)}`;
       }
     }
@@ -731,19 +739,21 @@ function renderArchive(state) {
   const camera = document.getElementById("camera");
   const centerX = 2500,
     centerY = 2500;
-
-  // 确保 camera 存在
   if (!camera) {
     console.error("camera element not found");
     return;
   }
 
-  // 初始化 svgCache（确保 SVG 容器存在）
+  // 确保 svgCache 存在（用于绘制连线）
   if (!svgCache) {
     camera.innerHTML =
       '<svg id="link-svg" style="position:absolute; width:5000px; height:5000px; pointer-events:none;"></svg>';
     svgCache = document.getElementById("link-svg");
-    moveCamera(centerX, centerY); // 初始定位
+    if (!svgCache) {
+      console.error("Failed to create svgCache");
+      return;
+    }
+    moveCamera(centerX, centerY); // 初次设置相机位置
   }
 
   // 清除旧连线

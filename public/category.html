@@ -237,6 +237,9 @@
           .then((res) => res.json())
           .then((data) => renderAnime(data.data));
       }
+      document.addEventListener("DOMContentLoaded", () => {
+        syncUserAvatar();
+      });
       function renderAnime(animes) {
         const grid = document.getElementById("anime-grid");
         grid.innerHTML = "";

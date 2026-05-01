@@ -1,132 +1,135 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh">
-
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>评分排行榜 - 动漫资料库</title>
     <style>
-        body {
-            margin: 0;
-            background: #0a0a0a;
-            color: #fff;
-            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-            padding: 20px;
-        }
+      body {
+        margin: 0;
+        background: #0a0a0a;
+        color: #fff;
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        padding: 20px;
+      }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
 
-        h1 {
-            color: #ffd700;
-            text-align: center;
-        }
+      h1 {
+        color: #ffd700;
+        text-align: center;
+      }
 
-        .back-link {
-            display: inline-block;
-            margin-bottom: 20px;
-            color: #ffd700;
-            text-decoration: none;
-            border: 1px solid #ffd700;
-            padding: 8px 20px;
-            border-radius: 30px;
-            transition: 0.3s;
-        }
+      .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #ffd700;
+        text-decoration: none;
+        border: 1px solid #ffd700;
+        padding: 8px 20px;
+        border-radius: 30px;
+        transition: 0.3s;
+      }
 
-        .back-link:hover {
-            background: #ffd700;
-            color: #000;
-        }
+      .back-link:hover {
+        background: #ffd700;
+        color: #000;
+      }
 
-        .anime-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 25px;
-            margin-top: 30px;
-        }
+      .anime-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 25px;
+        margin-top: 30px;
+      }
 
-        .anime-card {
-            background: #1a1a1a;
-            border-radius: 8px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
+      .anime-card {
+        background: #1a1a1a;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
 
-        .anime-card:hover {
-            transform: scale(1.02);
-        }
+      .anime-card:hover {
+        transform: scale(1.02);
+      }
 
-        .anime-card img {
-            width: 100%;
-            height: 160px;
-            object-fit: cover;
-        }
+      .anime-card img {
+        width: 100%;
+        height: 160px;
+        object-fit: cover;
+      }
 
-        .anime-info {
-            padding: 12px;
-        }
+      .anime-info {
+        padding: 12px;
+      }
 
-        .anime-title {
-            font-weight: bold;
-            font-size: 1rem;
-            margin-bottom: 8px;
-        }
+      .anime-title {
+        font-weight: bold;
+        font-size: 1rem;
+        margin-bottom: 8px;
+      }
 
-        .rating-stats {
-            font-size: 0.8rem;
-            color: #ccc;
-            margin-top: 6px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
+      .rating-stats {
+        font-size: 0.8rem;
+        color: #ccc;
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
 
-        .rating-badge {
-            background: #222;
-            border-radius: 12px;
-            padding: 2px 8px;
-            display: inline-block;
-        }
+      .rating-badge {
+        background: #222;
+        border-radius: 12px;
+        padding: 2px 8px;
+        display: inline-block;
+      }
 
-        .no-data {
-            text-align: center;
-            color: #888;
-            font-size: 1.2rem;
-            margin: 50px 0;
-        }
+      .no-data {
+        text-align: center;
+        color: #888;
+        font-size: 1.2rem;
+        margin: 50px 0;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="container">
-        <a href="/recommend.html" class="back-link">← 返回</a>
-        <h1>⭐ 动漫评分排行榜 ⭐</h1>
-        <div id="rating-list" class="anime-grid">加载中...</div>
+      <a href="/recommend.html" class="back-link">← 返回</a>
+      <h1>⭐ 动漫评分排行榜 ⭐</h1>
+      <div id="rating-list" class="anime-grid">加载中...</div>
     </div>
 
     <script>
-        async function loadRatingStats() {
-            try {
-                const res = await fetch('/api/anime/ratings-stats');
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const allStats = await res.json();
-                // 只显示有票数的动漫（totalVotes > 0）
-                const stats = allStats.filter(anime => anime.totalVotes > 0);
-                const container = document.getElementById('rating-list');
-                if (!stats.length) {
-                    container.innerHTML = '<div class="no-data">暂无评分数据，快去评分吧</div>';
-                    return;
-                }
-                container.innerHTML = '';
-                // ✅ 遍历所有符合条件的动漫，为每一个创建卡片
-                stats.forEach(anime => {
-                    const ratings = anime.ratings;
-                    const totalVotes = anime.totalVotes;
-                    const card = document.createElement('div');
-                    card.className = 'anime-card';
-                    card.innerHTML = `
+      document.addEventListener("DOMContentLoaded", () => {
+        syncUserAvatar();
+      });
+      async function loadRatingStats() {
+        try {
+          const res = await fetch("/api/anime/ratings-stats");
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const allStats = await res.json();
+          // 只显示有票数的动漫（totalVotes > 0）
+          const stats = allStats.filter((anime) => anime.totalVotes > 0);
+          const container = document.getElementById("rating-list");
+          if (!stats.length) {
+            container.innerHTML =
+              '<div class="no-data">暂无评分数据，快去评分吧</div>';
+            return;
+          }
+          container.innerHTML = "";
+          // ✅ 遍历所有符合条件的动漫，为每一个创建卡片
+          stats.forEach((anime) => {
+            const ratings = anime.ratings;
+            const totalVotes = anime.totalVotes;
+            const card = document.createElement("div");
+            card.className = "anime-card";
+            card.innerHTML = `
                         <img src="${escapeHtml(anime.image_url)}" alt="${escapeHtml(anime.title)}" onerror="this.src='/images/default.jpg'">
                         <div class="anime-info">
                             <div class="anime-title">${escapeHtml(anime.title)}</div>
@@ -140,34 +143,34 @@
                             <div class="rating-stats" style="margin-top: 5px; color:#aaa;">总票数：${totalVotes}</div>
                         </div>
                     `;
-                    const animeId = anime._id;
-                    if (animeId) {
-                        card.addEventListener('click', () => {
-                            window.location.href = `/anime/${animeId}`;
-                        });
-                    } else {
-                        console.error('动漫缺少数字 id:', anime);
-                    }
-                    container.appendChild(card);
-                });
-            } catch (err) {
-                console.error('加载评分数据失败', err);
-                document.getElementById('rating-list').innerHTML = '<div class="no-data">无法获取评分数据，请稍后重试</div>';
+            const animeId = anime._id;
+            if (animeId) {
+              card.addEventListener("click", () => {
+                window.location.href = `/anime/${animeId}`;
+              });
+            } else {
+              console.error("动漫缺少数字 id:", anime);
             }
+            container.appendChild(card);
+          });
+        } catch (err) {
+          console.error("加载评分数据失败", err);
+          document.getElementById("rating-list").innerHTML =
+            '<div class="no-data">无法获取评分数据，请稍后重试</div>';
         }
+      }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str).replace(/[&<>]/g, function (m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
+      function escapeHtml(str) {
+        if (!str) return "";
+        return String(str).replace(/[&<>]/g, function (m) {
+          if (m === "&") return "&amp;";
+          if (m === "<") return "&lt;";
+          if (m === ">") return "&gt;";
+          return m;
+        });
+      }
 
-        loadRatingStats();
+      loadRatingStats();
     </script>
-</body>
-
+  </body>
 </html>

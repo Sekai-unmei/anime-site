@@ -587,6 +587,28 @@ if (window._commonLoaded) {
         if (e.key === "Enter") window.sendMessage();
       });
   };
+  // 统一初始化左下角头像（如果元素存在且用户已登录）
+  (function initAvatarIfNeeded() {
+    // 检查是否有头像元素
+    const avatarIcon = document.getElementById("avatarIcon");
+    if (!avatarIcon) return;
+
+    // 检查是否在登录页面（简单通过 URL 判断，或者直接调用 syncUserAvatar，它会自动处理未登录）
+    // syncUserAvatar 内部会调用 getCurrentUser，未登录时返回 null，不会有副作用
+    syncUserAvatar();
+  })();
+
+  // 自动初始化头像（如果页面有头像元素）
+  (function () {
+    if (document.getElementById("avatarIcon")) {
+      // 等待 DOM 完全加载后再执行，确保元素存在
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => syncUserAvatar());
+      } else {
+        syncUserAvatar();
+      }
+    }
+  })();
 
   console.log("common.js 已加载完成");
 }

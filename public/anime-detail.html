@@ -820,6 +820,7 @@
       let lastMessageIds = [];
 
       // ========== 加载动漫详情 ==========
+
       async function loadAnime() {
         const pathId = window.location.pathname.split("/").pop();
         if (!pathId) {
@@ -1203,6 +1204,7 @@
       });
 
       // ========== 启动 ==========
+      syncUserAvatar();
       initSidebarEvents();
       startPolling();
       loadAnime();

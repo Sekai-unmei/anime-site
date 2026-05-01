@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 
 <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>动漫资料库</title>
@@ -451,6 +452,41 @@
         window.addEventListener('profileUpdated', () => updateAvatarIcon());
         updateAvatarIcon();
 
+        async function fetchCurrentUser() {
+            try {
+                const res = await fetch('/api/user/current', { credentials: 'include' });
+                if (res.ok) {
+                    const data = await res.json();
+                    currentUserEmail = data.email;
+
+                    // 确定最终头像 URL
+                    let avatarUrl = data.avatar;
+                    // 如果服务器没有返回有效头像或返回默认图片，则使用 Gravatar
+                    if (!avatarUrl || avatarUrl === 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp' || avatarUrl.includes('gravatar.com/avatar/00000')) {
+                        // 生成 Gravatar URL (使用邮箱 MD5)
+                        const emailMd5 = md5(currentUserEmail);
+                        avatarUrl = `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
+                    }
+
+                    // 更新左下角头像
+                    const avatarIcon = document.getElementById('avatarIcon');
+                    if (avatarIcon) avatarIcon.src = avatarUrl;
+
+                    // 更新 localStorage，以便其他页面使用
+                    let profile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+                    if (profile.avatar !== avatarUrl) {
+                        profile.avatar = avatarUrl;
+                        localStorage.setItem('user_profile', JSON.stringify(profile));
+                        window.dispatchEvent(new CustomEvent('profileUpdated', { detail: profile }));
+                    }
+                } else {
+                    currentUserEmail = null;
+                }
+            } catch (e) {
+                currentUserEmail = null;
+                console.warn('获取用户信息失败', e);
+            }
+        }
         // ========== 页面启动 ==========
         window.onload = () => {
             if (typeof initAll === 'function') initAll();

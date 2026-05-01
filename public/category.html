@@ -1,433 +1,368 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh">
-
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>动漫分类 - 资料库</title>
+    <link rel="stylesheet" href="/style.css" />
     <style>
-        body {
-            margin: 0;
-            background: #0a0a0a;
-            color: #fff;
-            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-        }
+      body {
+        margin: 0;
+        background: #0a0a0a;
+        color: #fff;
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
 
-        .category-layout {
-            display: flex;
-            min-height: 100vh;
-        }
+      .category-layout {
+        display: flex;
+        min-height: 100vh;
+      }
 
-        .sidebar {
-            width: 280px;
-            background: #111;
-            border-right: 1px solid #333;
-            padding: 20px 0;
-            position: fixed;
-            height: 100vh;
-            overflow-y: auto;
-        }
+      .sidebar {
+        width: 280px;
+        background: #111;
+        border-right: 1px solid #333;
+        padding: 20px 0;
+        position: fixed;
+        height: 100vh;
+        overflow-y: auto;
+      }
 
-        .sidebar h3 {
-            padding-left: 20px;
-            margin-top: 0;
-            color: #ffd700;
-        }
+      .sidebar h3 {
+        padding-left: 20px;
+        margin-top: 0;
+        color: #ffd700;
+      }
 
-        .category-stats {
-            padding: 10px 20px;
-            font-size: 0.9rem;
-            color: #aaa;
-            border-bottom: 1px solid #222;
-            margin-bottom: 15px;
-        }
+      .category-stats {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+        color: #aaa;
+        border-bottom: 1px solid #222;
+        margin-bottom: 15px;
+      }
 
-        .main-category {
-            font-weight: bold;
-            padding: 12px 20px;
-            cursor: pointer;
-            color: #ddd;
-            transition: 0.2s;
-        }
+      .main-category {
+        font-weight: bold;
+        padding: 12px 20px;
+        cursor: pointer;
+        color: #ddd;
+        transition: 0.2s;
+      }
 
-        .main-category:hover {
-            background: #222;
-            color: #ffd700;
-        }
+      .main-category:hover {
+        background: #222;
+        color: #ffd700;
+      }
 
-        .sub-category {
-            padding-left: 40px;
-            font-size: 0.85rem;
-            color: #888;
-            display: none;
-        }
+      .sub-category {
+        padding-left: 40px;
+        font-size: 0.85rem;
+        color: #888;
+        display: none;
+      }
 
-        .sub-sub-category {
-            padding-left: 60px;
-            font-size: 0.8rem;
-            color: #666;
-            display: none;
-        }
+      .sub-sub-category {
+        padding-left: 60px;
+        font-size: 0.8rem;
+        color: #666;
+        display: none;
+      }
 
-        .sub-category a,
-        .sub-sub-category a {
-            display: block;
-            padding: 6px 0;
-            color: #aaa;
-            text-decoration: none;
-            cursor: pointer;
-        }
+      .sub-category a,
+      .sub-sub-category a {
+        display: block;
+        padding: 6px 0;
+        color: #aaa;
+        text-decoration: none;
+        cursor: pointer;
+      }
 
-        .sub-category a:hover,
-        .sub-sub-category a:hover {
-            color: #ffd700;
-        }
+      .sub-category a:hover,
+      .sub-sub-category a:hover {
+        color: #ffd700;
+      }
 
-        .category-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+      .category-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
 
-        .toggle-icon {
-            margin-right: 8px;
-            font-size: 0.7rem;
-            width: 18px;
-            text-align: center;
-            cursor: pointer;
-            user-select: none;
-        }
+      .toggle-icon {
+        margin-right: 8px;
+        font-size: 0.7rem;
+        width: 18px;
+        text-align: center;
+        cursor: pointer;
+        user-select: none;
+      }
 
-        .content {
-            margin-left: 280px;
-            flex: 1;
-            padding: 30px;
-        }
+      .content {
+        margin-left: 280px;
+        flex: 1;
+        padding: 30px;
+      }
 
-        .anime-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 25px;
-        }
+      .anime-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 25px;
+      }
 
-        .anime-card {
-            background: #1a1a1a;
-            border-radius: 8px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
+      .anime-card {
+        background: #1a1a1a;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
 
-        .anime-card:hover {
-            transform: scale(1.02);
-        }
+      .anime-card:hover {
+        transform: scale(1.02);
+      }
 
-        .anime-card img {
-            width: 100%;
-            height: 160px;
-            object-fit: cover;
-        }
+      .anime-card img {
+        width: 100%;
+        height: 160px;
+        object-fit: cover;
+      }
 
-        .anime-info {
-            padding: 12px;
-        }
+      .anime-info {
+        padding: 12px;
+      }
 
-        .anime-title {
-            font-weight: bold;
-        }
+      .anime-title {
+        font-weight: bold;
+      }
 
-        .back-btn {
-            display: block;
-            margin: 20px 20px;
-            color: #ffd700;
-            text-decoration: none;
-            text-align: center;
-            padding: 8px;
-            border: 1px solid #ffd700;
-            border-radius: 30px;
-            transition: 0.3s;
-        }
+      .back-btn {
+        display: block;
+        margin: 20px 20px;
+        color: #ffd700;
+        text-decoration: none;
+        text-align: center;
+        padding: 8px;
+        border: 1px solid #ffd700;
+        border-radius: 30px;
+        transition: 0.3s;
+      }
 
-        .back-btn:hover {
-            background: #ffd700;
-            color: #000;
-        }
+      .back-btn:hover {
+        background: #ffd700;
+        color: #000;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="category-layout">
-        <div class="sidebar">
-            <h3>📂 动漫分类</h3>
-            <div id="total-count" class="category-stats">加载中...</div>
-            <div id="series-count" class="category-stats" style="font-size:0.8rem; color:#666;">系列数量: --</div>
-            <div id="category-tree"></div>
-            <a href="/recommend.html" class="back-btn">← 返回</a>
+      <div class="sidebar">
+        <h3>📂 动漫分类</h3>
+        <div id="total-count" class="category-stats">加载中...</div>
+        <div
+          id="series-count"
+          class="category-stats"
+          style="font-size: 0.8rem; color: #666"
+        >
+          系列数量: --
         </div>
-        <div class="content">
-            <div id="anime-grid" class="anime-grid"></div>
-        </div>
+        <div id="category-tree"></div>
+        <a href="/recommend.html" class="back-btn">← 返回</a>
+      </div>
+      <div class="content">
+        <div id="anime-grid" class="anime-grid"></div>
+      </div>
     </div>
-
+    <script src="/js/common.js"></script>
     <script>
-        // ======================= 分类树定义 =======================
-        const categoryTree = [
-            { name: "神作", children: [] },
-            { name: "神作之下-好看之上", children: [] },
-            {
-                name: "好看",
-                children: [
-                    { name: "异世界", sub: [] },
-                    { name: "恋爱", sub: ["学校", "公司"] },
-                    { name: "搞笑", sub: [] },
-                    { name: "日常", sub: [] },
-                    { name: "热血", sub: [] },
-                    { name: "战斗", sub: [] },
-                    { name: "音乐", sub: [] }
-                ]
-            },
-            {
-                name: "还行",
-                children: [
-                    { name: "异世界", sub: [] },
-                    { name: "恋爱", sub: [] },
-                    { name: "搞笑", sub: [] },
-                    { name: "日常", sub: [] }
-                ]
-            },
-            {
-                name: "普通",
-                children: [
-                    { name: "恋爱", sub: ["学校", "公司"] },
-                    { name: "异世界", sub: [] },
-                    { name: "运动", sub: ["拳击", "棒球"] },
-                    { name: "日常", sub: [] }
-                ]
-            },
-            { name: "无聊", children: [{ name: "异世界", sub: [] }] },
-            { name: "屎", children: [] },
-            { name: "H", children: [] }
-        ];
-
-        // ======================= 全局变量 =======================
-        let allAnime = [];
-
-        // ======================= 加载统计数据 =======================
-        async function loadTotalCount() {
-            try {
-                const res = await fetch('/api/anime/list?limit=1');
-                const data = await res.json();
-                document.getElementById('total-count').innerHTML = `📊 动漫总数：${data.total}`;
-            } catch (err) {
-                document.getElementById('total-count').innerHTML = `📊 动漫总数：获取失败`;
-            }
+      const categoryTree = [
+        { name: "神作", children: [] },
+        { name: "神作之下-好看之上", children: [] },
+        {
+          name: "好看",
+          children: [
+            { name: "异世界", sub: [] },
+            { name: "恋爱", sub: ["学校", "公司"] },
+            { name: "搞笑", sub: [] },
+            { name: "日常", sub: [] },
+            { name: "热血", sub: [] },
+            { name: "战斗", sub: [] },
+            { name: "音乐", sub: [] },
+          ],
+        },
+        {
+          name: "还行",
+          children: [
+            { name: "异世界", sub: [] },
+            { name: "恋爱", sub: [] },
+            { name: "搞笑", sub: [] },
+            { name: "日常", sub: [] },
+          ],
+        },
+        {
+          name: "普通",
+          children: [
+            { name: "恋爱", sub: ["学校", "公司"] },
+            { name: "异世界", sub: [] },
+            { name: "运动", sub: ["拳击", "棒球"] },
+            { name: "日常", sub: [] },
+          ],
+        },
+        { name: "无聊", children: [{ name: "异世界", sub: [] }] },
+        { name: "屎", children: [] },
+        { name: "H", children: [] },
+      ];
+      let allAnime = [];
+      async function loadTotalCount() {
+        const res = await fetch("/api/anime/list?limit=1");
+        const data = await res.json();
+        document.getElementById("total-count").innerHTML =
+          `📊 动漫总数：${data.total}`;
+      }
+      async function loadSeriesCount() {
+        const res = await fetch("/api/anime/series-count");
+        const data = await res.json();
+        document.getElementById("series-count").innerHTML =
+          `📚 系列数量：${data.count}`;
+      }
+      function showAllByRating(rating) {
+        fetch(`/api/anime/list?rating=${encodeURIComponent(rating)}&limit=1000`)
+          .then((res) => res.json())
+          .then((data) => renderAnime(data.data));
+      }
+      function showAnimeByFilter(rating, tagsStr) {
+        let url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=1000`;
+        if (tagsStr) url += `&tag=${encodeURIComponent(tagsStr)}`;
+        fetch(url)
+          .then((res) => res.json())
+          .then((data) => renderAnime(data.data));
+      }
+      function renderAnime(animes) {
+        const grid = document.getElementById("anime-grid");
+        grid.innerHTML = "";
+        if (animes.length === 0) {
+          grid.innerHTML =
+            '<div style="text-align:center; color:#888;">暂无符合条件的动漫</div>';
+          return;
         }
-
-        async function loadSeriesCount() {
-            try {
-                const res = await fetch('/api/anime/series-count');
-                const data = await res.json();
-                document.getElementById('series-count').innerHTML = `📚 系列数量：${data.count}`;
-            } catch (err) {
-                document.getElementById('series-count').innerHTML = `📚 系列数量：--`;
-            }
-        }
-
-        // ======================= 核心请求与渲染 =======================
-        function showAllByRating(rating) {
-            const url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=1000`;
-            console.log('请求URL:', url);
-            fetch(url)
-                .then(res => res.json())
-                .then(data => renderAnime(data.data))
-                .catch(err => console.error('请求失败', err));
-        }
-
-        function showAnimeByFilter(rating, tagsStr) {
-            let url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=1000`;
-            if (tagsStr) {
-                url += `&tag=${encodeURIComponent(tagsStr)}`;
-            }
-            console.log('请求URL:', url);
-            fetch(url)
-                .then(res => res.json())
-                .then(data => renderAnime(data.data))
-                .catch(err => console.error('请求失败', err));
-        }
-
-        function renderAnime(animes) {
-            const grid = document.getElementById('anime-grid');
-            grid.innerHTML = '';
-            if (animes.length === 0) {
-                grid.innerHTML = '<div style="text-align:center; color:#888; grid-column:1/-1;">暂无符合条件的动漫</div>';
-                return;
-            }
-            animes.forEach(anime => {
-                const card = document.createElement('div');
-                card.className = 'anime-card';
-                const animeId = anime._id;
-                if (!animeId) {
-                    console.warn('动漫缺少 _id', anime);
-                }
-                card.innerHTML = `
-                    <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
-                    <div class="anime-info">
-                        <div class="anime-title">${escapeHtml(anime.title)}</div>
-                    </div>
-                `;
-                if (animeId) {
-                    card.addEventListener('click', () => {
-                        window.location.href = `/anime/${animeId}`;
+        animes.forEach((anime) => {
+          const card = document.createElement("div");
+          card.className = "anime-card";
+          const animeId = anime._id;
+          card.innerHTML = `<img src="${anime.image_url}" onerror="this.src='/images/default.jpg'"><div class="anime-info"><div class="anime-title">${escapeHtml(anime.title)}</div></div>`;
+          if (animeId)
+            card.addEventListener(
+              "click",
+              () => (window.location.href = `/anime/${animeId}`),
+            );
+          else card.style.cursor = "not-allowed";
+          grid.appendChild(card);
+        });
+      }
+      function buildSidebar() {
+        const container = document.getElementById("category-tree");
+        container.innerHTML = "";
+        categoryTree.forEach((main) => {
+          const mainDiv = document.createElement("div");
+          mainDiv.className = "main-category";
+          mainDiv.textContent = main.name;
+          mainDiv.setAttribute("data-rating", main.name);
+          const isSpecial =
+            main.name === "神作" ||
+            main.name === "神作之下-好看之上" ||
+            main.name === "屎" ||
+            main.name === "H";
+          if (isSpecial) {
+            mainDiv.addEventListener("click", () => showAllByRating(main.name));
+            container.appendChild(mainDiv);
+          } else {
+            const subDiv = document.createElement("div");
+            subDiv.className = "sub-category";
+            subDiv.style.display = "none";
+            if (main.children && main.children.length) {
+              main.children.forEach((child) => {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "category-item";
+                const link = document.createElement("a");
+                link.href = "#";
+                link.textContent = child.name;
+                link.setAttribute("data-rating", main.name);
+                link.setAttribute("data-tags", child.name);
+                if (child.sub && child.sub.length) {
+                  const toggleSpan = document.createElement("span");
+                  toggleSpan.className = "toggle-icon";
+                  toggleSpan.textContent = "▶";
+                  const subSubDiv = document.createElement("div");
+                  subSubDiv.className = "sub-sub-category";
+                  subSubDiv.style.display = "none";
+                  child.sub.forEach((subItem) => {
+                    const subLink = document.createElement("a");
+                    subLink.href = "#";
+                    subLink.textContent = subItem;
+                    const combinedTags = `${child.name},${subItem}`;
+                    subLink.setAttribute("data-rating", main.name);
+                    subLink.setAttribute("data-tags", combinedTags);
+                    subLink.addEventListener("click", (e) => {
+                      e.preventDefault();
+                      const rating = subLink.getAttribute("data-rating");
+                      const tags = subLink.getAttribute("data-tags");
+                      if (rating && tags) showAnimeByFilter(rating, tags);
+                      else if (rating) showAllByRating(rating);
                     });
+                    subSubDiv.appendChild(subLink);
+                  });
+                  toggleSpan.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const isVisible = subSubDiv.style.display === "block";
+                    subSubDiv.style.display = isVisible ? "none" : "block";
+                    toggleSpan.textContent = isVisible ? "▶" : "▼";
+                  });
+                  link.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    const isVisible = subSubDiv.style.display === "block";
+                    subSubDiv.style.display = isVisible ? "none" : "block";
+                    toggleSpan.textContent = isVisible ? "▶" : "▼";
+                  });
+                  itemDiv.appendChild(toggleSpan);
+                  itemDiv.appendChild(link);
+                  subDiv.appendChild(itemDiv);
+                  subDiv.appendChild(subSubDiv);
                 } else {
-                    card.style.cursor = 'not-allowed';
+                  link.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    const rating = link.getAttribute("data-rating");
+                    const tags = link.getAttribute("data-tags");
+                    if (rating && tags) showAnimeByFilter(rating, tags);
+                    else if (rating) showAllByRating(rating);
+                  });
+                  itemDiv.appendChild(link);
+                  subDiv.appendChild(itemDiv);
                 }
-                grid.appendChild(card);
+              });
+            } else {
+              const emptyMsg = document.createElement("div");
+              emptyMsg.textContent = "暂无分类";
+              emptyMsg.style.padding = "6px 0";
+              emptyMsg.style.color = "#666";
+              subDiv.appendChild(emptyMsg);
+            }
+            mainDiv.addEventListener("click", (e) => {
+              e.stopPropagation();
+              subDiv.style.display =
+                subDiv.style.display === "block" ? "none" : "block";
             });
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str).replace(/[&<>]/g, m => {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
-
-        // ======================= 构建侧边栏（修复版） =======================
-        function buildSidebar() {
-            const container = document.getElementById('category-tree');
-            container.innerHTML = '';
-
-            categoryTree.forEach(main => {
-                const mainDiv = document.createElement('div');
-                mainDiv.className = 'main-category';
-                mainDiv.textContent = main.name;
-                mainDiv.setAttribute('data-rating', main.name);
-
-                const isSpecial = (main.name === "神作" || main.name === "神作之下-好看之上" || main.name === "屎" || main.name === "H");
-
-                if (isSpecial) {
-                    mainDiv.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        showAllByRating(main.name);
-                    });
-                    container.appendChild(mainDiv);
-                } else {
-                    const subDiv = document.createElement('div');
-                    subDiv.className = 'sub-category';
-                    subDiv.style.display = 'none';
-
-                    if (main.children && main.children.length) {
-                        main.children.forEach(child => {
-                            const itemDiv = document.createElement('div');
-                            itemDiv.className = 'category-item';
-
-                            // 创建可点击的链接
-                            const link = document.createElement('a');
-                            link.href = '#';
-                            link.textContent = child.name;
-                            link.style.flex = '1';
-                            link.setAttribute('data-rating', main.name);
-                            link.setAttribute('data-tags', child.name);
-
-                            // 如果有子分类，添加展开图标和子容器
-                            if (child.sub && child.sub.length) {
-                                const toggleSpan = document.createElement('span');
-                                toggleSpan.className = 'toggle-icon';
-                                toggleSpan.textContent = '▶';
-                                toggleSpan.style.cursor = 'pointer';
-
-                                const subSubDiv = document.createElement('div');
-                                subSubDiv.className = 'sub-sub-category';
-                                subSubDiv.style.display = 'none';
-
-                                child.sub.forEach(subItem => {
-                                    const subLink = document.createElement('a');
-                                    subLink.href = '#';
-                                    subLink.textContent = subItem;
-                                    const combinedTags = `${child.name},${subItem}`;
-                                    subLink.setAttribute('data-rating', main.name);
-                                    subLink.setAttribute('data-tags', combinedTags);
-                                    // 绑定点击事件
-                                    subLink.addEventListener('click', (e) => {
-                                        e.preventDefault();
-                                        const rating = subLink.getAttribute('data-rating');
-                                        const tags = subLink.getAttribute('data-tags');
-                                        if (rating && tags) {
-                                            showAnimeByFilter(rating, tags);
-                                        } else if (rating) {
-                                            showAllByRating(rating);
-                                        }
-                                    });
-                                    subSubDiv.appendChild(subLink);
-                                });
-
-                                // 点击图标展开/收起子分类
-                                toggleSpan.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    const isVisible = subSubDiv.style.display === 'block';
-                                    subSubDiv.style.display = isVisible ? 'none' : 'block';
-                                    toggleSpan.textContent = isVisible ? '▶' : '▼';
-                                });
-
-                                // 点击父链接：展开/收起子分类（不执行筛选）
-                                link.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    const isVisible = subSubDiv.style.display === 'block';
-                                    subSubDiv.style.display = isVisible ? 'none' : 'block';
-                                    toggleSpan.textContent = isVisible ? '▶' : '▼';
-                                });
-
-                                itemDiv.appendChild(toggleSpan);
-                                itemDiv.appendChild(link);
-                                subDiv.appendChild(itemDiv);
-                                subDiv.appendChild(subSubDiv);
-                            } else {
-                                // 无子分类，直接绑定筛选事件
-                                link.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    const rating = link.getAttribute('data-rating');
-                                    const tags = link.getAttribute('data-tags');
-                                    if (rating && tags) {
-                                        showAnimeByFilter(rating, tags);
-                                    } else if (rating) {
-                                        showAllByRating(rating);
-                                    }
-                                });
-                                itemDiv.appendChild(link);
-                                subDiv.appendChild(itemDiv);
-                            }
-                        });
-                    } else {
-                        const emptyMsg = document.createElement('div');
-                        emptyMsg.textContent = '暂无分类';
-                        emptyMsg.style.padding = '6px 0';
-                        emptyMsg.style.color = '#666';
-                        subDiv.appendChild(emptyMsg);
-                    }
-
-                    mainDiv.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        subDiv.style.display = subDiv.style.display === 'block' ? 'none' : 'block';
-                    });
-                    container.appendChild(mainDiv);
-                    container.appendChild(subDiv);
-                }
-            });
-        }
-
-        // ======================= 初始化 =======================
-        (async () => {
-            await loadTotalCount();
-            await loadSeriesCount();
-            buildSidebar();
-            // 默认显示神作分类
-            showAllByRating('神作');
-        })();
+            container.appendChild(mainDiv);
+            container.appendChild(subDiv);
+          }
+        });
+      }
+      (async () => {
+        await loadTotalCount();
+        await loadSeriesCount();
+        buildSidebar();
+        showAllByRating("神作");
+      })();
     </script>
-</body>
-
+  </body>
 </html>

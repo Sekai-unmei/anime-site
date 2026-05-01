@@ -7,6 +7,10 @@
     --bg-dark: #000;
 }
 
+* {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -17,78 +21,206 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* ==========================================================================
-   2. 通用动画库 (Animations)
-   ========================================================================== */
-@keyframes charIn {
+/* ========== 公共 Toast ========== */
+.toast-message {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--gold);
+    border-radius: 40px;
+    padding: 12px 24px;
+    color: var(--gold);
+    font-size: 1rem;
+    font-weight: bold;
+    z-index: 100000;
+    white-space: nowrap;
+    animation: toastFadeInOut 2s ease forwards;
+    pointer-events: none;
+}
+
+@keyframes toastFadeInOut {
     0% {
         opacity: 0;
-        transform: translateY(15px);
+        transform: translateX(-50%) translateY(20px);
     }
 
-    100% {
+    15% {
         opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes dustFall {
-    0% {
-        transform: translateY(0);
-        opacity: 0;
+        transform: translateX(-50%) translateY(0);
     }
 
-    20% {
-        opacity: 0.6;
-    }
-
-    100% {
-        transform: translateY(300px);
-        opacity: 0;
-    }
-}
-
-@keyframes scanMove {
-    0% {
-        top: 0;
-        opacity: 0;
-    }
-
-    50% {
+    85% {
         opacity: 1;
+        transform: translateX(-50%) translateY(0);
     }
 
     100% {
-        top: 100%;
         opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
     }
 }
 
-@keyframes nodeGlow {
-    0% {
-        opacity: 0.7;
-        transform: scale(1);
-    }
-
-    100% {
-        opacity: 1;
-        transform: scale(1.05);
-    }
+/* ========== 公共消息中心 / 侧边栏 ========== */
+.avatar-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 12px;
+    height: 12px;
+    background: #ff0000;
+    border-radius: 50%;
+    border: 1px solid #000;
+    display: none;
+    z-index: 1001;
 }
 
-@keyframes energyFlow {
-    from {
-        stroke-dashoffset: 100;
-    }
-
-    to {
-        stroke-dashoffset: 0;
-    }
+#userAvatarMenu {
+    position: relative;
 }
 
-/* ==========================================================================
-   3. 核心组件 (导航栏、面板、搜索)
-   ========================================================================== */
+.msg-tabs {
+    display: flex;
+    border-bottom: 1px solid #444;
+    margin-bottom: 15px;
+}
+
+.msg-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    cursor: pointer;
+    color: #aaa;
+    transition: 0.2s;
+}
+
+.msg-tab.active {
+    color: var(--gold);
+    border-bottom: 2px solid var(--gold);
+}
+
+.msg-panel {
+    display: none;
+}
+
+.msg-panel.active {
+    display: block;
+}
+
+.msg-item {
+    padding: 12px;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    position: relative;
+}
+
+.msg-item:hover {
+    background: #222;
+}
+
+.friend-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 12px;
+    vertical-align: middle;
+}
+
+.friend-name {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.edit-note-btn {
+    float: right;
+    background: transparent;
+    border: none;
+    color: var(--gold);
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.edit-note-btn:hover {
+    text-shadow: 0 0 5px gold;
+}
+
+.red-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #ff0000;
+    border-radius: 50%;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+#notificationBar {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--gold);
+    color: #000;
+    padding: 8px 16px;
+    border-radius: 30px;
+    z-index: 100000;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+#sideMenu {
+    position: fixed;
+    left: -280px;
+    top: 0;
+    width: 280px;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 2000;
+    transition: left 0.3s;
+    border-right: 1px solid var(--gold);
+}
+
+#chatModal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    max-width: 500px;
+    height: 70%;
+    background: #1a1a1a;
+    border: 1px solid var(--gold);
+    border-radius: 20px;
+    z-index: 100001;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#chatSettingsMenu {
+    display: none;
+    position: absolute;
+    background: #222;
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    z-index: 100002;
+}
+
+#chatSettingsMenu div {
+    padding: 10px 20px;
+    cursor: pointer;
+    color: #fff;
+}
+
+#chatSettingsMenu div:hover {
+    background: #333;
+}
+
+/* ========== 首页导航 ========== */
 .nav-bar {
     position: fixed;
     top: 0;
@@ -210,9 +342,7 @@ body {
     transform: scale(1.2);
 }
 
-/* ==========================================================================
-   4. 🛰️ 动漫资料库舞台
-   ========================================================================== */
+/* ========== 资料库舞台 ========== */
 #archive-stage {
     position: fixed;
     top: 0;
@@ -238,7 +368,6 @@ body {
     will-change: transform;
 }
 
-/* 节点通用 */
 .node-item {
     position: absolute;
     transform: translate(-50%, -50%);
@@ -251,22 +380,6 @@ body {
     align-items: center;
 }
 
-.node-item span {
-    position: relative;
-    z-index: 100 !important;
-    pointer-events: none;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
-}
-
-/* 主节点点亮态（仅用于时间、类型等主圆节点） */
-.main.circle.selected {
-    background: #000 !important;
-    color: #fff !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
-}
-
-/* 圆形节点 (默认金色系) */
 .circle {
     width: 65px;
     height: 65px;
@@ -275,7 +388,6 @@ body {
     background: rgba(15, 15, 15, 0.9);
     color: #ccc;
     font-size: 0.85rem;
-    transition: 0.3s;
 }
 
 .main.circle {
@@ -292,39 +404,19 @@ body {
     box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
 }
 
-/* 年份标签系统 */
 .year-tag {
     padding: 10px 15px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: #888;
     font-size: 0.8rem;
-    transition: all 0.2s;
 }
 
 .year-tag.selected span {
-    color: white !important;
+    color: white;
     text-shadow: 0 0 20px white, 0 0 40px white;
 }
 
-/* ==========================================================================
-   5. 月份与类型系统 (节点优化版)
-   ========================================================================== */
-.month-node,
-.tag-node {
-    z-index: 10;
-    display: flex !important;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    cursor: pointer;
-    transition: box-shadow 0.3s ease, border-color 0.3s ease;
-    background: #000 !important;
-    border: 2px solid;
-    font-weight: bold;
-}
-
-/* 月份节点固定宽高，确保半径计算准确 */
 .month-node {
     width: 130px !important;
     height: 60px !important;
@@ -333,39 +425,21 @@ body {
     line-height: 60px;
 }
 
-/* 类型标签自适应 */
 .tag-node {
     padding: 8px 20px !important;
     border-radius: 40px !important;
     width: auto;
-    height: auto;
     min-width: 80px;
     text-align: center;
 }
 
-/* 月份点亮态：只控制边框和阴影，文字颜色由季节类控制 */
-.month-node.selected {
-    background: #000 !important;
-    border-color: currentColor !important;
-    box-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
-}
-
-/* 类型点亮态：只控制边框和阴影，文字颜色由内联样式控制 */
+.month-node.selected,
 .tag-node.selected {
     background: #000 !important;
     border-color: currentColor !important;
     box-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
 }
 
-
-
-/* 热血节点样式覆盖 */
-.tag-node[style*="color: rgb(139, 0, 0)"] {
-    border-color: #8B0000 !important;
-    color: #8B0000 !important;
-}
-
-/* 季节颜色类 */
 .node-spring {
     color: #22C55E;
     border-color: #22C55E;
@@ -386,42 +460,10 @@ body {
     border-color: #1E90FF;
 }
 
-/* ==========================================================================
-   6. 连线与粒子 (实线版)
-   ========================================================================== */
 #link-svg {
     z-index: 1;
 }
 
-.energy-line-active {
-    stroke-dasharray: none;
-    stroke-linecap: round;
-}
-
-/* 基础粒子动画 */
-.particle {
-    position: absolute;
-    pointer-events: none;
-    border-radius: 50%;
-    animation: particleOut 1.0s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-    z-index: 40;
-}
-
-@keyframes particleOut {
-    0% {
-        transform: translate(0, 0) scale(1);
-        opacity: 1;
-    }
-
-    100% {
-        transform: translate(var(--tx), var(--ty)) scale(0);
-        opacity: 0;
-    }
-}
-
-/* ==========================================================================
-   7. 确认按钮
-   ========================================================================== */
 #confirm-btn {
     position: fixed;
     bottom: 50px;
@@ -449,9 +491,228 @@ body {
     color: #000;
 }
 
-/* ==========================================================================
-   8. 响应式适配 (Mobile)
-   ========================================================================== */
+/* 粒子动画 */
+.particle {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 50%;
+    animation: particleOut 1.0s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    z-index: 40;
+}
+
+@keyframes particleOut {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(var(--tx), var(--ty)) scale(0);
+        opacity: 0;
+    }
+}
+
+.white-particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 0 15px white;
+    pointer-events: none;
+    animation: particleUp 1.2s ease-out forwards;
+    z-index: 40;
+}
+
+@keyframes particleUp {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(var(--tx), calc(var(--ty) - 100px)) scale(0);
+        opacity: 0;
+    }
+}
+
+.snow-particle,
+.petal-particle,
+.heat-particle,
+.leaf-particle,
+.tag-particle,
+.note-particle,
+.heart-particle,
+.poop-particle,
+.hot-particle {
+    position: absolute;
+    pointer-events: none;
+    z-index: 100;
+}
+
+/* 各季节粒子样式略（与原一致）*/
+.snow-particle {
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.8;
+    animation: snowFall 1s linear forwards;
+}
+
+@keyframes snowFall {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: translate(var(--tx, 20px), 150px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.petal-particle {
+    width: 8px;
+    height: 8px;
+    background: #ff69b4;
+    border-radius: 50% 0 50% 0;
+    opacity: 0.7;
+    animation: petalUp 1.5s linear forwards;
+}
+
+@keyframes petalUp {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 0.7;
+    }
+
+    100% {
+        transform: translate(var(--tx, 30px), -120px) rotate(180deg);
+        opacity: 0;
+    }
+}
+
+.heat-particle {
+    width: 4px;
+    height: 4px;
+    background: #ff6600;
+    border-radius: 50%;
+    opacity: 0.6;
+    box-shadow: 0 0 6px orange;
+    animation: heatWave 1.2s ease-out forwards;
+}
+
+@keyframes heatWave {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.6;
+    }
+
+    100% {
+        transform: translate(var(--tx, 20px), -80px) scale(2);
+        opacity: 0;
+    }
+}
+
+.leaf-particle {
+    width: 12px;
+    height: 12px;
+    background: #b85c1a;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    opacity: 0.8;
+    animation: leafFall 1.8s linear forwards;
+}
+
+@keyframes leafFall {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: translate(var(--tx, 40px), 150px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.note-particle {
+    font-size: 18px;
+    font-weight: bold;
+    animation: noteFloat 1s ease-out forwards;
+}
+
+@keyframes noteFloat {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(var(--tx), var(--ty)) scale(0);
+        opacity: 0;
+    }
+}
+
+.heart-particle {
+    font-size: 16px;
+    animation: heartUp 1s ease-out forwards;
+}
+
+@keyframes heartUp {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(var(--tx), var(--ty)) scale(0);
+        opacity: 0;
+    }
+}
+
+.poop-particle {
+    animation: poopFall 1s linear forwards;
+}
+
+@keyframes poopFall {
+    0% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(var(--tx), var(--ty));
+        opacity: 0;
+    }
+}
+
+.hot-particle {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: boiling 1s ease-out forwards;
+}
+
+@keyframes boiling {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: translate(var(--tx), var(--ty)) scale(0);
+        opacity: 0;
+    }
+}
+
+#weather-more {
+    overflow: hidden;
+    transition: max-height 0.4s ease-out;
+    max-height: 0;
+}
+
+/* 响应式 */
 @media screen and (max-width: 768px) {
     .nav-bar {
         height: auto;
@@ -504,283 +765,4 @@ body {
         padding: 15px;
         font-size: 0.8rem;
     }
-}
-
-/* ==========================================================================
-   9. 新增特效样式 (对应JS驱动粒子)
-   ========================================================================== */
-
-/* 白色圆形粒子（年份点亮专用）- 向上飘 */
-.white-particle {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: white;
-    box-shadow: 0 0 15px white;
-    pointer-events: none;
-    animation: particleUp 1.2s ease-out forwards;
-    z-index: 40;
-}
-
-@keyframes particleUp {
-    0% {
-        transform: translate(0, 0) scale(1);
-        opacity: 1;
-    }
-
-    100% {
-        transform: translate(var(--tx), calc(var(--ty) - 100px)) scale(0);
-        opacity: 0;
-    }
-}
-
-/* 连线粒子 - 向目标点聚集 */
-.link-particle {
-    position: absolute;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    pointer-events: none;
-    animation: particleGather 1s ease-out forwards;
-    z-index: 35;
-}
-
-@keyframes particleGather {
-    0% {
-        transform: translate(0, 0) scale(1);
-        opacity: 1;
-    }
-
-    100% {
-        transform: translate(var(--tx), var(--ty)) scale(0.5);
-        opacity: 0;
-    }
-}
-
-/* 确保canvas覆盖正确 */
-#camera canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-    z-index: 30;
-}
-
-/* 年份框内层边框高亮动画 */
-.year-frame-inner {
-    box-shadow: 0 0 20px rgba(102, 204, 255, 0.5), inset 0 0 20px rgba(102, 204, 255, 0.2);
-    animation: innerGlow 3s infinite alternate;
-}
-
-@keyframes innerGlow {
-    from {
-        box-shadow: 0 0 20px rgba(102, 204, 255, 0.3), inset 0 0 10px rgba(102, 204, 255, 0.1);
-    }
-
-    to {
-        box-shadow: 0 0 40px rgba(102, 204, 255, 0.8), inset 0 0 30px rgba(102, 204, 255, 0.3);
-    }
-}
-
-/* ==========================================================================
-   10. 月份与类型粒子动画
-   ========================================================================== */
-.snow-particle,
-.petal-particle,
-.heat-particle,
-.leaf-particle,
-.tag-particle,
-.note-particle,
-.heart-particle,
-.poop-particle,
-.hot-particle {
-    position: absolute;
-    pointer-events: none;
-    z-index: 100;
-}
-
-.snow-particle {
-    width: 6px;
-    height: 6px;
-    background: white;
-    border-radius: 50%;
-    opacity: 0.8;
-}
-
-@keyframes snowFall {
-    0% {
-        transform: translate(0, 0) rotate(0deg);
-        opacity: 0.8;
-    }
-
-    100% {
-        transform: translate(var(--tx, 20px), 150px) rotate(360deg);
-        opacity: 0;
-    }
-}
-
-.petal-particle {
-    width: 8px;
-    height: 8px;
-    background: #ff69b4;
-    border-radius: 50% 0 50% 0;
-    opacity: 0.7;
-}
-
-@keyframes petalUp {
-    0% {
-        transform: translate(0, 0) rotate(0deg);
-        opacity: 0.7;
-    }
-
-    100% {
-        transform: translate(var(--tx, 30px), -120px) rotate(180deg);
-        opacity: 0;
-    }
-}
-
-.heat-particle {
-    width: 4px;
-    height: 4px;
-    background: #ff6600;
-    border-radius: 50%;
-    opacity: 0.6;
-    box-shadow: 0 0 6px orange;
-}
-
-@keyframes heatWave {
-    0% {
-        transform: translate(0, 0) scale(1);
-        opacity: 0.6;
-    }
-
-    100% {
-        transform: translate(var(--tx, 20px), -80px) scale(2);
-        opacity: 0;
-    }
-}
-
-.leaf-particle {
-    width: 12px;
-    height: 12px;
-    background: #b85c1a;
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-    opacity: 0.8;
-}
-
-@keyframes leafFall {
-    0% {
-        transform: translate(0, 0) rotate(0deg);
-        opacity: 0.8;
-    }
-
-    100% {
-        transform: translate(var(--tx, 40px), 150px) rotate(360deg);
-        opacity: 0;
-    }
-}
-
-.tag-particle {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    animation: particleExplode 1s ease-out forwards;
-}
-
-@keyframes particleExplode {
-    0% {
-        transform: translate(0, 0) scale(1);
-        opacity: 1;
-    }
-
-    100% {
-        transform: translate(var(--tx), var(--ty)) scale(0);
-        opacity: 0;
-    }
-}
-
-.note-particle {
-    position: absolute;
-    font-size: 18px;
-    font-weight: bold;
-    animation: noteFloat 1s ease-out forwards;
-}
-
-@keyframes noteFloat {
-    0% {
-        transform: translate(0, 0) scale(1);
-        opacity: 1;
-    }
-
-    100% {
-        transform: translate(var(--tx), var(--ty)) scale(0);
-        opacity: 0;
-    }
-}
-
-.heart-particle {
-    position: absolute;
-    font-size: 16px;
-    animation: heartUp 1s ease-out forwards;
-}
-
-@keyframes heartUp {
-    0% {
-        transform: translate(0, 0) scale(1);
-        opacity: 1;
-    }
-
-    100% {
-        transform: translate(var(--tx), var(--ty)) scale(0);
-        opacity: 0;
-    }
-}
-
-.poop-particle {
-    position: absolute;
-    animation: poopFall 1s linear forwards;
-}
-
-@keyframes poopFall {
-    0% {
-        transform: translate(0, 0);
-        opacity: 1;
-    }
-
-    100% {
-        transform: translate(var(--tx), var(--ty));
-        opacity: 0;
-    }
-}
-
-.hot-particle {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    animation: boiling 1s ease-out forwards;
-}
-
-@keyframes boiling {
-    0% {
-        transform: translate(0, 0) scale(1);
-        opacity: 0.8;
-    }
-
-    100% {
-        transform: translate(var(--tx), var(--ty)) scale(0);
-        opacity: 0;
-    }
-}
-
-#weather-more {
-    overflow: hidden;
-    transition: max-height 0.4s ease-out;
-    max-height: 0;
-}
-
-#sideMenu ul li a:hover {
-    color: #ffd700;
 }

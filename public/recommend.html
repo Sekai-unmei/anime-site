@@ -1,491 +1,426 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>站长推荐 - 动漫资料库</title>
+    <link rel="stylesheet" href="/style.css" />
     <style>
-        /* 样式保持不变，可保留原有样式 */
-        body {
-            margin: 0;
-            background: #0a0a0a;
-            color: #fff;
-            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      .recommend-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 40px;
+        border-bottom: 1px solid #333;
+        padding-bottom: 20px;
+      }
+
+      .header h1 {
+        margin: 0;
+        color: #ffd700;
+        font-size: 2rem;
+      }
+
+      .search-box {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid #ffd700;
+        color: #fff;
+        padding: 8px 15px;
+        border-radius: 30px;
+        width: 250px;
+        outline: none;
+      }
+
+      .section-title {
+        text-align: center;
+        font-size: 2rem;
+        margin: 40px 0 20px;
+      }
+
+      .god-title {
+        background: linear-gradient(135deg, #66ccff, #0066cc);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: godGlow 2s infinite alternate;
+      }
+
+      @keyframes godGlow {
+        from {
+          text-shadow: 0 0 5px #66ccff;
         }
 
-        .recommend-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+        to {
+          text-shadow: 0 0 20px #0066cc;
+        }
+      }
+
+      .good-title {
+        color: #b1e8fc;
+        text-shadow: 0 0 10px #b1e8fc;
+      }
+
+      .anime-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 30px;
+      }
+
+      .anime-card {
+        background: #1a1a1a;
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+        position: relative;
+      }
+
+      .anime-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      }
+
+      .anime-card img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+      }
+
+      .anime-info {
+        padding: 15px;
+      }
+
+      .anime-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+
+      .anime-desc {
+        font-size: 0.85rem;
+        color: #aaa;
+        line-height: 1.4;
+      }
+
+      .rating-mark {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 4px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        z-index: 2;
+      }
+
+      .tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid #ffd700;
+        border-radius: 8px;
+        padding: 12px;
+        max-width: 260px;
+        pointer-events: auto;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.2s;
+        backdrop-filter: blur(8px);
+      }
+
+      .tooltip.show {
+        opacity: 1;
+      }
+
+      .circle-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 80px;
+        margin: 80px 0 40px;
+        flex-wrap: wrap;
+      }
+
+      .circle-btn {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.7);
+        border: 2px solid #ffd700;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        color: #ffd700;
+        font-weight: bold;
+      }
+
+      .back-home {
+        color: #ffd700;
+        text-decoration: none;
+        font-size: 1rem;
+      }
+
+      .god-particle {
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        background: #66ccff;
+        border-radius: 50%;
+        pointer-events: none;
+        animation: floatUp 2s linear forwards;
+        z-index: 10;
+      }
+
+      @keyframes floatUp {
+        0% {
+          transform: translateY(0) scale(1);
+          opacity: 0.8;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 20px;
+        100% {
+          transform: translateY(-150px) scale(0);
+          opacity: 0;
         }
-
-        .header h1 {
-            margin: 0;
-            color: #ffd700;
-            font-size: 2rem;
-        }
-
-        .search-box {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid #ffd700;
-            color: #fff;
-            padding: 8px 15px;
-            border-radius: 30px;
-            width: 250px;
-            outline: none;
-        }
-
-        .section-title {
-            text-align: center;
-            font-size: 2rem;
-            margin: 40px 0 20px;
-            font-weight: bold;
-        }
-
-        .god-title {
-            background: linear-gradient(135deg, #66ccff, #0066cc, #66ccff);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            animation: godGlow 2s infinite alternate;
-        }
-
-        @keyframes godGlow {
-            from {
-                text-shadow: 0 0 5px #66ccff;
-            }
-
-            to {
-                text-shadow: 0 0 20px #0066cc;
-            }
-        }
-
-        .good-title {
-            color: #b1e8fc;
-            text-shadow: 0 0 10px #b1e8fc;
-        }
-
-        .anime-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 30px;
-        }
-
-        .anime-card {
-            background: #1a1a1a;
-            border-radius: 12px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            position: relative;
-        }
-
-        .anime-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-        }
-
-        .anime-card img {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            display: block;
-        }
-
-        .anime-info {
-            padding: 15px;
-        }
-
-        .anime-title {
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        .anime-desc {
-            font-size: 0.85rem;
-            color: #aaa;
-            line-height: 1.4;
-        }
-
-        .rating-mark {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 4px 8px;
-            border-radius: 20px;
-            font-size: 12px;
-            z-index: 2;
-        }
-
-        .tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.9);
-            border: 1px solid #ffd700;
-            border-radius: 8px;
-            padding: 12px;
-            max-width: 260px;
-            pointer-events: auto;
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.2s;
-            backdrop-filter: blur(8px);
-        }
-
-        .tooltip.show {
-            opacity: 1;
-        }
-
-        .circle-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 80px;
-            margin: 80px 0 40px;
-            flex-wrap: wrap;
-        }
-
-        .circle-btn {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid #ffd700;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: #ffd700;
-            font-weight: bold;
-        }
-
-        .back-home {
-            color: #ffd700;
-            text-decoration: none;
-            font-size: 1rem;
-            transition: 0.3s;
-        }
-
-        .back-home:hover {
-            text-shadow: 0 0 8px gold;
-        }
-
-        .glow-title {
-            font-size: 2rem;
-            color: #ffd700;
-            animation: glow 2s infinite alternate;
-        }
-
-        @keyframes glow {
-            from {
-                text-shadow: 0 0 5px gold;
-            }
-
-            to {
-                text-shadow: 0 0 20px gold;
-            }
-        }
-
-        .god-particle {
-            position: absolute;
-            width: 6px;
-            height: 6px;
-            background: #66ccff;
-            border-radius: 50%;
-            pointer-events: none;
-            animation: floatUp 2s linear forwards;
-            z-index: 10;
-        }
-
-        @keyframes floatUp {
-            0% {
-                transform: translateY(0) scale(1);
-                opacity: 0.8;
-            }
-
-            100% {
-                transform: translateY(-150px) scale(0);
-                opacity: 0;
-            }
-        }
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="recommend-container">
-        <div class="header">
-            <a href="/" class="back-home">← 首页</a>
-            <h1 class="glow-title">✨ 站长推荐 ✨</h1>
-            <input type="text" id="search-input" class="search-box" placeholder="搜索动漫...">
+      <div class="header">
+        <a href="/" class="back-home">← 首页</a>
+        <h1 class="glow-title">✨ 站长推荐 ✨</h1>
+        <input
+          type="text"
+          id="search-input"
+          class="search-box"
+          placeholder="搜索动漫..."
+        />
+      </div>
+      <div id="search-result" style="display: none">
+        <div class="section-title" style="color: #ffd700">🔍 搜索结果</div>
+        <div id="search-anime-list" class="anime-grid"></div>
+        <hr style="margin: 40px 0; border-color: #333" />
+      </div>
+      <div class="section-title god-title" id="god-title">✨ 神作推荐 ✨</div>
+      <div id="god-anime-list" class="anime-grid"></div>
+      <div
+        class="section-title"
+        style="color: #b19cd9; text-shadow: 0 0 10px #b19cd9"
+      >
+        ✨ 神作之下-好看之上 ✨
+      </div>
+      <div id="mid-anime-list" class="anime-grid"></div>
+      <div class="section-title good-title" id="good-title">🌸 好看推荐 🌸</div>
+      <div id="good-anime-list" class="anime-grid"></div>
+      <div class="circle-buttons">
+        <div class="circle-btn" onclick="location.href = '/popular.html'">
+          🔥 人气
         </div>
-        <div id="search-result" style="display: none;">
-            <div class="section-title" style="color: #ffd700;">🔍 搜索结果</div>
-            <div id="search-anime-list" class="anime-grid"></div>
-            <hr style="margin: 40px 0; border-color: #333;">
+        <div class="circle-btn" onclick="location.href = '/rating.html'">
+          ⭐ 评分
         </div>
-        <div class="section-title god-title" id="god-title">✨ 神作推荐 ✨</div>
-        <div id="god-anime-list" class="anime-grid"></div>
-        <div class="section-title" style="color: #b19cd9; text-shadow: 0 0 10px #b19cd9;">✨ 神作之下-好看之上 ✨</div>
-        <div id="mid-anime-list" class="anime-grid"></div>
-        <div class="section-title good-title" id="good-title">🌸 好看推荐 🌸</div>
-        <div id="good-anime-list" class="anime-grid"></div>
-        <div class="circle-buttons">
-            <div class="circle-btn" onclick="location.href='/popular.html'">🔥 人气</div>
-            <div class="circle-btn" onclick="location.href='/rating.html'">⭐ 评分</div>
-            <div class="circle-btn" onclick="location.href='/category.html'">📚 分类</div>
+        <div class="circle-btn" onclick="location.href = '/category.html'">
+          📚 分类
         </div>
+      </div>
     </div>
     <div id="tooltip" class="tooltip"></div>
-
+    <script src="/js/common.js"></script>
     <script>
-        // 独立评分映射（全局，但只用于存储，不用于跨卡片共享状态）
-        let userRatingMap = new Map();
-        let allAnime = [];
-        let searchKeyword = '';
-        let godParticleInterval = null;
-        const tooltip = document.getElementById('tooltip');
-        let hideTimeout = null;
-
-        // 从服务器获取当前用户的所有评分（独立映射）
-        async function loadUserRatings() {
-            try {
-                const res = await fetch('/api/user/ratings', { credentials: 'include' });
-                if (res.ok) {
-                    const ratedAnimes = await res.json();
-                    userRatingMap.clear();
-                    ratedAnimes.forEach(anime => {
-                        // 防御：如果没有 id，则跳过或提示
-                        if (anime.id === undefined || anime.id === null) {
-                            console.error('❌ 评分数据缺少 id 字段', anime);
-                            return;
-                        }
-                        // 统一转换为数字类型存储
-                        userRatingMap.set(Number(anime.id), anime.userRating);
-                    });
-                    console.log('✅ 已加载用户评分映射:', [...userRatingMap.entries()]);
-                } else {
-                    console.warn('获取用户评分失败');
-                }
-            } catch (e) {
-                console.error('加载用户评分失败', e);
-            }
-        }
-        function truncate(str, maxLen) {
-            if (!str) return '';
-            return str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
-        }
-
-        async function loadAllAnime() {
-            const res = await fetch('/api/anime/list?page=1&limit=1000');
-            const data = await res.json();
-            allAnime = data.data;
-        }
-
-        async function fetchAnimeByRating(rating, limit = 8) {
-            const url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=${limit}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            return data.data.filter(anime => anime.rating === rating);
-        }
-
-        async function loadRecommendations() {
-            await loadUserRatings(); // 先获取评分映射
-            const godList = await fetchAnimeByRating('神作', 8);
-            renderAnime(godList, 'god-anime-list');
-            const goodList = await fetchAnimeByRating('好看', 8);
-            renderAnime(goodList, 'good-anime-list');
-            const midList = await fetchAnimeByRating('神作之下-好看之上', 8);
-            renderAnime(midList, 'mid-anime-list');
-            startGodParticles();
-        }
-
-        // 渲染动漫列表（独立使用 userRatingMap）
-        function renderAnime(animes, containerId) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            container.innerHTML = '';
-            for (const anime of animes) {
-                const animeIdNum = Number(anime.id);
-                const userRating = userRatingMap.get(animeIdNum) || null;
-                let ratingMarkHtml = '';
-                if (userRating) {
-                    const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
-                    ratingMarkHtml = `<div class="rating-mark">${ratingMap[userRating] || '✓'}</div>`;
-                }
-                const card = document.createElement('div');
-                card.className = 'anime-card';
-                card.innerHTML = `
-                    <div style="position: relative;">
-                        <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
-                        ${ratingMarkHtml}
-                    </div>
-                    <div class="anime-info">
-                        <div class="anime-title">${truncate(anime.title, 10)}</div>
-                        <div class="anime-desc">${truncate(anime.description || '', 30)}</div>
-                    </div>
-                `;
-                const img = card.querySelector('img');
-                // 存储数据到 img 元素，用于 tooltip
-                img.setAttribute('data-title', anime.title);
-                img.setAttribute('data-desc', anime.description || '');
-                img.setAttribute('data-recommend', anime.recommend_text || '暂无');
-                img.addEventListener('mouseenter', showTooltip);
-                img.addEventListener('mouseleave', () => {
-                    hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300);
-                });
-                const docId = anime._id;
-                if (docId) {
-                    card.addEventListener('click', () => {
-                        window.location.href = `/anime/${docId}`;
-                    });
-                } else {
-                    card.style.cursor = 'not-allowed';
-                }
-                container.appendChild(card);
-            }
-        }
-
-        function showTooltip(event) {
-            clearTimeout(hideTimeout);
-            const img = event.currentTarget;
-            const rect = img.getBoundingClientRect();
-            const shortTitle = truncate(img.getAttribute('data-title'), 10);
-            const shortDesc = truncate(img.getAttribute('data-desc'), 30);
-            const recommend = img.getAttribute('data-recommend');
-            tooltip.innerHTML = `
-                <div style="font-size:1rem; font-weight:bold; margin-bottom:6px; text-align:center; color:#ffd700;">${shortTitle}</div>
-                <div style="font-size:0.8rem; color:#ccc; margin-bottom:8px;">${shortDesc}</div>
-                <div style="font-size:0.8rem; color:#ffaa66; text-align:right;">推荐指数：${recommend}</div>
-            `;
-            tooltip.style.visibility = 'hidden';
-            tooltip.classList.add('show');
-            const tooltipRect = tooltip.getBoundingClientRect();
-
-            let left = rect.right;
-            if (left + tooltipRect.width > window.innerWidth) {
-                left = rect.left - tooltipRect.width;
-            }
-            left = Math.max(0, Math.min(left, window.innerWidth - tooltipRect.width));
-
-            let top = rect.top + window.scrollY;
-            if (top + tooltipRect.height > window.scrollY + window.innerHeight) {
-                top = rect.top + window.scrollY - tooltipRect.height;
-                if (top < window.scrollY) {
-                    top = rect.bottom + window.scrollY;
-                    if (top + tooltipRect.height > window.scrollY + window.innerHeight) {
-                        top = window.scrollY + window.innerHeight - tooltipRect.height - 10;
-                    }
-                }
-            }
-            top = Math.max(window.scrollY + 10, top);
-
-            tooltip.style.left = left + 'px';
-            tooltip.style.top = top + 'px';
-            tooltip.style.visibility = 'visible';
-        }
-
-        function startGodParticles() {
-            if (godParticleInterval) clearInterval(godParticleInterval);
-            const title = document.getElementById('god-title');
-            if (!title) return;
-            godParticleInterval = setInterval(() => {
-                const rect = title.getBoundingClientRect();
-                for (let i = 0; i < 5; i++) {
-                    const particle = document.createElement('div');
-                    particle.className = 'god-particle';
-                    particle.style.left = rect.left + Math.random() * rect.width + 'px';
-                    particle.style.top = rect.top + Math.random() * rect.height + 'px';
-                    particle.style.background = `hsl(${200 + Math.random() * 40}, 100%, 60%)`;
-                    document.body.appendChild(particle);
-                    setTimeout(() => particle.remove(), 2000);
-                }
-            }, 800);
-        }
-
-        function performSearch() {
-            const keyword = searchKeyword.trim().toLowerCase();
-            const searchResultDiv = document.getElementById('search-result');
-            const searchList = document.getElementById('search-anime-list');
-            if (!keyword) {
-                searchResultDiv.style.display = 'none';
-                return;
-            }
-            const filtered = allAnime.filter(anime => {
-                if (anime.title.toLowerCase().includes(keyword)) return true;
-                if (anime.series_title && anime.series_title.toLowerCase().includes(keyword)) return true;
-                if (anime.aliases && anime.aliases.some(alias => alias.toLowerCase().includes(keyword))) return true;
-                return false;
-            });
-            if (filtered.length === 0) {
-                searchList.innerHTML = '<div style="text-align:center; color:#888; grid-column:1/-1;">未找到相关动漫</div>';
-            } else {
-                searchList.innerHTML = '';
-                filtered.forEach(anime => {
-                    const animeIdNum = Number(anime.id);
-                    const userRating = userRatingMap.get(animeIdNum) || null;
-                    let ratingMarkHtml = '';
-                    if (userRating) {
-                        const ratingMap = { '神作': '⭐', '好看': '👍', '普通': '😐', '无聊': '😴', '狗屎': '💩' };
-                        ratingMarkHtml = `<div class="rating-mark">${ratingMap[userRating] || '✓'}</div>`;
-                    }
-                    const card = document.createElement('div');
-                    card.className = 'anime-card';
-                    card.innerHTML = `
-                        <div style="position: relative;">
-                            <img src="${anime.image_url}" alt="${anime.title}" onerror="this.src='/images/default.jpg'">
-                            ${ratingMarkHtml}
-                        </div>
-                        <div class="anime-info">
-                            <div class="anime-title">${truncate(anime.title, 10)}</div>
-                            <div class="anime-desc">${truncate(anime.description || '', 30)}</div>
-                        </div>
-                    `;
-                    const img = card.querySelector('img');
-                    img.setAttribute('data-title', anime.title);
-                    img.setAttribute('data-desc', anime.description || '');
-                    img.setAttribute('data-recommend', anime.recommend_text || '暂无');
-                    img.addEventListener('mouseenter', showTooltip);
-                    img.addEventListener('mouseleave', () => {
-                        hideTimeout = setTimeout(() => tooltip.classList.remove('show'), 300);
-                    });
-                    const docId = anime._id;
-                    if (docId) {
-                        card.addEventListener('click', () => {
-                            window.location.href = `/anime/${docId}`;
-                        });
-                    }
-                    searchList.appendChild(card);
-                });
-            }
-            searchResultDiv.style.display = 'block';
-        }
-
-        document.getElementById('search-input')?.addEventListener('input', (e) => {
-            searchKeyword = e.target.value;
-            performSearch();
+      let userRatingMap = new Map();
+      let allAnime = [];
+      let searchKeyword = "";
+      let godParticleInterval = null;
+      const tooltip = document.getElementById("tooltip");
+      let hideTimeout = null;
+      async function loadUserRatings() {
+        const res = await fetch("/api/user/ratings", {
+          credentials: "include",
         });
-
-        tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
-        tooltip.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
-
-        (async () => {
-            await loadAllAnime();
-            await loadRecommendations();
-        })();
+        if (res.ok) {
+          const rated = await res.json();
+          userRatingMap.clear();
+          rated.forEach((a) => {
+            if (a.id !== undefined)
+              userRatingMap.set(Number(a.id), a.userRating);
+          });
+        }
+      }
+      function truncate(str, maxLen) {
+        if (!str) return "";
+        return str.length > maxLen ? str.substring(0, maxLen) + "..." : str;
+      }
+      async function loadAllAnime() {
+        const res = await fetch("/api/anime/list?page=1&limit=1000");
+        const data = await res.json();
+        allAnime = data.data;
+      }
+      async function fetchAnimeByRating(rating, limit = 8) {
+        const url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=${limit}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        return data.data.filter((a) => a.rating === rating);
+      }
+      async function loadRecommendations() {
+        await loadUserRatings();
+        const godList = await fetchAnimeByRating("神作", 8);
+        renderAnime(godList, "god-anime-list");
+        const goodList = await fetchAnimeByRating("好看", 8);
+        renderAnime(goodList, "good-anime-list");
+        const midList = await fetchAnimeByRating("神作之下-好看之上", 8);
+        renderAnime(midList, "mid-anime-list");
+        startGodParticles();
+      }
+      function renderAnime(animes, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = "";
+        for (const anime of animes) {
+          const animeIdNum = Number(anime.id);
+          const userRating = userRatingMap.get(animeIdNum) || null;
+          let ratingMarkHtml = userRating
+            ? `<div class="rating-mark">${{ 神作: "⭐", 好看: "👍", 普通: "😐", 无聊: "😴", 狗屎: "💩" }[userRating] || "✓"}</div>`
+            : "";
+          const card = document.createElement("div");
+          card.className = "anime-card";
+          card.innerHTML = `<div style="position:relative;"><img src="${anime.image_url}" onerror="this.src='/images/default.jpg'">${ratingMarkHtml}</div><div class="anime-info"><div class="anime-title">${truncate(anime.title, 10)}</div><div class="anime-desc">${truncate(anime.description || "", 30)}</div></div>`;
+          const img = card.querySelector("img");
+          img.setAttribute("data-title", anime.title);
+          img.setAttribute("data-desc", anime.description || "");
+          img.setAttribute("data-recommend", anime.recommend_text || "暂无");
+          img.addEventListener("mouseenter", showTooltip);
+          img.addEventListener("mouseleave", () => {
+            hideTimeout = setTimeout(
+              () => tooltip.classList.remove("show"),
+              300,
+            );
+          });
+          const docId = anime._id;
+          if (docId)
+            card.addEventListener(
+              "click",
+              () => (window.location.href = `/anime/${docId}`),
+            );
+          container.appendChild(card);
+        }
+      }
+      function showTooltip(event) {
+        clearTimeout(hideTimeout);
+        const img = event.currentTarget;
+        const rect = img.getBoundingClientRect();
+        tooltip.innerHTML = `<div style="font-size:1rem; font-weight:bold; margin-bottom:6px; text-align:center; color:#ffd700;">${truncate(img.getAttribute("data-title"), 10)}</div><div style="font-size:0.8rem; color:#ccc; margin-bottom:8px;">${truncate(img.getAttribute("data-desc"), 30)}</div><div style="font-size:0.8rem; color:#ffaa66; text-align:right;">推荐指数：${img.getAttribute("data-recommend")}</div>`;
+        tooltip.style.visibility = "hidden";
+        tooltip.classList.add("show");
+        const ttRect = tooltip.getBoundingClientRect();
+        let left = rect.right;
+        if (left + ttRect.width > window.innerWidth)
+          left = rect.left - ttRect.width;
+        left = Math.max(0, Math.min(left, window.innerWidth - ttRect.width));
+        let top = rect.top + window.scrollY;
+        if (top + ttRect.height > window.scrollY + window.innerHeight) {
+          top = rect.top + window.scrollY - ttRect.height;
+          if (top < window.scrollY) top = rect.bottom + window.scrollY;
+          if (top + ttRect.height > window.scrollY + window.innerHeight)
+            top = window.scrollY + window.innerHeight - ttRect.height - 10;
+        }
+        top = Math.max(window.scrollY + 10, top);
+        tooltip.style.left = left + "px";
+        tooltip.style.top = top + "px";
+        tooltip.style.visibility = "visible";
+      }
+      function startGodParticles() {
+        if (godParticleInterval) clearInterval(godParticleInterval);
+        const title = document.getElementById("god-title");
+        if (!title) return;
+        godParticleInterval = setInterval(() => {
+          const rect = title.getBoundingClientRect();
+          for (let i = 0; i < 5; i++) {
+            const p = document.createElement("div");
+            p.className = "god-particle";
+            p.style.left = rect.left + Math.random() * rect.width + "px";
+            p.style.top = rect.top + Math.random() * rect.height + "px";
+            p.style.background = `hsl(${200 + Math.random() * 40},100%,60%)`;
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 2000);
+          }
+        }, 800);
+      }
+      function performSearch() {
+        const kw = searchKeyword.trim().toLowerCase();
+        const searchDiv = document.getElementById("search-result");
+        const searchList = document.getElementById("search-anime-list");
+        if (!kw) {
+          searchDiv.style.display = "none";
+          return;
+        }
+        const filtered = allAnime.filter(
+          (a) =>
+            a.title.toLowerCase().includes(kw) ||
+            (a.series_title && a.series_title.toLowerCase().includes(kw)) ||
+            (a.aliases &&
+              a.aliases.some((alias) => alias.toLowerCase().includes(kw))),
+        );
+        if (filtered.length === 0)
+          searchList.innerHTML =
+            '<div style="text-align:center; color:#888; grid-column:1/-1;">未找到相关动漫</div>';
+        else {
+          searchList.innerHTML = "";
+          filtered.forEach((anime) => {
+            const animeIdNum = Number(anime.id);
+            const userRating = userRatingMap.get(animeIdNum) || null;
+            const ratingMarkHtml = userRating
+              ? `<div class="rating-mark">${{ 神作: "⭐", 好看: "👍", 普通: "😐", 无聊: "😴", 狗屎: "💩" }[userRating] || "✓"}</div>`
+              : "";
+            const card = document.createElement("div");
+            card.className = "anime-card";
+            card.innerHTML = `<div style="position:relative;"><img src="${anime.image_url}" onerror="this.src='/images/default.jpg'">${ratingMarkHtml}</div><div class="anime-info"><div class="anime-title">${truncate(anime.title, 10)}</div><div class="anime-desc">${truncate(anime.description || "", 30)}</div></div>`;
+            const img = card.querySelector("img");
+            img.setAttribute("data-title", anime.title);
+            img.setAttribute("data-desc", anime.description || "");
+            img.setAttribute("data-recommend", anime.recommend_text || "暂无");
+            img.addEventListener("mouseenter", showTooltip);
+            img.addEventListener("mouseleave", () => {
+              hideTimeout = setTimeout(
+                () => tooltip.classList.remove("show"),
+                300,
+              );
+            });
+            const docId = anime._id;
+            if (docId)
+              card.addEventListener(
+                "click",
+                () => (window.location.href = `/anime/${docId}`),
+              );
+            searchList.appendChild(card);
+          });
+        }
+        searchDiv.style.display = "block";
+      }
+      document
+        .getElementById("search-input")
+        ?.addEventListener("input", (e) => {
+          searchKeyword = e.target.value;
+          performSearch();
+        });
+      tooltip.addEventListener("mouseenter", () => clearTimeout(hideTimeout));
+      tooltip.addEventListener("mouseleave", () =>
+        tooltip.classList.remove("show"),
+      );
+      (async () => {
+        await loadAllAnime();
+        await loadRecommendations();
+      })();
     </script>
-</body>
-
+  </body>
 </html>

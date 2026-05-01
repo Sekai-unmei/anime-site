@@ -174,9 +174,9 @@ if (window._commonLoaded) {
 
   // 同步左下角头像
   window.syncUserAvatar = async function () {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(true); // 强制刷新，不读缓存
     if (!user) return;
-    const avatarUrl = getValidAvatarUrl(user.avatar, user.email);
+    const avatarUrl = user.avatar; // 此时已经是 Gravatar URL
     const avatarIcon = document.getElementById("avatarIcon");
     if (avatarIcon) {
       avatarIcon.src = avatarUrl;
@@ -191,7 +191,6 @@ if (window._commonLoaded) {
       );
     }
   };
-
   // ---------- 通知条 ----------
   let notifTimeout = null;
   window.showNotificationBar = function (msg) {

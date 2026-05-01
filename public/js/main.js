@@ -331,39 +331,38 @@ async function fetchWeatherData(lat, lon) {
     const profile = JSON.parse(localStorage.getItem("user_profile") || "{}");
     let country = "观测站";
     let city = "";
-    let useAccurateLocation = false; // 标记是否使用了高精度位置（GPS）
+    let usePrecise = false;
 
-    // ---------- 1. 优先使用用户自定义的国家/地区 ----------
+    // 1. 如果用户自定义了国家，直接使用自定义（不再请求定位）
     if (profile.country) {
       country = profile.country;
       city = profile.region || "";
+      usePrecise = true;
     } else {
-      // ---------- 2. 尝试浏览器高精度地理位置（GPS） ----------
-      // 注意：需要用户授权，如果用户之前拒绝了权限，这里会失败。
-      // 我们在这里主动再次请求一次（不依赖外部传入的 lat/lon，因为那通常是降级后的默认值）
+      // 2. 尝试浏览器高精度 GPS（如果之前没有被永久拒绝）
+      let gpsSuccess = false;
       if (!lat || !lon) {
         try {
           const gpsPos = await new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(resolve, reject, {
               enableHighAccuracy: true,
-              timeout: 8000,
+              timeout: 10000,
               maximumAge: 0,
             });
           });
           lat = gpsPos.coords.latitude;
           lon = gpsPos.coords.longitude;
-          useAccurateLocation = true;
-          console.log("✅ 使用 GPS 定位:", lat, lon);
+          gpsSuccess = true;
+          console.log("✅ GPS 定位成功:", lat, lon);
         } catch (gpsErr) {
           console.warn("GPS 定位失败或用户拒绝:", gpsErr);
         }
       }
 
-      // ---------- 3. 如果有经纬度（来自 GPS 或参数），调用逆地理编码获取国家城市 ----------
-      if (lat && lon && useAccurateLocation) {
+      // 3. 如果有精确经纬度（GPS），使用逆地理编码获取中文地址
+      if (gpsSuccess && lat && lon) {
         try {
-          // 使用 OpenStreetMap 的 Nominatim 逆地理编码（免费，无需 API key，适合低频率）
-          const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1&accept-language=zh`;
+          const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1&accept-language=zh`;
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000);
           const geoRes = await fetch(geoUrl, { signal: controller.signal });
@@ -372,25 +371,22 @@ async function fetchWeatherData(lat, lon) {
             const geoData = await geoRes.json();
             const addr = geoData.address;
             country = addr.country || "未知";
-            // 优先显示城市，其次镇/村庄，最后县
             city = addr.city || addr.town || addr.village || addr.county || "";
-            console.log(`🌍 逆地理编码: ${country}, ${city}`);
+            usePrecise = true;
+            console.log(`🌍 GPS 逆地理: ${country}, ${city}`);
           } else {
             throw new Error("逆地理编码失败");
           }
         } catch (geoErr) {
-          console.warn("逆地理编码失败，回退到 IP 定位", geoErr);
-          // 降级：继续使用 IP 定位
-          useAccurateLocation = false;
+          console.warn("逆地理编码失败，回退到 IP", geoErr);
         }
       }
 
-      // ---------- 4. 如果 GPS 定位失败或无经纬度，则使用 IP 定位 ----------
-      if (!useAccurateLocation) {
+      // 4. 如果 GPS 不可用，使用 IP 定位（降级）
+      if (!usePrecise) {
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 4000);
-          // 使用 ipapi.co（更稳定，返回英文）
           const ipRes = await fetch("https://ipapi.co/json/", {
             signal: controller.signal,
           });
@@ -398,10 +394,9 @@ async function fetchWeatherData(lat, lon) {
           if (ipRes.ok) {
             const ipData = await ipRes.json();
             const rawCountry = ipData.country_name || "";
-            // 英文国家名转中文（使用已有的 countryMap）
             country = countryMap[rawCountry] || rawCountry || "未知";
             city = ipData.city || "";
-            // 同时获得经纬度，供天气 API 使用
+            // 同时获得经纬度供天气 API 使用
             if (!lat || !lon) {
               lat = ipData.latitude;
               lon = ipData.longitude;
@@ -412,7 +407,6 @@ async function fetchWeatherData(lat, lon) {
           }
         } catch (ipErr) {
           console.warn("IP 定位失败，使用时区推断", ipErr);
-          // 5. 最后降级：通过时区推断国家
           const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           if (timezone.includes("Asia/Shanghai")) country = "中国";
           else if (timezone.includes("Asia/Tokyo")) country = "日本";
@@ -444,12 +438,10 @@ async function fetchWeatherData(lat, lon) {
         : realLocation;
     }
 
-    // ---------- 获取天气数据 ----------
-    // 如果没有有效的经纬度，使用默认值（北京）
+    // 获取天气数据（如果没有有效经纬度，使用默认北京）
     let weatherLat = lat,
       weatherLon = lon;
     if (!weatherLat || !weatherLon) {
-      // 尝试再取一次 IP 经纬度（如果前面没拿到）
       try {
         const ipRes = await fetch("https://ipapi.co/json/");
         if (ipRes.ok) {

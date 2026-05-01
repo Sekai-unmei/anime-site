@@ -728,19 +728,37 @@ function initDragSystem() {
 
 // ========== 5. 场景渲染与切换 ==========
 function renderArchive(state) {
-  const camera = document.getElementById("camera"),
-    centerX = 2500,
+  const camera = document.getElementById("camera");
+  const centerX = 2500,
     centerY = 2500;
-  if (!svgCache) {
-    // 初始创建时可能相机位置未设置，这里设置一次
-    moveCamera(centerX, centerY);
+
+  // 确保 camera 存在
+  if (!camera) {
+    console.error("camera element not found");
+    return;
   }
+
+  // 初始化 svgCache（确保 SVG 容器存在）
+  if (!svgCache) {
+    camera.innerHTML =
+      '<svg id="link-svg" style="position:absolute; width:5000px; height:5000px; pointer-events:none;"></svg>';
+    svgCache = document.getElementById("link-svg");
+    moveCamera(centerX, centerY); // 初始定位
+  }
+
+  // 清除旧连线
   svgCache
     .querySelectorAll("line, linearGradient")
     .forEach((el) => el.remove());
-  if (!window.particleSystem) window.particleSystem = new ParticleSystem();
-  else if (!camera.contains(window.particleSystem.canvas))
+
+  // 粒子系统
+  if (!window.particleSystem) {
+    window.particleSystem = new ParticleSystem();
+  } else if (!camera.contains(window.particleSystem.canvas)) {
     camera.appendChild(window.particleSystem.canvas);
+  }
+
+  // 状态切换时重建场景
   if (lastState !== state) {
     for (let k in particleTimers) clearInterval(particleTimers[k]);
     if (window.particleSystem) {
@@ -756,7 +774,10 @@ function renderArchive(state) {
     currentFrameBounds = null;
     nodesCache = { years: new Map(), months: new Map(), tags: new Map() };
     buildScene(state, centerX, centerY);
-  } else updateNodeSelection(state);
+  } else {
+    updateNodeSelection(state);
+  }
+
   lastState = state;
   updateConfirmBtn();
 }

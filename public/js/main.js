@@ -262,20 +262,6 @@ function initSearchBox() {
   });
 }
 
-async function initEnvironment() {
-  try {
-    const position = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        timeout: 5000,
-      });
-    });
-    fetchWeatherData(position.coords.latitude, position.coords.longitude);
-  } catch (e) {
-    console.warn("浏览器定位失败，使用IP定位或默认坐标", e);
-    fetchWeatherData(null, null);
-  }
-}
-
 // 在 main.js 中找到 fetchWeatherData 函数，替换为以下版本
 
 // 国家英文名 -> 中文映射表
@@ -345,57 +331,112 @@ async function fetchWeatherData(lat, lon) {
     const profile = JSON.parse(localStorage.getItem("user_profile") || "{}");
     let country = "观测站";
     let city = "";
+    let useAccurateLocation = false; // 标记是否使用了高精度位置（GPS）
 
-    // 1. 优先使用用户自定义国家
+    // ---------- 1. 优先使用用户自定义的国家/地区 ----------
     if (profile.country) {
       country = profile.country;
       city = profile.region || "";
     } else {
-      // 2. 通过时区推断国家（简略，您已有的代码可保留）
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      // 可补充时区映射，但这里为了简洁，留作备用
-      if (timezone.includes("Asia/Shanghai")) country = "中国";
-      else if (timezone.includes("Asia/Tokyo")) country = "日本";
-      else if (timezone.includes("Asia/Seoul")) country = "韩国";
-      else if (timezone.includes("America/New_York")) country = "美国";
-      else if (timezone.includes("Europe/London")) country = "英国";
-      else if (timezone.includes("Europe/Paris")) country = "法国";
-      else if (timezone.includes("Europe/Berlin")) country = "德国";
-      else if (timezone.includes("Australia/Sydney")) country = "澳大利亚";
-      else if (timezone.includes("Asia/Calcutta")) country = "印度";
-      else {
-        // 3. 使用 ipapi.co 获取地理位置（返回中文需要映射）
+      // ---------- 2. 尝试浏览器高精度地理位置（GPS） ----------
+      // 注意：需要用户授权，如果用户之前拒绝了权限，这里会失败。
+      // 我们在这里主动再次请求一次（不依赖外部传入的 lat/lon，因为那通常是降级后的默认值）
+      if (!lat || !lon) {
+        try {
+          const gpsPos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 8000,
+              maximumAge: 0,
+            });
+          });
+          lat = gpsPos.coords.latitude;
+          lon = gpsPos.coords.longitude;
+          useAccurateLocation = true;
+          console.log("✅ 使用 GPS 定位:", lat, lon);
+        } catch (gpsErr) {
+          console.warn("GPS 定位失败或用户拒绝:", gpsErr);
+        }
+      }
+
+      // ---------- 3. 如果有经纬度（来自 GPS 或参数），调用逆地理编码获取国家城市 ----------
+      if (lat && lon && useAccurateLocation) {
+        try {
+          // 使用 OpenStreetMap 的 Nominatim 逆地理编码（免费，无需 API key，适合低频率）
+          const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1&accept-language=zh`;
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const geoRes = await fetch(geoUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const addr = geoData.address;
+            country = addr.country || "未知";
+            // 优先显示城市，其次镇/村庄，最后县
+            city = addr.city || addr.town || addr.village || addr.county || "";
+            console.log(`🌍 逆地理编码: ${country}, ${city}`);
+          } else {
+            throw new Error("逆地理编码失败");
+          }
+        } catch (geoErr) {
+          console.warn("逆地理编码失败，回退到 IP 定位", geoErr);
+          // 降级：继续使用 IP 定位
+          useAccurateLocation = false;
+        }
+      }
+
+      // ---------- 4. 如果 GPS 定位失败或无经纬度，则使用 IP 定位 ----------
+      if (!useAccurateLocation) {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const res = await fetch("https://ipapi.co/json/", {
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
+          // 使用 ipapi.co（更稳定，返回英文）
+          const ipRes = await fetch("https://ipapi.co/json/", {
             signal: controller.signal,
           });
           clearTimeout(timeoutId);
-          if (res.ok) {
-            const data = await res.json();
-            const rawCountry = data.country_name || "";
-            // 英文转中文
+          if (ipRes.ok) {
+            const ipData = await ipRes.json();
+            const rawCountry = ipData.country_name || "";
+            // 英文国家名转中文（使用已有的 countryMap）
             country = countryMap[rawCountry] || rawCountry || "未知";
-            city = data.city || "";
+            city = ipData.city || "";
+            // 同时获得经纬度，供天气 API 使用
+            if (!lat || !lon) {
+              lat = ipData.latitude;
+              lon = ipData.longitude;
+            }
+            console.log(`🌐 IP 定位: ${country}, ${city}`);
           } else {
             throw new Error("IP API 失败");
           }
-        } catch (err) {
-          console.warn("获取地理位置失败，使用默认", err);
-          country = "观测站";
+        } catch (ipErr) {
+          console.warn("IP 定位失败，使用时区推断", ipErr);
+          // 5. 最后降级：通过时区推断国家
+          const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          if (timezone.includes("Asia/Shanghai")) country = "中国";
+          else if (timezone.includes("Asia/Tokyo")) country = "日本";
+          else if (timezone.includes("Asia/Seoul")) country = "韩国";
+          else if (timezone.includes("America/New_York")) country = "美国";
+          else if (timezone.includes("Europe/London")) country = "英国";
+          else if (timezone.includes("Europe/Paris")) country = "法国";
+          else if (timezone.includes("Europe/Berlin")) country = "德国";
+          else if (timezone.includes("Australia/Sydney")) country = "澳大利亚";
+          else if (timezone.includes("Asia/Calcutta")) country = "印度";
+          else country = "观测站";
+          city = "";
         }
       }
     }
 
-    // 拼接显示字符串
+    // 拼接显示字符串（显示国家 + 城市）
     const locationParts = [
       profile.planet,
       profile.country,
       profile.region,
     ].filter((p) => p && p.trim());
     let realLocation = `地球 · ${country}`;
-    if (city) realLocation += ` · ${city}`;
+    if (city && city.trim()) realLocation += ` · ${city}`;
     const geoDisplay = document.getElementById("geo-display");
     if (geoDisplay) {
       geoDisplay.innerText = locationParts.length
@@ -403,10 +444,12 @@ async function fetchWeatherData(lat, lon) {
         : realLocation;
     }
 
-    // 获取天气数据（使用传入的经纬度，如果无效则从 ipapi 获取）
+    // ---------- 获取天气数据 ----------
+    // 如果没有有效的经纬度，使用默认值（北京）
     let weatherLat = lat,
       weatherLon = lon;
     if (!weatherLat || !weatherLon) {
+      // 尝试再取一次 IP 经纬度（如果前面没拿到）
       try {
         const ipRes = await fetch("https://ipapi.co/json/");
         if (ipRes.ok) {
@@ -421,8 +464,8 @@ async function fetchWeatherData(lat, lon) {
       }
     }
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${weatherLat}&longitude=${weatherLon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,cloud_cover&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
-    const wRes = await fetch(url);
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${weatherLat}&longitude=${weatherLon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,cloud_cover&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+    const wRes = await fetch(weatherUrl);
     const w = await wRes.json();
     renderWeatherUI(w);
   } catch (e) {
@@ -445,17 +488,19 @@ async function fetchWeatherData(lat, lon) {
 }
 // 在 initEnvironment 中增加超时和错误处理
 async function initEnvironment() {
+  // 主动请求浏览器高精度定位（会弹出授权提示）
   try {
     const position = await new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, {
-        timeout: 5000,
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 0,
       });
     });
     fetchWeatherData(position.coords.latitude, position.coords.longitude);
   } catch (e) {
-    console.warn("浏览器定位失败，使用IP定位或默认坐标", e);
-    // 尝试 IP 定位获取经纬度（可选，这里简单使用北京默认）
-    fetchWeatherData(39.9042, 116.4074);
+    console.warn("浏览器定位失败或用户拒绝，将使用 IP 定位", e);
+    fetchWeatherData(null, null); // 传入 null，让函数内部自己获取 IP 定位
   }
 }
 
@@ -1601,20 +1646,35 @@ function updateConfirmBtn(immediate = false) {
   }
 }
 
+function resetCamera() {
+  const camera = document.getElementById("camera");
+  if (camera) {
+    camX = 0;
+    camY = 0;
+    camera.style.transform = "translate(0px, 0px)";
+  }
+}
+
 function showSection(id) {
   const isArchive = id === "archive";
-  if (!isArchive && window.particleSystem) {
-    if (window.particleSystem.linkInterval)
-      clearInterval(window.particleSystem.linkInterval);
-    if (window.particleSystem.frameInterval)
-      clearInterval(window.particleSystem.frameInterval);
-    window.particleSystem.particles = [];
-    for (let k in particleTimers) clearInterval(particleTimers[k]);
+  if (!isArchive) {
+    // 离开档案模式时重置相机位置，并确保 root 视图正常
+    resetCamera();
+    // 如果当前存在粒子系统，可以选择停止（但保留）
+    if (window.particleSystem) {
+      if (window.particleSystem.linkInterval)
+        clearInterval(window.particleSystem.linkInterval);
+      if (window.particleSystem.frameInterval)
+        clearInterval(window.particleSystem.frameInterval);
+      window.particleSystem.particles = [];
+    }
+    // 清除年度框架残留
     document
       .querySelectorAll("#camera .year-frame-outer, #camera .year-frame-inner")
       .forEach((el) => el.remove());
     currentFrameBounds = null;
   }
+  // 原有显示/隐藏逻辑...
   document
     .querySelectorAll(".top-left, .search-area, .poem-right")
     .forEach((el) => (el.style.display = isArchive ? "none" : "block"));
@@ -1626,7 +1686,6 @@ function showSection(id) {
     : "none";
   if (isArchive) renderArchive("root");
 }
-
 async function checkLoginAndRedirect() {
   try {
     const res = await fetch("/api/user/current", { credentials: "include" });

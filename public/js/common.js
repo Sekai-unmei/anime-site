@@ -164,10 +164,8 @@ if (window._commonLoaded) {
       const res = await fetch("/api/user/current", { credentials: "include" });
       if (res.ok) {
         cachedUser = await res.json();
-        cachedUser.avatar = getValidAvatarUrl(
-          cachedUser.avatar,
-          cachedUser.email,
-        );
+        // 强制使用 Gravatar，忽略服务器返回的任何 avatar 路径
+        cachedUser.avatar = getValidAvatarUrl(null, cachedUser.email);
         return cachedUser;
       }
     } catch (e) {}

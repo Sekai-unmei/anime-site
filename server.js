@@ -15,8 +15,8 @@ const PORT = process.env.PORT || 3000;
 const userSchema = new mongoose.Schema({
   email: { type: String, unique: true, required: true },
   username: String,
-  avatar: String,
   googleAvatar: String,
+  avatar: String,
   bio: String,
   joinDate: String,
 });

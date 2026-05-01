@@ -3,11 +3,10 @@
   <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>动漫资料库</title>
     <link rel="stylesheet" href="/style.css" />
     <style>
-      /* Toast 提示（内嵌，确保生效） */
       .toast-message {
         position: fixed;
         bottom: 30px;
@@ -26,7 +25,6 @@
         animation: fadeInOut 2s ease forwards;
         pointer-events: none;
       }
-
       @keyframes fadeInOut {
         0% {
           opacity: 0;
@@ -45,7 +43,6 @@
           transform: translateX(-50%) translateY(-20px);
         }
       }
-
       .avatar-badge {
         position: absolute;
         top: -5px;
@@ -61,7 +58,6 @@
       #userAvatarMenu {
         position: relative;
       }
-
       .msg-tabs {
         display: flex;
         border-bottom: 1px solid #444;
@@ -185,14 +181,13 @@
       }
     </style>
   </head>
-
   <body>
     <nav class="nav-bar">
-      <a onclick="showSection('home')">首页</a>
-      <a onclick="showSection('archive')">动漫查询库</a>
-      <a href="/seats.html">争夺“圣杯”之物</a>
-      <a href="/profile.html">形象设置</a>
-      <a href="#" id="logout-link">断开连接</a>
+      <a onclick="showSection('home')">首页</a
+      ><a onclick="showSection('archive')">动漫查询库</a
+      ><a href="/seats.html">争夺“圣杯”之物</a
+      ><a href="/profile.html">形象设置</a
+      ><a href="#" id="logout-link">断开连接</a>
     </nav>
     <div id="info-panel" class="top-left">
       <div id="time">00:00:00</div>
@@ -201,16 +196,15 @@
         style="color: #888; font-size: 0.85rem; margin-bottom: 15px"
       ></div>
       <div class="info-row">
-        <span class="label">COORDINATES</span>
-        <span id="geo-display" class="value">星际同步中...</span>
+        <span class="label">COORDINATES</span
+        ><span id="geo-display" class="value">星际同步中...</span>
       </div>
       <div class="info-row" style="cursor: pointer" onclick="toggleWeather()">
         <span class="label">METEOROLOGY</span>
         <div style="display: flex; align-items: center; gap: 8px">
           <span id="weather-brief" class="value" style="font-size: 1.1rem"
             >接入中...</span
-          >
-          <span
+          ><span
             id="weather-arrow"
             style="color: gold; transition: 0.3s; font-size: 0.8rem"
             >▼</span
@@ -222,11 +216,9 @@
         【 观测者 】
       </div>
     </div>
-
     <div id="search-panel" class="search-area">
       <input type="text" class="search-box" placeholder="动漫观看顺序" />
     </div>
-
     <div id="archive-stage">
       <div id="camera">
         <svg
@@ -242,11 +234,8 @@
         ></svg>
       </div>
     </div>
-
     <button id="confirm-btn">确认选择</button>
     <div id="poem-panel" class="poem-right"></div>
-
-    <!-- 左下角头像菜单 -->
     <div
       id="userAvatarMenu"
       style="
@@ -270,8 +259,6 @@
       />
       <div id="avatarBadge" class="avatar-badge"></div>
     </div>
-
-    <!-- 侧边导航栏（消息中心） -->
     <div
       id="sideMenu"
       style="
@@ -354,8 +341,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 顶部通知条 -->
     <div
       id="notificationBar"
       style="
@@ -373,8 +358,8 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       "
     >
-      <span id="notificationMsg"></span>
-      <button
+      <span id="notificationMsg"></span
+      ><button
         id="closeNotifBtn"
         style="
           margin-left: 10px;
@@ -386,8 +371,6 @@
         ✖
       </button>
     </div>
-
-    <!-- 反馈模态框 -->
     <div
       id="reportModal"
       style="
@@ -421,8 +404,8 @@
           意见反馈
         </h3>
         <div>
-          <label style="color: #ffd700">问题类型</label>
-          <select
+          <label style="color: #ffd700">问题类型</label
+          ><select
             id="reportType"
             style="
               width: 100%;
@@ -441,8 +424,8 @@
           </select>
         </div>
         <div style="margin-top: 15px">
-          <label style="color: #ffd700">问题描述</label>
-          <textarea
+          <label style="color: #ffd700">问题描述</label
+          ><textarea
             id="reportDesc"
             rows="4"
             style="
@@ -458,8 +441,8 @@
           ></textarea>
         </div>
         <div style="margin-top: 15px">
-          <label style="color: #ffd700">上传截图（可选）</label>
-          <input
+          <label style="color: #ffd700">上传截图（可选）</label
+          ><input
             type="file"
             id="reportImage"
             accept="image/jpeg,image/png,image/webp"
@@ -490,9 +473,8 @@
               cursor: pointer;
             "
           >
-            提交反馈
-          </button>
-          <button
+            提交反馈</button
+          ><button
             id="closeReportBtn"
             style="
               background: #444;
@@ -508,8 +490,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 聊天模态框 -->
     <div id="chatModal" style="display: none">
       <div
         style="
@@ -578,8 +558,7 @@
             border-radius: 20px;
             padding: 8px 15px;
           "
-        />
-        <button
+        /><button
           id="sendChatBtn"
           style="
             background: #ffd700;
@@ -598,82 +577,61 @@
       <div id="muteFriendBtn">消息免打扰</div>
       <div id="blockFriendBtn">拉黑</div>
     </div>
-
     <script src="/js/common.js"></script>
     <script src="/js/main.js"></script>
     <script>
-      // ========== 页面特有变量（聊天、反馈等） ==========
-      let currentChatFriend = null;
-      let chatInterval = null;
-      let lastMessageIds = [];
-
-      // 加载聊天历史（增量）
+      let currentChatFriend = null,
+        chatInterval = null,
+        lastMessageIds = [];
       async function loadChatHistory() {
         if (!currentChatFriend) return;
-        const res = await fetch(
+        let res = await fetch(
           `/api/messages/history?friend=${encodeURIComponent(currentChatFriend)}`,
           { credentials: "include" },
         );
         if (!res.ok) return;
         let history = await res.json();
         history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-        const container = document.getElementById("chatMessages");
-        const shouldScroll =
-          container.scrollTop + container.clientHeight >=
-          container.scrollHeight - 50;
-
-        const displayedIds = new Set(lastMessageIds);
-        const newMessages = history.filter((msg) => !displayedIds.has(msg._id));
+        let container = document.getElementById("chatMessages"),
+          shouldScroll =
+            container.scrollTop + container.clientHeight >=
+            container.scrollHeight - 50,
+          displayedIds = new Set(lastMessageIds),
+          newMessages = history.filter((msg) => !displayedIds.has(msg._id));
         if (newMessages.length === 0) return;
-
         lastMessageIds = history.map((msg) => msg._id);
-
         let currentUserEmail = null;
         try {
-          const profileRes = await fetch("/api/user/current", {
+          let profileRes = await fetch("/api/user/current", {
             credentials: "include",
           });
           if (profileRes.ok) {
-            const user = await profileRes.json();
+            let user = await profileRes.json();
             currentUserEmail = user.email;
           }
         } catch (e) {}
-
-        for (const msg of newMessages) {
-          const isMe = msg.from === currentUserEmail;
-          const avatar = isMe
-            ? await getUserAvatar(currentUserEmail)
-            : await getUserAvatar(msg.from);
-          const div = document.createElement("div");
+        for (let msg of newMessages) {
+          let isMe = msg.from === currentUserEmail,
+            avatar = isMe
+              ? await getUserAvatar(currentUserEmail)
+              : await getUserAvatar(msg.from),
+            div = document.createElement("div");
           div.style.display = "flex";
           div.style.alignItems = "flex-start";
           div.style.gap = "8px";
           div.style.marginBottom = "12px";
           div.style.flexDirection = isMe ? "row-reverse" : "row";
-          div.innerHTML = `
-                    <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-                    <div style="max-width:70%;">
-                        <div style="background:${isMe ? "#2a2a2a" : "#111"}; padding:8px 12px; border-radius:12px; display:inline-block;">
-                            ${escapeHtml(msg.text)}
-                        </div>
-                        <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
-                    </div>
-                `;
+          div.innerHTML = `<img src="${avatar}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'"><div style="max-width:70%;"><div style="background:${isMe ? "#2a2a2a" : "#111"};padding:8px 12px;border-radius:12px;display:inline-block;">${escapeHtml(msg.text)}</div><div style="font-size:0.7rem;color:#888;margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div></div>`;
           container.appendChild(div);
         }
         if (shouldScroll) container.scrollTop = container.scrollHeight;
       }
-
-      // 页面启动
       window.onload = () => {
         if (typeof initAll === "function") initAll();
       };
-
-      // 天气折叠
       function toggleWeather() {
-        const m = document.getElementById("weather-more");
-        const a = document.getElementById("weather-arrow");
+        let m = document.getElementById("weather-more"),
+          a = document.getElementById("weather-arrow");
         if (m.style.maxHeight === "0px" || !m.style.maxHeight) {
           m.style.maxHeight = m.scrollHeight + "px";
           if (a) a.style.transform = "rotate(180deg)";
@@ -682,18 +640,16 @@
           if (a) a.style.transform = "rotate(0deg)";
         }
       }
-
-      // 退出登录
       document
         .getElementById("logout-link")
         .addEventListener("click", function (e) {
           e.preventDefault();
-          const overlay = document.createElement("div");
+          let overlay = document.createElement("div");
           overlay.style.cssText =
-            "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:1.5rem;";
+            "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:1.5rem;";
           overlay.innerHTML = "正在退出...";
           document.body.appendChild(overlay);
-          const audio = new Audio("/audio/形象设置-退出.m4a");
+          let audio = new Audio("/audio/形象设置-退出.m4a");
           audio.play().catch((e) => console.log);
           audio.onended = function () {
             window.location.href = "/logout";
@@ -702,12 +658,8 @@
             if (!audio.ended) window.location.href = "/logout";
           }, 3000);
         });
-
-      // 初始化侧边栏和轮询
       initSidebarEvents();
       startPolling();
-
-      // 聊天相关事件绑定
       document
         .getElementById("sendChatBtn")
         ?.addEventListener("click", sendMessage);
@@ -725,8 +677,8 @@
         .getElementById("chatSettingsBtn")
         ?.addEventListener("click", (e) => {
           e.stopPropagation();
-          const menu = document.getElementById("chatSettingsMenu");
-          const rect = e.target.getBoundingClientRect();
+          let menu = document.getElementById("chatSettingsMenu"),
+            rect = e.target.getBoundingClientRect();
           menu.style.left = rect.left + "px";
           menu.style.top = rect.bottom + 5 + "px";
           menu.style.display = "block";
@@ -737,18 +689,17 @@
             });
           }, 100);
         });
-
       document
         .getElementById("deleteFriendBtn")
         ?.addEventListener("click", async () => {
           if (!currentChatFriend) return;
-          const confirmed = await showCustomModal({
+          let confirmed = await showCustomModal({
             title: "删除好友",
             message: `确定要删除好友 ${currentChatFriend} 吗？`,
             confirmText: "删除",
           });
           if (confirmed) {
-            const res = await authFetch("/api/friends/delete", {
+            let res = await authFetch("/api/friends/delete", {
               method: "POST",
               body: { friend: currentChatFriend },
             });
@@ -765,16 +716,14 @@
       document
         .getElementById("blockFriendBtn")
         ?.addEventListener("click", () => showToast("拉黑功能开发中"));
-
-      // 侧边栏菜单点击打开/关闭
-      const avatarIconEl = document.getElementById("avatarIcon");
-      const sideMenuEl = document.getElementById("sideMenu");
+      let avatarIconEl = document.getElementById("avatarIcon"),
+        sideMenuEl = document.getElementById("sideMenu");
       if (avatarIconEl) {
         avatarIconEl.addEventListener("click", () => {
-          const isOpen = sideMenuEl.style.left === "0px";
+          let isOpen = sideMenuEl.style.left === "0px";
           sideMenuEl.style.left = isOpen ? "-280px" : "0px";
           if (!isOpen) {
-            const activeTab = document
+            let activeTab = document
               .querySelector(".msg-tab.active")
               ?.getAttribute("data-tab");
             if (activeTab === "messages") loadNotificationList();
@@ -791,36 +740,31 @@
           sideMenuEl.style.left = "-280px";
         }
       });
-
-      // 意见反馈
-      const reportModal = document.getElementById("reportModal");
-      const reportType = document.getElementById("reportType");
-      const reportDesc = document.getElementById("reportDesc");
-      const reportImage = document.getElementById("reportImage");
-      const imagePreview = document.getElementById("imagePreview");
-      const submitReportBtn = document.getElementById("submitReportBtn");
-      const closeReportBtn = document.getElementById("closeReportBtn");
-      const feedbackBtn = document.getElementById("feedbackBtn");
-
+      let reportModal = document.getElementById("reportModal"),
+        reportType = document.getElementById("reportType"),
+        reportDesc = document.getElementById("reportDesc"),
+        reportImage = document.getElementById("reportImage"),
+        imagePreview = document.getElementById("imagePreview"),
+        submitReportBtn = document.getElementById("submitReportBtn"),
+        closeReportBtn = document.getElementById("closeReportBtn"),
+        feedbackBtn = document.getElementById("feedbackBtn");
       if (feedbackBtn) {
         feedbackBtn.addEventListener("click", () => {
           if (reportModal) reportModal.style.display = "flex";
         });
       }
-
       reportImage.addEventListener("change", function (e) {
-        const file = e.target.files[0];
+        let file = e.target.files[0];
         if (file) {
-          const reader = new FileReader();
+          let reader = new FileReader();
           reader.onload = function (ev) {
-            imagePreview.innerHTML = `<img src="${ev.target.result}" style="max-width: 100%; max-height: 150px; border-radius: 8px; border: 1px solid #ffd700;">`;
+            imagePreview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:150px;border-radius:8px;border:1px solid #ffd700">`;
           };
           reader.readAsDataURL(file);
         } else {
           imagePreview.innerHTML = "";
         }
       });
-
       function closeReportModal() {
         reportModal.style.display = "none";
         reportType.value = "bug";
@@ -834,27 +778,26 @@
         reportModal.addEventListener("click", (e) => {
           if (e.target === reportModal) closeReportModal();
         });
-
       function compressImage(file, maxWidth = 800, quality = 0.7) {
         return new Promise((resolve, reject) => {
-          const reader = new FileReader();
+          let reader = new FileReader();
           reader.onload = (e) => {
-            const img = new Image();
+            let img = new Image();
             img.onload = () => {
-              const canvas = document.createElement("canvas");
-              let width = img.width;
-              let height = img.height;
+              let canvas = document.createElement("canvas"),
+                width = img.width,
+                height = img.height;
               if (width > maxWidth) {
                 height = (height * maxWidth) / width;
                 width = maxWidth;
               }
               canvas.width = width;
               canvas.height = height;
-              const ctx = canvas.getContext("2d");
+              let ctx = canvas.getContext("2d");
               ctx.drawImage(img, 0, 0, width, height);
               canvas.toBlob(
                 (blob) => {
-                  const reader2 = new FileReader();
+                  let reader2 = new FileReader();
                   reader2.onload = () => resolve(reader2.result);
                   reader2.readAsDataURL(blob);
                 },
@@ -869,17 +812,16 @@
           reader.readAsDataURL(file);
         });
       }
-
       if (submitReportBtn) {
         submitReportBtn.addEventListener("click", async () => {
-          const type = reportType.value;
-          const description = reportDesc.value.trim();
+          let type = reportType.value,
+            description = reportDesc.value.trim();
           if (!description) {
             showToast("请填写问题描述");
             return;
           }
-          const file = reportImage.files[0];
-          let imageBase64 = null;
+          let file = reportImage.files[0],
+            imageBase64 = null;
           if (file) {
             if (file.size > 2 * 1024 * 1024) {
               showToast("图片不能超过 2MB");
@@ -887,19 +829,15 @@
             }
             imageBase64 = await compressImage(file);
           }
-          const payload = {
-            type,
-            description,
-            imageBase64: imageBase64 || null,
-          };
+          let payload = { type, description, imageBase64: imageBase64 || null };
           try {
-            const res = await fetch("/api/report", {
+            let res = await fetch("/api/report", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
               body: JSON.stringify(payload),
             });
-            const data = await res.json();
+            let data = await res.json();
             if (data.success) {
               showToast("反馈已提交，感谢您的支持！");
               closeReportModal();

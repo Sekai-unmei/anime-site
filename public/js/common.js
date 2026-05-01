@@ -1,6 +1,4 @@
-// ==================== 公共函数（唯一，供所有页面使用） ====================
-
-// ---- 全局标志，防止重复初始化轮询 ----
+// ==================== 公共函数（最终无错版） ====================
 if (window._commonLoaded) {
   console.warn("common.js 已加载，跳过重复执行");
 } else {
@@ -19,11 +17,12 @@ if (window._commonLoaded) {
     }, duration);
   };
 
-  // 辅助：获取有效的头像URL（强制使用 Gravatar）
+  // 辅助：获取有效的头像URL（强制 Gravatar）
   window.getValidAvatarUrl = function (avatarUrl, email) {
     const emailMd5 = md5 ? md5((email || "").trim().toLowerCase()) : "";
-    if (emailMd5)
+    if (emailMd5) {
       return `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
+    }
     return "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
   };
 
@@ -64,36 +63,36 @@ if (window._commonLoaded) {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
       modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.85);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 200000;
-            `;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200000;
+      `;
       const box = document.createElement("div");
       box.style.cssText = `
-                background: #1a1a1a;
-                border: 2px solid #ffd700;
-                border-radius: 20px;
-                padding: 20px;
-                max-width: 90%;
-                width: 300px;
-                text-align: center;
-                box-shadow: 0 0 20px rgba(255,215,0,0.3);
-            `;
+        background: #1a1a1a;
+        border: 2px solid #ffd700;
+        border-radius: 20px;
+        padding: 20px;
+        max-width: 90%;
+        width: 300px;
+        text-align: center;
+        box-shadow: 0 0 20px rgba(255,215,0,0.3);
+      `;
       box.innerHTML = `
-                <div style="color:#ffd700; font-size:1.2rem; margin-bottom:15px;">${options.title || "提示"}</div>
-                <div style="color:#fff; margin-bottom:20px;">${options.message}</div>
-                <div style="display:flex; gap:15px; justify-content:center;">
-                    ${options.showCancel !== false ? `<button id="modalCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>` : ""}
-                    <button id="modalConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">${options.confirmText || "确定"}</button>
-                </div>
-            `;
+        <div style="color:#ffd700; font-size:1.2rem; margin-bottom:15px;">${options.title || "提示"}</div>
+        <div style="color:#fff; margin-bottom:20px;">${options.message}</div>
+        <div style="display:flex; gap:15px; justify-content:center;">
+          ${options.showCancel !== false ? '<button id="modalCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>' : ""}
+          <button id="modalConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">${options.confirmText || "确定"}</button>
+        </div>
+      `;
       modal.appendChild(box);
       document.body.appendChild(modal);
       const confirmBtn = box.querySelector("#modalConfirm");
@@ -102,11 +101,12 @@ if (window._commonLoaded) {
         modal.remove();
         resolve(true);
       };
-      if (cancelBtn)
+      if (cancelBtn) {
         cancelBtn.onclick = () => {
           modal.remove();
           resolve(false);
         };
+      }
       modal.onclick = (e) => {
         if (e.target === modal) {
           modal.remove();
@@ -136,7 +136,6 @@ if (window._commonLoaded) {
       const res = await fetch("/api/user/current", { credentials: "include" });
       if (res.ok) {
         cachedUser = await res.json();
-        // 强制使用 Gravatar，忽略服务器返回的任何 avatar
         cachedUser.avatar = window.getValidAvatarUrl(null, cachedUser.email);
         return cachedUser;
       }
@@ -179,7 +178,7 @@ if (window._commonLoaded) {
     }, 5000);
   };
 
-  // ---------- 加载通知列表（通用） ----------
+  // ---------- 加载通知列表 ----------
   window.loadNotificationList = async function () {
     const container = document.getElementById("notificationList");
     if (!container) return;
@@ -254,7 +253,9 @@ if (window._commonLoaded) {
         window.showToast("已添加好友");
         window.loadNotificationList();
         window.loadFriendsList();
-      } else window.showToast("操作失败");
+      } else {
+        window.showToast("操作失败");
+      }
     }
   };
 
@@ -266,31 +267,31 @@ if (window._commonLoaded) {
   ) {
     const modal = document.createElement("div");
     modal.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #1a1a1a;
-            border: 1px solid #ffd700;
-            border-radius: 20px;
-            padding: 20px;
-            width: 80%;
-            max-width: 400px;
-            z-index: 100000;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
-        `;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #1a1a1a;
+      border: 1px solid #ffd700;
+      border-radius: 20px;
+      padding: 20px;
+      width: 80%;
+      max-width: 400px;
+      z-index: 100000;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    `;
     modal.innerHTML = `
-            <h4 style="color:#ffd700;">回复 ${window.escapeHtml(replierEmail)}</h4>
-            <div style="margin-bottom: 10px; padding: 8px; background: #222; border-radius: 8px; color: #aaa; font-size: 0.85rem;">
-                原回复：${window.escapeHtml(originalReplyText) || "(无内容)"}
-            </div>
-            <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
-                <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
-                <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
-            </div>
-        `;
+      <h4 style="color:#ffd700;">回复 ${window.escapeHtml(replierEmail)}</h4>
+      <div style="margin-bottom:10px; padding:8px; background:#222; border-radius:8px; color:#aaa; font-size:0.85rem;">
+        原回复：${window.escapeHtml(originalReplyText) || "(无内容)"}
+      </div>
+      <textarea id="quickReplyText" rows="3" placeholder="输入你的回复..." style="width:100%; background:#111; color:#fff; border:1px solid #444; border-radius:8px; padding:8px;"></textarea>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button id="quickReplySend" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px;">发送</button>
+        <button id="quickReplyCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">取消</button>
+        <button id="quickReplyJump" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px;">跳转</button>
+      </div>
+    `;
     document.body.appendChild(modal);
     document.getElementById("quickReplySend").onclick = async () => {
       const text = document.getElementById("quickReplyText").value.trim();
@@ -303,7 +304,9 @@ if (window._commonLoaded) {
         window.showToast("回复已发送");
         modal.remove();
         window.loadNotificationList();
-      } else window.showToast("回复失败");
+      } else {
+        window.showToast("回复失败");
+      }
     };
     document.getElementById("quickReplyCancel").onclick = () => modal.remove();
     document.getElementById("quickReplyJump").onclick = () => {
@@ -335,36 +338,36 @@ if (window._commonLoaded) {
         const div = document.createElement("div");
         div.className = "msg-item";
         div.innerHTML = `
-                    <img src="${friend.avatar || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp"}" class="friend-avatar" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-                    <span class="friend-name">${window.escapeHtml(displayName)}</span>
-                    <button class="edit-note-btn" data-email="${friend.email}" title="设置备注">✏️</button>
-                `;
+          <img src="${friend.avatar || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp"}" class="friend-avatar" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
+          <span class="friend-name">${window.escapeHtml(displayName)}</span>
+          <button class="edit-note-btn" data-email="${friend.email}" title="设置备注">✏️</button>
+        `;
         div.querySelector(".edit-note-btn").onclick = async (e) => {
           e.stopPropagation();
           const currentNote = notes[friend.email] || "";
           const modal = document.createElement("div");
           modal.style.cssText = `
-                        position: fixed;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        background: #1a1a1a;
-                        border: 2px solid #ffd700;
-                        border-radius: 20px;
-                        padding: 20px;
-                        width: 300px;
-                        z-index: 100000;
-                        box-shadow: 0 0 30px rgba(255,215,0,0.3);
-                    `;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a1a;
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 20px;
+            width: 300px;
+            z-index: 100000;
+            box-shadow: 0 0 30px rgba(255,215,0,0.3);
+          `;
           modal.innerHTML = `
-                        <h3 style="color:#ffd700; text-align:center; margin-bottom:15px;">设置备注</h3>
-                        <input type="text" id="noteInput" placeholder="输入备注名（留空删除）" value="${window.escapeHtml(currentNote)}"
-                            style="width:100%; padding:10px; margin-bottom:20px; background:#111; border:1px solid #444; color:#fff; border-radius:8px;">
-                        <div style="display: flex; justify-content: center; gap: 15px;">
-                            <button id="noteConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">确认</button>
-                            <button id="noteCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>
-                        </div>
-                    `;
+            <h3 style="color:#ffd700; text-align:center; margin-bottom:15px;">设置备注</h3>
+            <input type="text" id="noteInput" placeholder="输入备注名（留空删除）" value="${window.escapeHtml(currentNote)}"
+              style="width:100%; padding:10px; margin-bottom:20px; background:#111; border:1px solid #444; color:#fff; border-radius:8px;">
+            <div style="display:flex; justify-content:center; gap:15px;">
+              <button id="noteConfirm" style="background:#ffd700; color:#000; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">确认</button>
+              <button id="noteCancel" style="background:#444; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer;">取消</button>
+            </div>
+          `;
           document.body.appendChild(modal);
           const input = modal.querySelector("#noteInput");
           const confirmBtn = modal.querySelector("#noteConfirm");
@@ -379,7 +382,9 @@ if (window._commonLoaded) {
             if (res.ok) {
               window.showToast("备注已更新");
               window.loadFriendsList();
-            } else window.showToast("设置失败");
+            } else {
+              window.showToast("设置失败");
+            }
             closeModal();
           };
           cancelBtn.onclick = closeModal;
@@ -400,7 +405,7 @@ if (window._commonLoaded) {
     }
   };
 
-  // ---------- 聊天系统（统一） ----------
+  // ---------- 聊天系统 ----------
   let currentChatFriend = null;
   let chatPollInterval = null;
   let lastMessageIds = [];
@@ -434,21 +439,17 @@ if (window._commonLoaded) {
     if (!res.ok) return;
     let history = await res.json();
     history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
     const container = document.getElementById("chatMessages");
     if (!container) return;
     const shouldScroll =
       container.scrollTop + container.clientHeight >=
       container.scrollHeight - 50;
-
     const displayedIds = new Set(lastMessageIds);
     const newMessages = history.filter((msg) => !displayedIds.has(msg._id));
     if (newMessages.length === 0) return;
-
     lastMessageIds = history.map((msg) => msg._id);
     const currentUser = await window.getCurrentUser();
     if (!currentUser) return;
-
     for (const msg of newMessages) {
       const isMe = msg.from === currentUser.email;
       const avatar = isMe
@@ -461,14 +462,14 @@ if (window._commonLoaded) {
       div.style.marginBottom = "12px";
       div.style.flexDirection = isMe ? "row-reverse" : "row";
       div.innerHTML = `
-                <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
-                <div style="max-width:70%;">
-                    <div style="background:${isMe ? "#2a2a2a" : "#111"}; padding:8px 12px; border-radius:12px; display:inline-block;">
-                        ${window.escapeHtml(msg.text)}
-                    </div>
-                    <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
-                </div>
-            `;
+        <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'">
+        <div style="max-width:70%;">
+          <div style="background:${isMe ? "#2a2a2a" : "#111"}; padding:8px 12px; border-radius:12px; display:inline-block;">
+            ${window.escapeHtml(msg.text)}
+          </div>
+          <div style="font-size:0.7rem; color:#888; margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+        </div>
+      `;
       container.appendChild(div);
     }
     if (shouldScroll) container.scrollTop = container.scrollHeight;
@@ -486,7 +487,9 @@ if (window._commonLoaded) {
     if (res.ok) {
       input.value = "";
       await window.loadChatHistory();
-    } else window.showToast("发送失败");
+    } else {
+      window.showToast("发送失败");
+    }
   };
 
   // ---------- 小红点更新 ----------
@@ -496,7 +499,7 @@ if (window._commonLoaded) {
     if (badge) badge.style.display = unreadCount > 0 ? "block" : "none";
   };
 
-  // ---------- 轮询新消息（防重复） ----------
+  // ---------- 轮询新消息 ----------
   let pollIntervalId = null;
   window.checkNotifications = async function () {
     try {
@@ -570,7 +573,6 @@ if (window._commonLoaded) {
         }
       });
     });
-    // 绑定聊天相关按钮（如果存在）
     const sendBtn = document.getElementById("sendChatBtn");
     if (sendBtn) sendBtn.addEventListener("click", window.sendMessage);
     const closeChatBtn = document.getElementById("closeChatBtn");

@@ -2,12 +2,13 @@ console.log("开始执行 server.js (最终优化版)");
 const nodemailer = require("nodemailer");
 const express = require("express");
 const session = require("express-session");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const { OAuth2Client } = require("google-auth-library");
-const crypto = require("crypto");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -169,31 +170,40 @@ mongoose
   .catch((err) => console.error("❌ MongoDB 连接失败:", err));
 
 // ========== 辅助函数 ==========
-const crypto = require("crypto"); // 在文件顶部添加这行
+// 在 server.js 顶部添加一行（如果还没有）
 
+/**
+ * 获取或创建用户，并确保 avatar 字段有合理的初始值（Gravatar）
+ * @param {string} email - 用户邮箱
+ * @param {string|null} username - 可选用户名，如果未提供则用邮箱前缀
+ * @returns {Promise<Object>} 用户文档
+ */
 async function getOrCreateUserInfo(email, username = null) {
   let user = await User.findOne({ email });
+
   if (!user) {
+    // 新用户：生成 Gravatar URL 作为初始头像
     const emailMd5 = crypto
       .createHash("md5")
       .update(email.trim().toLowerCase())
       .digest("hex");
     const gravatarUrl = `https://www.gravatar.com/avatar/${emailMd5}?d=mp&s=200`;
+
     user = new User({
       email,
       username: username || email.split("@")[0],
-      avatar: gravatarUrl,
+      avatar: gravatarUrl, // 初始头像
       bio: "这位观测者还没有留下简介",
       joinDate: new Date().toISOString().split("T")[0],
     });
     await user.save();
   } else {
-    // 如果已有用户但 avatar 为空或为默认灰图，也补上 Gravatar（不覆盖已上传的 Base64）
-    if (
+    // 已存在用户：仅当 avatar 为空或为默认灰图时，才补上 Gravatar（避免覆盖自定义头像）
+    const isDefaultAvatar =
       !user.avatar ||
       user.avatar ===
-        "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp"
-    ) {
+        "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
+    if (isDefaultAvatar) {
       const emailMd5 = crypto
         .createHash("md5")
         .update(email.trim().toLowerCase())
@@ -202,6 +212,7 @@ async function getOrCreateUserInfo(email, username = null) {
       await user.save();
     }
   }
+
   return user;
 }
 
@@ -304,29 +315,18 @@ app.post("/auth/google/token", async (req, res) => {
     if (!ALLOWED_EMAILS.includes(email))
       return res.json({ success: false, message: "您的邮箱未被授权访问" });
     const googleAvatar = payload.picture || null;
-    let user = await User.findOne({ email });
-    if (!user) {
-      user = new User({
-        email,
-        username: email.split("@")[0],
-        avatar:
-          googleAvatar ||
-          "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp",
-        googleAvatar: googleAvatar || null,
-        bio: "这位观测者还没有留下简介",
-        joinDate: new Date().toISOString().split("T")[0],
-      });
-      await user.save();
-    } else {
-      if (googleAvatar && !user.googleAvatar) user.googleAvatar = googleAvatar;
-      const isDefaultOrEmpty =
-        !user.avatar ||
-        user.avatar ===
-          "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
-      if (googleAvatar && isDefaultOrEmpty) user.avatar = googleAvatar;
-      if (!user.username) user.username = email.split("@")[0];
-      await user.save();
-    }
+
+    // 使用统一的用户创建/获取函数，确保有初始 Gravatar
+    let user = await getOrCreateUserInfo(email);
+    if (googleAvatar && !user.googleAvatar) user.googleAvatar = googleAvatar;
+    const isDefaultAvatar =
+      !user.avatar ||
+      user.avatar ===
+        "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
+    if (googleAvatar && isDefaultAvatar) user.avatar = googleAvatar;
+    if (!user.username) user.username = email.split("@")[0];
+    await user.save();
+
     req.session.user = email;
     req.session.playAudio = true;
     res.json({ success: true });

@@ -583,49 +583,7 @@
       let currentChatFriend = null,
         chatInterval = null,
         lastMessageIds = [];
-      async function loadChatHistory() {
-        if (!currentChatFriend) return;
-        let res = await fetch(
-          `/api/messages/history?friend=${encodeURIComponent(currentChatFriend)}`,
-          { credentials: "include" },
-        );
-        if (!res.ok) return;
-        let history = await res.json();
-        history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        let container = document.getElementById("chatMessages"),
-          shouldScroll =
-            container.scrollTop + container.clientHeight >=
-            container.scrollHeight - 50,
-          displayedIds = new Set(lastMessageIds),
-          newMessages = history.filter((msg) => !displayedIds.has(msg._id));
-        if (newMessages.length === 0) return;
-        lastMessageIds = history.map((msg) => msg._id);
-        let currentUserEmail = null;
-        try {
-          let profileRes = await fetch("/api/user/current", {
-            credentials: "include",
-          });
-          if (profileRes.ok) {
-            let user = await profileRes.json();
-            currentUserEmail = user.email;
-          }
-        } catch (e) {}
-        for (let msg of newMessages) {
-          let isMe = msg.from === currentUserEmail,
-            avatar = isMe
-              ? await getUserAvatar(currentUserEmail)
-              : await getUserAvatar(msg.from),
-            div = document.createElement("div");
-          div.style.display = "flex";
-          div.style.alignItems = "flex-start";
-          div.style.gap = "8px";
-          div.style.marginBottom = "12px";
-          div.style.flexDirection = isMe ? "row-reverse" : "row";
-          div.innerHTML = `<img src="${avatar}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'"><div style="max-width:70%;"><div style="background:${isMe ? "#2a2a2a" : "#111"};padding:8px 12px;border-radius:12px;display:inline-block;">${escapeHtml(msg.text)}</div><div style="font-size:0.7rem;color:#888;margin-top:4px;">${new Date(msg.timestamp).toLocaleTimeString()}</div></div>`;
-          container.appendChild(div);
-        }
-        if (shouldScroll) container.scrollTop = container.scrollHeight;
-      }
+
       window.onload = () => {
         if (typeof initAll === "function") initAll();
       };

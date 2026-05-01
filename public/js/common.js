@@ -168,6 +168,7 @@ if (window._commonLoaded) {
     }
   };
 
+  // 以下为您的通知、好友、聊天函数（完整保留）
   // ---------- 通知条 ----------
   let notifTimeout = null;
   window.showNotificationBar = function (msg) {

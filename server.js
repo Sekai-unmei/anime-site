@@ -1152,6 +1152,32 @@ app.get("/admin/purge", async (req, res) => {
   );
 });
 
+// ========== 管理后台：查看反馈列表 ==========
+app.get("/admin/feedbacks", async (req, res) => {
+  // 简单权限检查（仅允许管理员邮箱）
+  const adminEmails = ["kevin88ye88@gmail.com"];
+  if (!req.session.user || !adminEmails.includes(req.session.user)) {
+    return res.status(403).send("无权限访问");
+  }
+  const FEEDBACK_DIR = path.join(__dirname, "feedbacks");
+  if (!fs.existsSync(FEEDBACK_DIR)) {
+    return res.send("<p>暂无反馈</p>");
+  }
+  const files = fs
+    .readdirSync(FEEDBACK_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .sort()
+    .reverse();
+  let html = "<h1>用户反馈列表</h1><ul>";
+  for (const file of files) {
+    const content = fs.readFileSync(path.join(FEEDBACK_DIR, file), "utf8");
+    const data = JSON.parse(content);
+    html += `<li><strong>${data.timestamp}</strong> - ${data.user} - ${data.type}<br>${data.description.substring(0, 100)}</li>`;
+  }
+  html += "</ul>";
+  res.send(html);
+});
+
 // ========== 启动服务器 ==========
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);

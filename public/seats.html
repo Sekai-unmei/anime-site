@@ -774,8 +774,8 @@
         canvas.height = window.innerHeight;
       }
       window.addEventListener("resize", () => {
-        resizeCanvas();
-        if (subtitleMosaicInterval) drawSubtitleMosaic();
+        resizeCanvasToFit(200);
+        if (lastState === "root") resetCameraToCenter();
       });
       resizeCanvas();
       startRingAnimation();

@@ -272,8 +272,6 @@ function initSearchBox() {
   });
 }
 
-// 在 main.js 中找到 fetchWeatherData 函数，替换为以下版本
-
 // 国家英文名 -> 中文映射表
 const countryMap = {
   Italy: "意大利",
@@ -746,18 +744,22 @@ function renderArchive(state) {
     return;
   }
 
-  // 确保 svgCache 存在
+  // 确保 svgCache 存在，但不使用 innerHTML 清空相机
   if (!svgCache) {
-    camera.innerHTML =
-      '<svg id="link-svg" style="position:absolute; width:5000px; height:5000px; pointer-events:none;"></svg>';
-    svgCache = document.getElementById("link-svg");
-    if (!svgCache) {
-      console.error("Failed to create svgCache");
-      return;
+    let svg = camera.querySelector("#link-svg");
+    if (!svg) {
+      svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.id = "link-svg";
+      svg.setAttribute(
+        "style",
+        "position:absolute; width:5000px; height:5000px; pointer-events:none;",
+      );
+      camera.appendChild(svg);
     }
+    svgCache = svg;
   }
 
-  // 清除旧连线
+  // 清除旧连线（只清除线条和渐变，不删除 SVG 本身）
   svgCache
     .querySelectorAll("line, linearGradient")
     .forEach((el) => el.remove());
@@ -771,6 +773,7 @@ function renderArchive(state) {
 
   // 状态切换时重建场景
   if (lastState !== state) {
+    // 清理旧的粒子定时器
     for (let k in particleTimers) clearInterval(particleTimers[k]);
     if (window.particleSystem) {
       if (window.particleSystem.linkInterval)
@@ -779,19 +782,33 @@ function renderArchive(state) {
         clearInterval(window.particleSystem.frameInterval);
       window.particleSystem.particles = [];
     }
+    // 移除旧的节点和边框
     document
       .querySelectorAll(".node-item, .year-frame-outer, .year-frame-inner")
       .forEach((el) => el.remove());
     currentFrameBounds = null;
     nodesCache = { years: new Map(), months: new Map(), tags: new Map() };
+
+    // 构建新场景
     buildScene(state, centerX, centerY);
+
+    // 如果切换到了根视图，强制相机居中
+    if (state === "root") {
+      resetCameraToCenter();
+    }
+
+    // 【关键】场景构建完成后，调整画布大小（等待 DOM 更新）
+    setTimeout(() => resizeCanvasToFit(200), 50);
   } else {
+    // 相同状态，只更新选择样式
     updateNodeSelection(state);
+    setTimeout(() => resizeCanvasToFit(200), 50);
   }
 
   lastState = state;
   updateConfirmBtn();
 }
+
 function resetCameraToCenter() {
   const camera = document.getElementById("camera");
   if (!camera) return;
@@ -804,17 +821,7 @@ function resetCameraToCenter() {
 
 function buildScene(state, centerX, centerY) {
   if (state === "root") {
-    resetCameraToCenter();
-    // 确保相机最终位置正确（防止被后续操作覆盖）
-    setTimeout(() => {
-      const camera = document.getElementById("camera");
-      if (
-        camera &&
-        camera.style.transform !== `translate(${camX}px, ${camY}px)`
-      ) {
-        camera.style.transform = `translate(${camX}px, ${camY}px)`;
-      }
-    }, 50);
+    // 相机重置已由 renderArchive 处理，此处不再重复
     createNode("时间", centerX - 150, centerY, "main circle", () =>
       renderArchive("time"),
     );
@@ -1059,6 +1066,66 @@ function buildScene(state, centerX, centerY) {
       nodesCache.tags.set(tag, node);
     });
   }
+}
+
+/**
+ * 动态调整画布大小以恰好包裹所有节点
+ * @param {number} padding 边距（px）
+ */
+function resizeCanvasToFit(padding = 200) {
+  const camera = document.getElementById("camera");
+  const svg = document.getElementById("link-svg");
+  if (!camera) return;
+
+  // 获取所有绝对定位的子元素（节点、边框等）
+  const nodes = document.querySelectorAll(
+    "#camera .node-item, #camera .year-frame-outer",
+  );
+  if (nodes.length === 0) return;
+
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  nodes.forEach((node) => {
+    const left = parseFloat(node.style.left);
+    const top = parseFloat(node.style.top);
+    if (isNaN(left) || isNaN(top)) return;
+    const width = node.offsetWidth;
+    const height = node.offsetHeight;
+    minX = Math.min(minX, left);
+    minY = Math.min(minY, top);
+    maxX = Math.max(maxX, left + width);
+    maxY = Math.max(maxY, top + height);
+  });
+
+  if (!isFinite(minX)) return;
+
+  // 扩展边距
+  minX -= padding;
+  minY -= padding;
+  maxX += padding;
+  maxY += padding;
+
+  const newWidth = maxX - minX;
+  const newHeight = maxY - minY;
+
+  // 设置 camera 容器大小
+  camera.style.width = `${newWidth}px`;
+  camera.style.height = `${newHeight}px`;
+
+  // 同时调整 SVG 尺寸
+  if (svg) {
+    svg.setAttribute("width", newWidth);
+    svg.setAttribute("height", newHeight);
+  }
+
+  // 同步粒子系统 canvas 尺寸
+  if (window.particleSystem && window.particleSystem.resizeToFit) {
+    window.particleSystem.resizeToFit();
+  }
+
+  console.log(`画布动态收缩至 ${newWidth} x ${newHeight}`);
 }
 
 function updateNodeSelection(state) {
@@ -1469,10 +1536,20 @@ class ParticleSystem {
     this.linkInterval = null;
     this.frameInterval = null;
   }
+
   resize() {
     this.canvas.width = 5000;
     this.canvas.height = 5000;
   }
+
+  resizeToFit() {
+    const camera = document.getElementById("camera");
+    if (camera) {
+      this.canvas.width = camera.clientWidth;
+      this.canvas.height = camera.clientHeight;
+    }
+  }
+
   createParticle(options) {
     this.particles.push({
       x: options.x,
@@ -1488,6 +1565,7 @@ class ParticleSystem {
       fromBottom: options.fromBottom || false,
     });
   }
+
   createDropletFromTop(bounds, color = "#66CCFF") {
     const x =
       bounds.left + 15 + Math.random() * (bounds.right - bounds.left - 30);
@@ -1517,6 +1595,7 @@ class ParticleSystem {
       },
     });
   }
+
   createDropletFromBottom(bounds, color = "#0066FF") {
     const x = bounds.left + Math.random() * (bounds.right - bounds.left);
     this.createParticle({
@@ -1531,6 +1610,7 @@ class ParticleSystem {
       fromBottom: true,
     });
   }
+
   startLinkParticles(start, end, color, bounds) {
     if (this.linkInterval) clearInterval(this.linkInterval);
     this.linkInterval = setInterval(() => {
@@ -1573,6 +1653,7 @@ class ParticleSystem {
       }
     }, 500);
   }
+
   startYearFrameEffects(bounds) {
     if (this.frameInterval) clearInterval(this.frameInterval);
     this.frameInterval = setInterval(() => {
@@ -1582,10 +1663,12 @@ class ParticleSystem {
         this.createDropletFromBottom(bounds.outer, "#0066FF");
     }, 200);
   }
+
   stopYearFrameEffects() {
     if (this.frameInterval) clearInterval(this.frameInterval);
     this.frameInterval = null;
   }
+
   animate() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -1767,6 +1850,14 @@ async function initAll() {
   showSection("home");
   updateProfileDisplay();
   window.addEventListener("profileUpdated", updateProfileDisplay);
+
+  // 窗口大小改变时重新调整画布和相机（仅根视图自动居中）
+  window.addEventListener("resize", () => {
+    resizeCanvasToFit(200);
+    if (lastState === "root") {
+      resetCameraToCenter();
+    }
+  });
 }
 
 // 导出全局初始化函数（供 HTML 调用）

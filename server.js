@@ -954,77 +954,101 @@ app.post("/api/report", async (req, res) => {
     return res.status(400).json({ error: "描述不能为空" });
   }
 
-  // 1. 立即返回成功，前端不再等待
-  res.json({ success: true, note: "反馈已收到，感谢支持" });
+  let saved = false;
+  let emailSent = false;
+  let errorMsg = null;
 
-  // 2. 后台异步处理：保存到数据库 + 发送邮件
-  setImmediate(async () => {
-    try {
-      // 保存到 MongoDB（可靠持久化）
-      const feedback = new Feedback({
-        type,
-        description,
-        user,
-        hasImage: !!imageBase64,
-        // 可选：如果图片很小，也可以存储 base64；但建议只存引用或标记，避免数据库过大
-        // 如果确实需要存储图片，可取消下面注释
-        // imageBase64: imageBase64 || null,
-      });
-      await feedback.save();
-      console.log(`反馈已保存到数据库，ID: ${feedback._id}`);
+  try {
+    // 保存到 MongoDB（同步等待）
+    const feedback = new Feedback({
+      type,
+      description,
+      user,
+      hasImage: !!imageBase64,
+      // 不存 base64 图片数据，避免数据库过大
+    });
+    await feedback.save();
+    saved = true;
+    console.log(`反馈已保存到数据库，ID: ${feedback._id}`);
+  } catch (dbErr) {
+    console.error("保存反馈到数据库失败:", dbErr);
+    errorMsg = "数据库保存失败，请稍后重试";
+    return res.status(500).json({ success: false, error: errorMsg });
+  }
 
-      // 尝试发送邮件（非阻塞，失败不影响响应）
-      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        const typeMap = {
-          bug: "🐞 Bug报告",
-          optimize: "✨ 优化建议",
-          suggestion: "💡 意见",
-          question: "❓ 疑问",
-        };
-        const subject = typeMap[type] || "意见反馈";
-        let htmlContent = `
-          <h2>用户反馈</h2>
-          <p><strong>用户邮箱：</strong> ${user}</p>
-          <p><strong>类型：</strong> ${subject}</p>
-          <p><strong>描述：</strong></p>
-          <p>${description.replace(/\n/g, "<br>")}</p>
-        `;
-        let attachments = [];
-        if (imageBase64) {
-          const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
-          if (matches) {
-            const ext = matches[1];
-            const buffer = Buffer.from(matches[2], "base64");
+  // 尝试发送邮件（不阻塞响应，但我们会等待它完成以报告结果）
+  try {
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      const typeMap = {
+        bug: "🐞 Bug报告",
+        optimize: "✨ 优化建议",
+        suggestion: "💡 意见",
+        question: "❓ 疑问",
+      };
+      const subject = typeMap[type] || "意见反馈";
+      let htmlContent = `
+        <h2>用户反馈</h2>
+        <p><strong>用户邮箱：</strong> ${user}</p>
+        <p><strong>类型：</strong> ${subject}</p>
+        <p><strong>描述：</strong></p>
+        <p>${description.replace(/\n/g, "<br>")}</p>
+      `;
+      let attachments = [];
+      if (imageBase64) {
+        const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (matches) {
+          const ext = matches[1];
+          const buffer = Buffer.from(matches[2], "base64");
+          attachments.push({
+            filename: `screenshot.${ext}`,
+            content: buffer,
+            contentType: `image/${ext}`,
+          });
+        } else {
+          try {
+            const buffer = Buffer.from(imageBase64, "base64");
             attachments.push({
-              filename: `screenshot.${ext}`,
+              filename: "screenshot.png",
               content: buffer,
-              contentType: `image/${ext}`,
+              contentType: "image/png",
             });
-          } else {
-            try {
-              const buffer = Buffer.from(imageBase64, "base64");
-              attachments.push({
-                filename: "screenshot.png",
-                content: buffer,
-                contentType: "image/png",
-              });
-            } catch (err) {}
-          }
+          } catch (err) {}
         }
-        await emailTransporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: process.env.EMAIL_USER,
-          subject: `【反馈】${subject}`,
-          html: htmlContent,
-          attachments,
-        });
-        console.log("反馈邮件已发送");
-      } else {
-        console.warn("邮件未配置，仅保存到数据库");
       }
-    } catch (err) {
-      console.error("后台处理反馈失败:", err);
+      const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: process.env.EMAIL_USER,
+        subject: `【反馈】${subject}`,
+        html: htmlContent,
+        attachments,
+      });
+      emailSent = true;
+      console.log("反馈邮件已发送");
+    } else {
+      console.warn("邮件未配置，未发送邮件");
     }
+  } catch (mailErr) {
+    console.error("邮件发送失败:", mailErr.message);
+    // 邮件失败不影响整体成功，只记录状态
+  }
+
+  // 返回真实结果
+  res.json({
+    success: true,
+    saved: true,
+    emailSent: emailSent,
+    message: emailSent
+      ? "反馈已保存并将通过邮件通知"
+      : "反馈已保存，但邮件通知发送失败（您可以查看管理后台）",
   });
 });
 

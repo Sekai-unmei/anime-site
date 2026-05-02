@@ -1,4 +1,4 @@
-// ==================== 公共函数（完整无删减，支持自定义头像） ====================
+// ==================== 公共函数（完整无删减，最终版） ====================
 if (window._commonLoaded) {
   console.warn("common.js 已加载，跳过重复执行");
 } else {
@@ -92,12 +92,11 @@ if (window._commonLoaded) {
         modal.remove();
         resolve(true);
       };
-      if (cancelBtn) {
+      if (cancelBtn)
         cancelBtn.onclick = () => {
           modal.remove();
           resolve(false);
         };
-      }
       modal.onclick = (e) => {
         if (e.target === modal) {
           modal.remove();
@@ -118,10 +117,9 @@ if (window._commonLoaded) {
       if (res.ok) {
         const user = await res.json();
         let avatarUrl = user.avatar;
-        if (!avatarUrl) {
+        if (!avatarUrl)
           avatarUrl =
             "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
-        }
         avatarCache[email] = avatarUrl;
         return avatarUrl;
       }
@@ -137,7 +135,6 @@ if (window._commonLoaded) {
       const res = await fetch("/api/user/current", { credentials: "include" });
       if (res.ok) {
         cachedUser = await res.json();
-        // 完全信任服务器返回的头像（可能是用户上传的 Base64 或 Gravatar）
         return cachedUser;
       }
     } catch (e) {}
@@ -149,10 +146,9 @@ if (window._commonLoaded) {
     const user = await window.getCurrentUser(true);
     if (!user) return;
     let avatarUrl = user.avatar;
-    if (!avatarUrl) {
+    if (!avatarUrl)
       avatarUrl =
         "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
-    }
     const avatarIcon = document.getElementById("avatarIcon");
     if (avatarIcon) {
       avatarIcon.src = avatarUrl;
@@ -587,25 +583,16 @@ if (window._commonLoaded) {
         if (e.key === "Enter") window.sendMessage();
       });
   };
-  // 统一初始化左下角头像（如果元素存在且用户已登录）
-  (function initAvatarIfNeeded() {
-    // 检查是否有头像元素
-    const avatarIcon = document.getElementById("avatarIcon");
-    if (!avatarIcon) return;
 
-    // 检查是否在登录页面（简单通过 URL 判断，或者直接调用 syncUserAvatar，它会自动处理未登录）
-    // syncUserAvatar 内部会调用 getCurrentUser，未登录时返回 null，不会有副作用
-    syncUserAvatar();
-  })();
-
-  // 自动初始化头像（如果页面有头像元素）
-  (function () {
+  // 自动初始化左下角头像（所有页面如果有头像元素则自动同步）
+  (function initAvatarAutomatically() {
     if (document.getElementById("avatarIcon")) {
-      // 等待 DOM 完全加载后再执行，确保元素存在
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => syncUserAvatar());
+        document.addEventListener("DOMContentLoaded", () =>
+          window.syncUserAvatar(),
+        );
       } else {
-        syncUserAvatar();
+        window.syncUserAvatar();
       }
     }
   })();

@@ -736,10 +736,6 @@ function initDragSystem() {
   window.addEventListener("touchend", onPointerUp);
 }
 
-if (state === "root") {
-  resetCameraToCenter();
-}
-
 // ========== 5. 场景渲染与切换 ==========
 function renderArchive(state) {
   const camera = document.getElementById("camera");
@@ -808,6 +804,8 @@ function resetCameraToCenter() {
 
 function buildScene(state, centerX, centerY) {
   if (state === "root") {
+    // 确保根节点居中显示
+    resetCameraToCenter();
     createNode("时间", centerX - 150, centerY, "main circle", () =>
       renderArchive("time"),
     );

@@ -1,9 +1,9 @@
 /**
- * Animer 资料站核心逻辑 (最终优化版)
- * 依赖 common.js 提供的公共函数，不重复定义
+ * Animer 资料站核心逻辑 (动态画布版)
+ * 依赖 common.js 提供的公共函数
  */
 
-// ========== 1. 数据库定义（精简但完整） ==========
+// ========== 1. 数据库定义 ==========
 const EMOTION_DB = {
   weather_base: {
     晴天: {
@@ -143,6 +143,7 @@ const EMOTION_DB = {
   },
   默认: ["混蛋的开始 亦是终结的开始"],
 };
+
 const poemContent = [
   "今天又想找些什么呢",
   "今天难道也是无聊的一天吗",
@@ -153,6 +154,7 @@ const poemContent = [
   "今天的今天 亦是过去的今天 亦是 未来的今天",
   "因此 今日 依旧是那今日吗",
 ];
+
 const countryTimezoneMap = {
   中国: "Asia/Shanghai",
   日本: "Asia/Tokyo",
@@ -193,11 +195,12 @@ function getPeriodByHour(hour) {
 function getCustomTime() {
   const profile = JSON.parse(localStorage.getItem("user_profile") || "{}");
   const planet = profile.planet || "地球";
-  if (planet !== "地球")
+  if (planet !== "地球") {
     return {
       timeStr: `${Math.floor(Math.random() * 100)}:${Math.floor(Math.random() * 100)}:??`,
       period: "混乱",
     };
+  }
   let timezone = countryTimezoneMap[profile.country] || "Asia/Shanghai";
   try {
     const now = new Date();
@@ -246,8 +249,6 @@ function initSearchBox() {
     if (e.key === "Enter") {
       const val = newBox.value.trim();
       if (!val) return;
-
-      // 定义 JOJO 系列关键词白名单（不区分大小写）
       const jojoKeywords = [
         "jo",
         "jojo",
@@ -260,19 +261,16 @@ function initSearchBox() {
       const isJojo = jojoKeywords.some((kw) =>
         lowerVal.includes(kw.toLowerCase()),
       );
-
       if (isJojo) {
-        // 跳转到 JOJO 系列页
         window.location.href = `/series.html?title=${encodeURIComponent("jojo的奇妙冒险")}`;
       } else {
-        // 否则跳转到普通搜索页
         window.location.href = `/search.html?keyword=${encodeURIComponent(val)}`;
       }
     }
   });
 }
 
-// 国家英文名 -> 中文映射表
+// 国家英文名映射表（略，与原代码一致）
 const countryMap = {
   Italy: "意大利",
   "United States": "美国",
@@ -339,16 +337,11 @@ async function fetchWeatherData(lat, lon, useGps = false) {
     const profile = JSON.parse(localStorage.getItem("user_profile") || "{}");
     let country = "观测站";
     let city = "";
-
-    // 1. 优先使用用户手动设置的位置
     if (profile.country) {
       country = profile.country;
       city = profile.region || "";
-    }
-    // 2. 如果有 GPS 经纬度且使用 GPS 模式
-    else if (useGps && lat && lon) {
+    } else if (useGps && lat && lon) {
       try {
-        // 使用 Nominatim 逆地理编码（免费，无需密钥）
         const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=zh&zoom=14&addressdetails=1`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -358,7 +351,6 @@ async function fetchWeatherData(lat, lon, useGps = false) {
           const data = await res.json();
           const addr = data.address;
           country = addr.country || "未知";
-          // 优先取城市，其次镇/村庄，最后县
           city = addr.city || addr.town || addr.village || addr.county || "";
           console.log(`🌍 GPS 逆地理: ${country}, ${city}`);
         } else {
@@ -366,9 +358,7 @@ async function fetchWeatherData(lat, lon, useGps = false) {
         }
       } catch (err) {
         console.warn("逆地理编码失败，只能显示国家", err);
-        // 降级：仅显示国家，不显示城市
         city = "";
-        // 尝试根据时区推断国家（可选）
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         if (timezone.includes("Asia/Shanghai")) country = "中国";
         else if (timezone.includes("Asia/Tokyo")) country = "日本";
@@ -381,10 +371,7 @@ async function fetchWeatherData(lat, lon, useGps = false) {
         else if (timezone.includes("Asia/Calcutta")) country = "印度";
         else country = "观测站";
       }
-    }
-    // 3. 没有 GPS 或不使用 GPS：只显示国家（不显示 IP 城市）
-    else {
-      // 根据时区粗略推断国家（只用于国家级别，不显示城市）
+    } else {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (timezone.includes("Asia/Shanghai")) country = "中国";
       else if (timezone.includes("Asia/Tokyo")) country = "日本";
@@ -396,11 +383,9 @@ async function fetchWeatherData(lat, lon, useGps = false) {
       else if (timezone.includes("Australia/Sydney")) country = "澳大利亚";
       else if (timezone.includes("Asia/Calcutta")) country = "印度";
       else country = "观测站";
-      city = ""; // 不显示城市，避免错误
+      city = "";
       console.log("不使用 IP 定位，仅显示国家:", country);
     }
-
-    // 拼接显示字符串
     const locationParts = [
       profile.planet,
       profile.country,
@@ -409,12 +394,7 @@ async function fetchWeatherData(lat, lon, useGps = false) {
     let realLocation = `地球 · ${country}`;
     if (city && city.trim()) realLocation += ` · ${city}`;
     const geoDisplay = document.getElementById("geo-display");
-    if (geoDisplay) {
-      // 始终只显示 realLocation，不再附加自定义部分
-      geoDisplay.innerText = realLocation;
-    }
-
-    // 获取天气数据（如果有经纬度就用，否则用默认北京）
+    if (geoDisplay) geoDisplay.innerText = realLocation;
     let weatherLat = lat,
       weatherLon = lon;
     if (!weatherLat || !weatherLon) {
@@ -443,12 +423,9 @@ async function fetchWeatherData(lat, lon, useGps = false) {
     });
   }
 }
-// 在 initEnvironment 中增加超时和错误处理
-async function initEnvironment() {
-  // 清除可能残留的错误城市显示
-  const geoDisplay = document.getElementById("geo-display");
 
-  // 先尝试高精度 GPS
+async function initEnvironment() {
+  const geoDisplay = document.getElementById("geo-display");
   try {
     const position = await new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -465,9 +442,7 @@ async function initEnvironment() {
     );
   } catch (e) {
     console.warn("GPS 定位失败:", e.message);
-    // 用户拒绝或超时，不再使用 IP 定位（因为不准），只显示国家
     await fetchWeatherData(null, null, false);
-    // 显示提示信息，引导用户授权或手动设置
     if (geoDisplay && e.code === 1) {
       geoDisplay.innerHTML = `地球 · 未知 (请<a href="/profile.html" style="color:#ffd700; text-decoration:underline;">手动设置位置</a>)`;
       showToast("请允许位置权限或前往形象设置手动填写位置", 5000);
@@ -555,8 +530,13 @@ function renderWeatherUI(data) {
     EMOTION_DB["默认"];
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
   const moreDiv = document.getElementById("weather-more");
-  if (moreDiv)
-    moreDiv.innerHTML = `<div style="margin-top:12px;font-size:0.85rem;color:#ccc;">「 ${quote} 」<hr><div>🌡️ ${cur.temperature_2m}°C  🌡️ 最高${daily.temperature_2m_max[0]}°C / 最低${daily.temperature_2m_min[0]}°C</div><div>💧 湿度${cur.relative_humidity_2m}%  ☁️ 云量${cur.cloud_cover}%</div><div>🌬️ ${getWindLevel(cur.wind_speed_10m)} ${cur.wind_speed_10m}km/h  🧭 ${windDirection(cur.wind_direction_10m)}</div><div>☀️ 紫外线${cur.uv_index}</div></div>`;
+  if (moreDiv) {
+    moreDiv.innerHTML = `<div style="margin-top:12px;font-size:0.85rem;color:#ccc;">「 ${quote} 」<hr>
+      <div>🌡️ ${cur.temperature_2m}°C  🌡️ 最高${daily.temperature_2m_max[0]}°C / 最低${daily.temperature_2m_min[0]}°C</div>
+      <div>💧 湿度${cur.relative_humidity_2m}%  ☁️ 云量${cur.cloud_cover}%</div>
+      <div>🌬️ ${getWindLevel(cur.wind_speed_10m)} ${cur.wind_speed_10m}km/h  🧭 ${windDirection(cur.wind_direction_10m)}</div>
+      <div>☀️ 紫外线${cur.uv_index}</div></div>`;
+  }
 }
 window.toggleWeather = function () {
   const m = document.getElementById("weather-more"),
@@ -601,7 +581,8 @@ function drawGradientLine(
   isActive,
   type = "line",
 ) {
-  const svg = document.getElementById("link-svg");
+  const svg = svgCache;
+  if (!svg) return { start: { x: x1, y: y1 }, end: { x: x2, y: y2 } };
   const angle = Math.atan2(y2 - y1, x2 - x1);
   const sx = x1 + Math.cos(angle) * r1,
     sy = y1 + Math.sin(angle) * r1;
@@ -643,7 +624,9 @@ function drawGradientLine(
   if (isActive) {
     line.style.filter = `drop-shadow(0 0 8px ${baseColor})`;
     line.style.opacity = "1";
-  } else line.style.opacity = "0.3";
+  } else {
+    line.style.opacity = "0.3";
+  }
   svg.appendChild(line);
   return { start: { x: sx, y: sy }, end: { x: ex, y: ey } };
 }
@@ -734,17 +717,14 @@ function initDragSystem() {
   window.addEventListener("touchend", onPointerUp);
 }
 
-// ========== 5. 场景渲染与切换 ==========
+// ========== 5. 场景渲染与动态收缩 ==========
 function renderArchive(state) {
   const camera = document.getElementById("camera");
   const centerX = 2500,
     centerY = 2500;
-  if (!camera) {
-    console.error("camera element not found");
-    return;
-  }
+  if (!camera) return;
 
-  // 确保 svgCache 存在，但不使用 innerHTML 清空相机
+  // 初始化 SVG 容器（不破坏其他子元素）
   if (!svgCache) {
     let svg = camera.querySelector("#link-svg");
     if (!svg) {
@@ -758,8 +738,7 @@ function renderArchive(state) {
     }
     svgCache = svg;
   }
-
-  // 清除旧连线（只清除线条和渐变，不删除 SVG 本身）
+  // 清除旧连线
   svgCache
     .querySelectorAll("line, linearGradient")
     .forEach((el) => el.remove());
@@ -771,9 +750,8 @@ function renderArchive(state) {
     camera.appendChild(window.particleSystem.canvas);
   }
 
-  // 状态切换时重建场景
   if (lastState !== state) {
-    // 清理旧的粒子定时器
+    // 清理旧定时器
     for (let k in particleTimers) clearInterval(particleTimers[k]);
     if (window.particleSystem) {
       if (window.particleSystem.linkInterval)
@@ -782,29 +760,21 @@ function renderArchive(state) {
         clearInterval(window.particleSystem.frameInterval);
       window.particleSystem.particles = [];
     }
-    // 移除旧的节点和边框
     document
       .querySelectorAll(".node-item, .year-frame-outer, .year-frame-inner")
       .forEach((el) => el.remove());
     currentFrameBounds = null;
     nodesCache = { years: new Map(), months: new Map(), tags: new Map() };
-
-    // 构建新场景
     buildScene(state, centerX, centerY);
-
-    // 如果切换到了根视图，强制相机居中
+    // 根视图强制居中，子视图保持当前相机（buildScene 中已用 moveCamera 设置）
     if (state === "root") {
       resetCameraToCenter();
     }
-
-    // 【关键】场景构建完成后，调整画布大小（等待 DOM 更新）
     setTimeout(() => resizeCanvasToFit(200), 50);
   } else {
-    // 相同状态，只更新选择样式
     updateNodeSelection(state);
     setTimeout(() => resizeCanvasToFit(200), 50);
   }
-
   lastState = state;
   updateConfirmBtn();
 }
@@ -812,8 +782,8 @@ function renderArchive(state) {
 function resetCameraToCenter() {
   const camera = document.getElementById("camera");
   if (!camera) return;
-  const centerX = 2500;
-  const centerY = 2500;
+  const centerX = 2500,
+    centerY = 2500;
   camX = window.innerWidth / 2 - centerX;
   camY = window.innerHeight / 2 - centerY;
   camera.style.transform = `translate(${camX}px, ${camY}px)`;
@@ -821,7 +791,6 @@ function resetCameraToCenter() {
 
 function buildScene(state, centerX, centerY) {
   if (state === "root") {
-    // 相机重置已由 renderArchive 处理，此处不再重复
     createNode("时间", centerX - 150, centerY, "main circle", () =>
       renderArchive("time"),
     );
@@ -1068,21 +1037,14 @@ function buildScene(state, centerX, centerY) {
   }
 }
 
-/**
- * 动态调整画布大小以恰好包裹所有节点
- * @param {number} padding 边距（px）
- */
 function resizeCanvasToFit(padding = 200) {
   const camera = document.getElementById("camera");
   const svg = document.getElementById("link-svg");
   if (!camera) return;
-
-  // 获取所有绝对定位的子元素（节点、边框等）
   const nodes = document.querySelectorAll(
     "#camera .node-item, #camera .year-frame-outer",
   );
   if (nodes.length === 0) return;
-
   let minX = Infinity,
     minY = Infinity,
     maxX = -Infinity,
@@ -1098,33 +1060,22 @@ function resizeCanvasToFit(padding = 200) {
     maxX = Math.max(maxX, left + width);
     maxY = Math.max(maxY, top + height);
   });
-
   if (!isFinite(minX)) return;
-
-  // 扩展边距
   minX -= padding;
   minY -= padding;
   maxX += padding;
   maxY += padding;
-
   const newWidth = maxX - minX;
   const newHeight = maxY - minY;
-
-  // 设置 camera 容器大小
   camera.style.width = `${newWidth}px`;
   camera.style.height = `${newHeight}px`;
-
-  // 同时调整 SVG 尺寸
   if (svg) {
     svg.setAttribute("width", newWidth);
     svg.setAttribute("height", newHeight);
   }
-
-  // 同步粒子系统 canvas 尺寸
   if (window.particleSystem && window.particleSystem.resizeToFit) {
     window.particleSystem.resizeToFit();
   }
-
   console.log(`画布动态收缩至 ${newWidth} x ${newHeight}`);
 }
 
@@ -1146,9 +1097,8 @@ function updateNodeSelection(state) {
 }
 
 function rebuildMonthLinks() {
-  const svg = document.getElementById("link-svg");
-  if (!svg) return;
-  svg
+  if (!svgCache) return;
+  svgCache
     .querySelectorAll('line[data-type="month"], line[data-type="line"]')
     .forEach((l) => l.remove());
   const anchorX = 2500 + 150,
@@ -1171,9 +1121,8 @@ function rebuildMonthLinks() {
   });
 }
 function rebuildTagLinks() {
-  const svg = document.getElementById("link-svg");
-  if (!svg) return;
-  svg
+  if (!svgCache) return;
+  svgCache
     .querySelectorAll('line[data-type="tag"], line[data-type="line"]')
     .forEach((l) => l.remove());
   const centerX = 2500,
@@ -1347,7 +1296,7 @@ function startContinuousLeaf(x, y, m) {
 }
 function generateMonthParticle(month, x, y) {
   const camera = document.getElementById("camera");
-  if (month === 1)
+  if (month === 1) {
     for (let i = 0; i < 20; i++) {
       const snow = document.createElement("div");
       snow.className = "snow-particle";
@@ -1357,7 +1306,7 @@ function generateMonthParticle(month, x, y) {
       camera.appendChild(snow);
       setTimeout(() => snow.remove(), 2000);
     }
-  else if (month === 4)
+  } else if (month === 4) {
     for (let i = 0; i < 15; i++) {
       const petal = document.createElement("div");
       petal.className = "petal-particle";
@@ -1367,7 +1316,7 @@ function generateMonthParticle(month, x, y) {
       camera.appendChild(petal);
       setTimeout(() => petal.remove(), 2000);
     }
-  else if (month === 7)
+  } else if (month === 7) {
     for (let i = 0; i < 25; i++) {
       const heat = document.createElement("div");
       heat.className = "heat-particle";
@@ -1377,7 +1326,7 @@ function generateMonthParticle(month, x, y) {
       camera.appendChild(heat);
       setTimeout(() => heat.remove(), 1500);
     }
-  else if (month === 10)
+  } else if (month === 10) {
     for (let i = 0; i < 12; i++) {
       const leaf = document.createElement("div");
       leaf.className = "leaf-particle";
@@ -1387,6 +1336,7 @@ function generateMonthParticle(month, x, y) {
       camera.appendChild(leaf);
       setTimeout(() => leaf.remove(), 2500);
     }
+  }
 }
 function toggleTag(tag, x, y, color) {
   const idx = currentChoice.tags.indexOf(tag);
@@ -1478,7 +1428,7 @@ function startContinuousHotBlood(x, y) {
 }
 function generateTagParticle(tag, x, y) {
   const camera = document.getElementById("camera");
-  if (tag === "H")
+  if (tag === "H") {
     for (let i = 0; i < 30; i++) {
       const p = document.createElement("div");
       p.className = "tag-particle";
@@ -1492,7 +1442,7 @@ function generateTagParticle(tag, x, y) {
       camera.appendChild(p);
       setTimeout(() => p.remove(), 1000);
     }
-  else if (tag === "狗屎")
+  } else if (tag === "狗屎") {
     for (let i = 0; i < 15; i++) {
       const poop = document.createElement("div");
       poop.className = "poop-particle";
@@ -1508,8 +1458,8 @@ function generateTagParticle(tag, x, y) {
       camera.appendChild(poop);
       setTimeout(() => poop.remove(), 1500);
     }
+  }
 }
-
 function jumpToResult(keyword = "") {
   const y = currentChoice.years.join(","),
     m = currentChoice.months.join(","),
@@ -1536,12 +1486,10 @@ class ParticleSystem {
     this.linkInterval = null;
     this.frameInterval = null;
   }
-
   resize() {
     this.canvas.width = 5000;
     this.canvas.height = 5000;
   }
-
   resizeToFit() {
     const camera = document.getElementById("camera");
     if (camera) {
@@ -1549,7 +1497,6 @@ class ParticleSystem {
       this.canvas.height = camera.clientHeight;
     }
   }
-
   createParticle(options) {
     this.particles.push({
       x: options.x,
@@ -1565,7 +1512,6 @@ class ParticleSystem {
       fromBottom: options.fromBottom || false,
     });
   }
-
   createDropletFromTop(bounds, color = "#66CCFF") {
     const x =
       bounds.left + 15 + Math.random() * (bounds.right - bounds.left - 30);
@@ -1580,7 +1526,7 @@ class ParticleSystem {
       decay: 0,
       targetY: bounds.bottom - 15,
       onHit: (p) => {
-        for (let i = 0; i < 6; i++)
+        for (let i = 0; i < 6; i++) {
           this.createParticle({
             x: p.x,
             y: bounds.bottom - 15,
@@ -1591,11 +1537,11 @@ class ParticleSystem {
             life: 0.8,
             decay: 0.02,
           });
+        }
         return true;
       },
     });
   }
-
   createDropletFromBottom(bounds, color = "#0066FF") {
     const x = bounds.left + Math.random() * (bounds.right - bounds.left);
     this.createParticle({
@@ -1610,7 +1556,6 @@ class ParticleSystem {
       fromBottom: true,
     });
   }
-
   startLinkParticles(start, end, color, bounds) {
     if (this.linkInterval) clearInterval(this.linkInterval);
     this.linkInterval = setInterval(() => {
@@ -1636,7 +1581,7 @@ class ParticleSystem {
           decay: 0.02,
           targetY: bounds ? bounds.bottom : null,
           onHit: (p) => {
-            for (let j = 0; j < 4; j++)
+            for (let j = 0; j < 4; j++) {
               this.createParticle({
                 x: p.x,
                 y: p.y,
@@ -1647,13 +1592,13 @@ class ParticleSystem {
                 life: 0.5,
                 decay: 0.03,
               });
+            }
             return true;
           },
         });
       }
     }, 500);
   }
-
   startYearFrameEffects(bounds) {
     if (this.frameInterval) clearInterval(this.frameInterval);
     this.frameInterval = setInterval(() => {
@@ -1663,12 +1608,10 @@ class ParticleSystem {
         this.createDropletFromBottom(bounds.outer, "#0066FF");
     }, 200);
   }
-
   stopYearFrameEffects() {
     if (this.frameInterval) clearInterval(this.frameInterval);
     this.frameInterval = null;
   }
-
   animate() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -1684,8 +1627,8 @@ class ParticleSystem {
       }
       if (p.fromBottom && p.y > this.canvas.height + 100) {
         const btn = document.getElementById("confirm-btn");
-        if (btn && btn.classList.contains("active"))
-          for (let j = 0; j < 8; j++)
+        if (btn && btn.classList.contains("active")) {
+          for (let j = 0; j < 8; j++) {
             this.createParticle({
               x: p.x,
               y: this.canvas.height,
@@ -1696,6 +1639,8 @@ class ParticleSystem {
               life: 0.6,
               decay: 0.02,
             });
+          }
+        }
         this.particles.splice(i, 1);
         continue;
       }
@@ -1745,7 +1690,6 @@ function updateConfirmBtn(immediate = false) {
 function showSection(id) {
   const isArchive = id === "archive";
   if (!isArchive) {
-    // 离开 archive 模式时，清理粒子、框架等
     if (window.particleSystem) {
       if (window.particleSystem.linkInterval)
         clearInterval(window.particleSystem.linkInterval);
@@ -1763,13 +1707,11 @@ function showSection(id) {
     document.getElementById("archive-stage").style.display = "none";
     document.getElementById("confirm-btn").style.display = "none";
   } else {
-    // 进入 archive 模式
     document
       .querySelectorAll(".top-left, .search-area, .poem-right")
       .forEach((el) => (el.style.display = "none"));
     document.getElementById("archive-stage").style.display = "block";
     document.getElementById("confirm-btn").style.display = "block";
-    // 重置相机偏移变量（不要手动设置 camera.style.transform）
     camX = 0;
     camY = 0;
     renderArchive("root");
@@ -1838,7 +1780,7 @@ async function initAll() {
     });
   }
   const confirmBtn = document.getElementById("confirm-btn");
-  if (confirmBtn)
+  if (confirmBtn) {
     confirmBtn.addEventListener("click", () => {
       if (
         currentChoice.years.length ||
@@ -1847,18 +1789,15 @@ async function initAll() {
       )
         jumpToResult();
     });
+  }
   showSection("home");
   updateProfileDisplay();
   window.addEventListener("profileUpdated", updateProfileDisplay);
-
-  // 窗口大小改变时重新调整画布和相机（仅根视图自动居中）
   window.addEventListener("resize", () => {
     resizeCanvasToFit(200);
-    if (lastState === "root") {
-      resetCameraToCenter();
-    }
+    if (lastState === "root") resetCameraToCenter();
   });
 }
 
-// 导出全局初始化函数（供 HTML 调用）
+// 导出全局初始化函数
 window.initAll = initAll;

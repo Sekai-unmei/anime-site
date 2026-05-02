@@ -1135,6 +1135,7 @@ function resizeCanvasToFit(padding = 200) {
 }
 
 function updateNodeSelection(state) {
+  // 更新节点自身的选中样式
   nodesCache.years.forEach((node, y) => {
     if (currentChoice.years.includes(y)) node.classList.add("selected");
     else node.classList.remove("selected");
@@ -1147,8 +1148,12 @@ function updateNodeSelection(state) {
     if (currentChoice.tags.includes(tag)) node.classList.add("selected");
     else node.classList.remove("selected");
   });
+
+  // 更新月份连线（删除重建，这个一直没问题，但为保险也可改成更新样式，此处保留）
   rebuildMonthLinks();
-  rebuildTagLinks();
+
+  // 更新类型连线（不再删除重建，只修改已有连线的样式）
+  updateTagLinksSelection();
 }
 
 function rebuildMonthLinks() {
@@ -1177,27 +1182,41 @@ function rebuildMonthLinks() {
   });
 }
 
-function rebuildTagLinks() {
+/**
+ * 直接更新已有类型连线的样式（不增删线条，彻底解决连线消失问题）
+ */
+function updateTagLinksSelection() {
   if (!svgCache) return;
-  // 只删除类型连线，不清除年份连线
-  svgCache.querySelectorAll('line[data-type="tag"]').forEach((l) => l.remove());
+  // 获取所有已存在的类型连线
+  const lines = svgCache.querySelectorAll('line[data-type="tag"]');
   const centerX = 2500,
     centerY = 2500;
+
   nodesCache.tags.forEach((node, tag) => {
-    const x = parseFloat(node.style.left),
-      y = parseFloat(node.style.top);
-    const color = getTagColor(tag);
-    drawGradientLine(
-      centerX,
-      centerY,
-      x,
-      y,
-      RADIUS.MAIN,
-      RADIUS.TAG,
-      color,
-      currentChoice.tags.includes(tag),
-      "tag",
-    );
+    const isActive = currentChoice.tags.includes(tag);
+    // 找到与该标签对应的线条（通过终点坐标匹配）
+    const targetX = parseFloat(node.style.left);
+    const targetY = parseFloat(node.style.top);
+    let matchedLine = null;
+    for (let line of lines) {
+      const x2 = parseFloat(line.getAttribute("x2"));
+      const y2 = parseFloat(line.getAttribute("y2"));
+      // 允许 5px 误差
+      if (Math.abs(x2 - targetX) < 5 && Math.abs(y2 - targetY) < 5) {
+        matchedLine = line;
+        break;
+      }
+    }
+    if (matchedLine) {
+      // 更新线条粗细和透明度
+      matchedLine.setAttribute("stroke-width", isActive ? "3" : "1.5");
+      matchedLine.style.opacity = isActive ? "1" : "0.3";
+      if (isActive) {
+        matchedLine.style.filter = `drop-shadow(0 0 8px ${getTagColor(tag)})`;
+      } else {
+        matchedLine.style.filter = "";
+      }
+    }
   });
 }
 function getMonthColor(m) {

@@ -776,10 +776,6 @@ function renderArchive(state) {
     }
     svgCache = svg;
   }
-  // 清除旧连线
-  svgCache
-    .querySelectorAll("line, linearGradient")
-    .forEach((el) => el.remove());
 
   // 粒子系统
   if (!window.particleSystem) {
@@ -789,6 +785,7 @@ function renderArchive(state) {
   }
 
   if (lastState !== state) {
+    // --- 状态切换：完全重建场景 ---
     // 清理旧定时器
     for (let k in particleTimers) clearInterval(particleTimers[k]);
     if (window.particleSystem) {
@@ -798,21 +795,32 @@ function renderArchive(state) {
         clearInterval(window.particleSystem.frameInterval);
       window.particleSystem.particles = [];
     }
+    // 移除旧的节点和边框
     document
       .querySelectorAll(".node-item, .year-frame-outer, .year-frame-inner")
       .forEach((el) => el.remove());
     currentFrameBounds = null;
     nodesCache = { years: new Map(), months: new Map(), tags: new Map() };
+
+    // ✅ 只在状态切换时清除所有连线（包括年份、月份、类型连线）
+    svgCache
+      .querySelectorAll("line, linearGradient")
+      .forEach((el) => el.remove());
+
+    // 构建新场景
     buildScene(state, centerX, centerY);
-    // 根视图强制居中，子视图保持当前相机（buildScene 中已用 moveCamera 设置）
+
+    // 根视图强制居中
     if (state === "root") {
       resetCameraToCenter();
     }
     setTimeout(() => resizeCanvasToFit(200), 50);
   } else {
+    // --- 相同状态：只更新选择样式（不清除全部连线，只由 rebuildXXX 处理特定连线）---
     updateNodeSelection(state);
     setTimeout(() => resizeCanvasToFit(200), 50);
   }
+
   lastState = state;
   updateConfirmBtn();
 }
@@ -1068,9 +1076,18 @@ function buildScene(state, centerX, centerY) {
       const node = createNode(tag, nx, ny, "tag-node", () =>
         toggleTag(tag, nx, ny, myColor),
       );
-      node.style.borderColor = myColor;
+      // 强制圆形边框样式
+      node.style.border = `2px solid ${myColor}`;
+      node.style.borderRadius = "50%";
+      node.style.backgroundColor = "transparent";
       node.style.color = myColor;
-      nodesCache.tags.set(tag, node);
+      node.style.display = "flex";
+      node.style.alignItems = "center";
+      node.style.justifyContent = "center";
+      node.style.width = "auto";
+      node.style.padding = "12px 16px"; // 适当内边距，让文字居中
+      node.style.whiteSpace = "nowrap";
+      node.style.fontSize = "14px";
     });
   }
 }
@@ -1136,8 +1153,9 @@ function updateNodeSelection(state) {
 
 function rebuildMonthLinks() {
   if (!svgCache) return;
+  // 只删除月份连线，不清除年份连线（年份连线 type="line"）
   svgCache
-    .querySelectorAll('line[data-type="month"], line[data-type="line"]')
+    .querySelectorAll('line[data-type="month"]')
     .forEach((l) => l.remove());
   const anchorX = 2500 + 150,
     anchorY = 2500;
@@ -1158,11 +1176,11 @@ function rebuildMonthLinks() {
     );
   });
 }
+
 function rebuildTagLinks() {
   if (!svgCache) return;
-  svgCache
-    .querySelectorAll('line[data-type="tag"], line[data-type="line"]')
-    .forEach((l) => l.remove());
+  // 只删除类型连线，不清除年份连线
+  svgCache.querySelectorAll('line[data-type="tag"]').forEach((l) => l.remove());
   const centerX = 2500,
     centerY = 2500;
   nodesCache.tags.forEach((node, tag) => {

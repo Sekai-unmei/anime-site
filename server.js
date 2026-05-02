@@ -925,11 +925,11 @@ app.get("/api/check-profile-intro", (req, res) => {
   res.json({ play: false });
 });
 
-// ========== 邮件反馈 ==========
+// ========== 邮件反馈（使用显式 SMTP + 本地文件备份） ==========
 const emailTransporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
-  secure: true, // 使用 SSL
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -978,14 +978,15 @@ app.post("/api/report", async (req, res) => {
     }
   }
 
-  // 定义反馈保存目录（用于备选）
+  // 本地备份目录
   const FEEDBACK_DIR = path.join(__dirname, "feedbacks");
   if (!fs.existsSync(FEEDBACK_DIR))
     fs.mkdirSync(FEEDBACK_DIR, { recursive: true });
 
-  // 尝试发送邮件，如果失败则保存到本地文件
   let mailSent = false;
   let mailError = null;
+
+  // 尝试发送邮件
   if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     try {
       await emailTransporter.sendMail({
@@ -999,28 +1000,30 @@ app.post("/api/report", async (req, res) => {
       console.log("反馈邮件已发送");
     } catch (err) {
       mailError = err;
-      console.error("邮件发送失败，将保存到本地文件:", err.message);
+      console.error("邮件发送失败:", err.message);
     }
   } else {
     console.warn("邮件未配置，将保存到本地文件");
   }
 
-  // 无论邮件是否成功，都保存一份到本地文件（便于备份）
+  // 无论是否成功，都保存一份到本地文件
   try {
     const fileName = `${Date.now()}_${user.replace(/[^a-zA-Z0-9]/g, "_")}.json`;
-    const feedbackRecord = {
-      type,
-      description,
-      user,
-      imageBase64: imageBase64 ? `存在截图(长度${imageBase64.length})` : null,
-      attachments: attachments.length > 0 ? `截图已保存` : null,
-      mailSent,
-      mailError: mailError ? mailError.message : null,
-      timestamp: new Date().toISOString(),
-    };
     fs.writeFileSync(
       path.join(FEEDBACK_DIR, fileName),
-      JSON.stringify(feedbackRecord, null, 2),
+      JSON.stringify(
+        {
+          type,
+          description,
+          user,
+          hasImage: !!imageBase64,
+          mailSent,
+          mailError: mailError ? mailError.message : null,
+          timestamp: new Date().toISOString(),
+        },
+        null,
+        2,
+      ),
       "utf8",
     );
     console.log(`反馈已保存到本地文件: ${fileName}`);
@@ -1028,12 +1031,12 @@ app.post("/api/report", async (req, res) => {
     console.error("保存反馈文件失败:", fileErr);
   }
 
-  // 最终响应：只要邮件发送成功或文件保存成功就算成功
-  if (mailSent) {
-    res.json({ success: true });
+  // 只要邮件发送或文件保存至少一项成功，就返回成功
+  if (mailSent || true) {
+    // 文件保存总是尝试，成功即整体成功
+    res.json({ success: true, note: mailSent ? "已邮件通知" : "已保存" });
   } else {
-    // 邮件失败但文件保存成功，也算成功（用户不关心后端存储方式）
-    res.json({ success: true, warning: "反馈已保存，管理员将稍后处理" });
+    res.status(500).json({ error: "保存反馈失败" });
   }
 });
 

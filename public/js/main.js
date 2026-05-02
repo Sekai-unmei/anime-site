@@ -629,7 +629,6 @@ function drawGradientLine(
     line.style.opacity = "0.3";
   }
   svg.appendChild(line);
-  // 🔥 返回 line 元素以便后续更新样式
   return { start: { x: sx, y: sy }, end: { x: ex, y: ey }, line: line };
 }
 
@@ -680,33 +679,24 @@ function initDragSystem() {
   const stage = document.getElementById("archive-stage"),
     camera = document.getElementById("camera");
   if (!stage || !camera) return;
-
   let startX = 0,
     startY = 0,
     startCamX = 0,
     startCamY = 0;
   let isDragging = false;
-  let dragThreshold = 8; // 移动超过此像素才判定为拖拽
-  let dragEnabled = false; // 当前是否允许拖拽（必须从背景按下）
-  let startTargetIsDraggable = false; // 按下的目标是否属于可拖拽背景
+  let dragThreshold = 8;
+  let dragEnabled = false;
 
   const onPointerDown = (e) => {
-    // 根视图完全禁止拖拽
     if (lastState === "root") return;
-
     const target = e.target;
-    // 判断按下的元素是否属于可拖拽背景：不是节点，也不是年份框
     const isDraggableBackground = !target.closest(
       ".node-item, .year-frame-outer, .year-frame-inner, .tag-node, .month-node, .year-tag",
     );
-
     if (!isDraggableBackground) {
-      // 按在了按钮或节点上，不激活拖拽
       dragEnabled = false;
       return;
     }
-
-    // 从背景开始，准备拖拽
     dragEnabled = true;
     const p = e.touches ? e.touches[0] : e;
     startX = p.clientX;
@@ -715,21 +705,15 @@ function initDragSystem() {
     startCamY = camY;
     isDragging = false;
     camera.style.transition = "none";
-    e.preventDefault(); // 避免选中文本
+    e.preventDefault();
   };
-
   const onPointerMove = (e) => {
-    if (!dragEnabled) return; // 没有从背景按下，忽略移动
-    if (lastState === "root") return; // 根视图下不应有拖拽（安全兜底）
-
+    if (!dragEnabled) return;
+    if (lastState === "root") return;
     const p = e.touches ? e.touches[0] : e;
     const dx = p.clientX - startX,
       dy = p.clientY - startY;
-
-    if (!isDragging && Math.hypot(dx, dy) > dragThreshold) {
-      isDragging = true;
-    }
-
+    if (!isDragging && Math.hypot(dx, dy) > dragThreshold) isDragging = true;
     if (isDragging) {
       e.preventDefault();
       camX = startCamX + dx;
@@ -737,18 +721,15 @@ function initDragSystem() {
       camera.style.transform = `translate(${camX}px, ${camY}px)`;
     }
   };
-
   const onPointerUp = () => {
     if (!dragEnabled) {
       dragEnabled = false;
       return;
     }
-    // 如果从未触发拖拽（即只是轻点背景），什么都不做
     dragEnabled = false;
     isDragging = false;
     camera.style.transition = "transform 0.6s ease-out";
   };
-
   stage.addEventListener("mousedown", onPointerDown);
   window.addEventListener("mousemove", onPointerMove);
   window.addEventListener("mouseup", onPointerUp);
@@ -764,7 +745,6 @@ function renderArchive(state) {
     centerY = 2500;
   if (!camera) return;
 
-  // 初始化 SVG 容器（不破坏其他子元素）
   if (!svgCache) {
     let svg = camera.querySelector("#link-svg");
     if (!svg) {
@@ -779,7 +759,6 @@ function renderArchive(state) {
     svgCache = svg;
   }
 
-  // 粒子系统
   if (!window.particleSystem) {
     window.particleSystem = new ParticleSystem();
   } else if (!camera.contains(window.particleSystem.canvas)) {
@@ -787,8 +766,6 @@ function renderArchive(state) {
   }
 
   if (lastState !== state) {
-    // --- 状态切换：完全重建场景 ---
-    // 清理旧定时器
     for (let k in particleTimers) clearInterval(particleTimers[k]);
     if (window.particleSystem) {
       if (window.particleSystem.linkInterval)
@@ -797,32 +774,22 @@ function renderArchive(state) {
         clearInterval(window.particleSystem.frameInterval);
       window.particleSystem.particles = [];
     }
-    // 移除旧的节点和边框
     document
       .querySelectorAll(".node-item, .year-frame-outer, .year-frame-inner")
       .forEach((el) => el.remove());
     currentFrameBounds = null;
     nodesCache = { years: new Map(), months: new Map(), tags: new Map() };
-
-    // ✅ 只在状态切换时清除所有连线（年份、月份、类型连线全部清除，随后由 buildScene 重新绘制）
+    // 只在状态切换时清除所有连线
     svgCache
       .querySelectorAll("line, linearGradient")
       .forEach((el) => el.remove());
-
-    // 构建新场景
     buildScene(state, centerX, centerY);
-
-    // 根视图强制居中
-    if (state === "root") {
-      resetCameraToCenter();
-    }
+    if (state === "root") resetCameraToCenter();
     setTimeout(() => resizeCanvasToFit(200), 50);
   } else {
-    // --- 相同状态：只更新选择样式（不清除全部连线）---
     updateNodeSelection(state);
     setTimeout(() => resizeCanvasToFit(200), 50);
   }
-
   lastState = state;
   updateConfirmBtn();
 }
@@ -980,8 +947,8 @@ function buildScene(state, centerX, centerY) {
         toggleMonth(s.m, s.x, s.y, s.color),
       );
       node.style.borderColor = s.color;
-      node.originalColor = s.color; // 保存原始颜色
-      node.line = lineResult.line; // 保存对应的连线元素
+      node.originalColor = s.color;
+      node.line = lineResult.line;
       nodesCache.months.set(s.m, node);
     });
   } else if (state === "type_grid") {
@@ -1080,8 +1047,7 @@ function buildScene(state, centerX, centerY) {
       const node = createNode(tag, nx, ny, "tag-node", () =>
         toggleTag(tag, nx, ny, myColor),
       );
-      node.line = lineResult.line; // 保存连线元素
-      // 强制圆形边框样式
+      node.line = lineResult.line;
       node.style.border = `2px solid ${myColor}`;
       node.style.borderRadius = "50%";
       node.style.backgroundColor = "transparent";
@@ -1093,7 +1059,7 @@ function buildScene(state, centerX, centerY) {
       node.style.padding = "12px 16px";
       node.style.whiteSpace = "nowrap";
       node.style.fontSize = "14px";
-      node.originalColor = myColor; // 保存原始颜色
+      node.originalColor = myColor;
       nodesCache.tags.set(tag, node);
     });
   }
@@ -1140,165 +1106,8 @@ function resizeCanvasToFit(padding = 200) {
   }
   console.log(`画布动态收缩至 ${newWidth} x ${newHeight}`);
 }
-/**
- * 直接更新所有月份连线的选中样式（不删除重建）
- */
-function updateMonthLinksSelection() {
-  nodesCache.months.forEach((node, m) => {
-    if (node.line) {
-      const isActive = currentChoice.months.includes(m);
-      const color = getMonthColor(m);
-      node.line.setAttribute("stroke-width", isActive ? "3" : "1.5");
-      node.line.style.opacity = isActive ? "1" : "0.3";
-      if (isActive) {
-        node.line.style.filter = `drop-shadow(0 0 8px ${color})`;
-      } else {
-        node.line.style.filter = "";
-      }
-    }
-  });
-}
 
-/**
- * 直接更新所有类型连线的选中样式（不删除重建）
- */
-function updateTagLinksSelection() {
-  nodesCache.tags.forEach((node, tag) => {
-    if (node.line) {
-      const isActive = currentChoice.tags.includes(tag);
-      const color = getTagColor(tag);
-      node.line.setAttribute("stroke-width", isActive ? "3" : "1.5");
-      node.line.style.opacity = isActive ? "1" : "0.3";
-      if (isActive) {
-        node.line.style.filter = `drop-shadow(0 0 8px ${color})`;
-      } else {
-        node.line.style.filter = "";
-      }
-    }
-  });
-}
-function updateNodeSelection(state) {
-  // 更新所有节点的高亮样式（使用自身颜色）
-  nodesCache.years.forEach((node, y) => {
-    const isActive = currentChoice.years.includes(y);
-    if (isActive) {
-      node.classList.add("selected");
-      // 年份节点使用统一的青蓝色高亮（也可以自定义）
-      const color = "#66CCFF";
-      node.style.borderColor = color;
-      node.style.boxShadow = `0 0 15px ${color}`;
-      node.style.color = color;
-    } else {
-      node.classList.remove("selected");
-      node.style.borderColor = "";
-      node.style.boxShadow = "";
-      node.style.color = "";
-    }
-  });
-
-  nodesCache.months.forEach((node, m) => {
-    const isActive = currentChoice.months.includes(m);
-    const color = getMonthColor(m); // 获取月份自身的颜色
-    if (isActive) {
-      node.classList.add("selected");
-      node.style.borderColor = color;
-      node.style.boxShadow = `0 0 15px ${color}`;
-      node.style.color = color;
-    } else {
-      node.classList.remove("selected");
-      node.style.borderColor = ""; // 恢复原状（原样式已在创建时设置）
-      node.style.boxShadow = "";
-      node.style.color = "";
-    }
-  });
-
-  nodesCache.tags.forEach((node, tag) => {
-    const isActive = currentChoice.tags.includes(tag);
-    const color = getTagColor(tag); // 获取类型自身的颜色
-    if (isActive) {
-      node.classList.add("selected");
-      node.style.border = `2px solid ${color}`;
-      node.style.boxShadow = `0 0 15px ${color}`;
-      node.style.color = color;
-      // 可选：加粗文字
-      node.style.fontWeight = "bold";
-    } else {
-      node.classList.remove("selected");
-      // 恢复未选中时的样式（透明背景，细边框）
-      node.style.border = `1px solid ${color}`;
-      node.style.boxShadow = "";
-      node.style.color = color;
-      node.style.fontWeight = "normal";
-    }
-  });
-
-  // 直接更新连线的高亮样式（已经使用自身颜色，无需修改）
-  updateMonthLinksSelection();
-  updateTagLinksSelection();
-}
-function rebuildMonthLinks() {
-  if (!svgCache) return;
-  // 只删除月份连线，不清除年份连线（年份连线 type="line"）
-  svgCache
-    .querySelectorAll('line[data-type="month"]')
-    .forEach((l) => l.remove());
-  const anchorX = 2500 + 150,
-    anchorY = 2500;
-  nodesCache.months.forEach((node, m) => {
-    const x = parseFloat(node.style.left),
-      y = parseFloat(node.style.top);
-    const color = getMonthColor(m);
-    drawGradientLine(
-      anchorX,
-      anchorY,
-      x,
-      y,
-      RADIUS.SUB,
-      RADIUS.MONTH,
-      color,
-      currentChoice.months.includes(m),
-      "month",
-    );
-  });
-}
-
-/**
- * 直接更新已有类型连线的样式（不增删线条，彻底解决连线消失问题）
- */
-function updateTagLinksSelection() {
-  if (!svgCache) return;
-  // 获取所有已存在的类型连线
-  const lines = svgCache.querySelectorAll('line[data-type="tag"]');
-  const centerX = 2500,
-    centerY = 2500;
-
-  nodesCache.tags.forEach((node, tag) => {
-    const isActive = currentChoice.tags.includes(tag);
-    // 找到与该标签对应的线条（通过终点坐标匹配）
-    const targetX = parseFloat(node.style.left);
-    const targetY = parseFloat(node.style.top);
-    let matchedLine = null;
-    for (let line of lines) {
-      const x2 = parseFloat(line.getAttribute("x2"));
-      const y2 = parseFloat(line.getAttribute("y2"));
-      // 允许 5px 误差
-      if (Math.abs(x2 - targetX) < 5 && Math.abs(y2 - targetY) < 5) {
-        matchedLine = line;
-        break;
-      }
-    }
-    if (matchedLine) {
-      // 更新线条粗细和透明度
-      matchedLine.setAttribute("stroke-width", isActive ? "3" : "1.5");
-      matchedLine.style.opacity = isActive ? "1" : "0.3";
-      if (isActive) {
-        matchedLine.style.filter = `drop-shadow(0 0 8px ${getTagColor(tag)})`;
-      } else {
-        matchedLine.style.filter = "";
-      }
-    }
-  });
-}
+// 高亮辅助函数
 function getMonthColor(m) {
   const map = { 1: "#1E90FF", 4: "#22C55E", 7: "#FF4500", 10: "#FF8C00" };
   return map[m] || "#FFF";
@@ -1324,6 +1133,97 @@ function getTagColor(tag) {
     神作: "#FFD700",
   };
   return map[tag] || "#FFF";
+}
+
+function updateMonthLinksSelection() {
+  if (!svgCache) return;
+  nodesCache.months.forEach((node, m) => {
+    const isActive = currentChoice.months.includes(m);
+    const color = getMonthColor(m);
+    if (node.line) {
+      node.line.setAttribute("stroke-width", isActive ? "3" : "1.5");
+      node.line.style.opacity = isActive ? "1" : "0.3";
+      if (isActive) {
+        node.line.style.filter = `drop-shadow(0 0 8px ${color})`;
+      } else {
+        node.line.style.filter = "";
+      }
+    }
+  });
+}
+
+function updateTagLinksSelection() {
+  if (!svgCache) return;
+  nodesCache.tags.forEach((node, tag) => {
+    const isActive = currentChoice.tags.includes(tag);
+    const color = node.originalColor || getTagColor(tag);
+    if (node.line) {
+      node.line.setAttribute("stroke-width", isActive ? "3" : "1.5");
+      node.line.style.opacity = isActive ? "1" : "0.3";
+      if (isActive) {
+        node.line.style.filter = `drop-shadow(0 0 8px ${color})`;
+      } else {
+        node.line.style.filter = "";
+      }
+    }
+  });
+}
+
+function updateNodeSelection(state) {
+  // 年份节点
+  nodesCache.years.forEach((node, y) => {
+    const isActive = currentChoice.years.includes(y);
+    if (isActive) {
+      node.classList.add("selected");
+      const color = "#66CCFF";
+      node.style.borderColor = color;
+      node.style.boxShadow = `0 0 15px ${color}`;
+      node.style.color = color;
+    } else {
+      node.classList.remove("selected");
+      node.style.borderColor = "";
+      node.style.boxShadow = "";
+      node.style.color = "";
+    }
+  });
+  // 月份节点
+  nodesCache.months.forEach((node, m) => {
+    const isActive = currentChoice.months.includes(m);
+    const color = getMonthColor(m);
+    if (isActive) {
+      node.classList.add("selected");
+      node.style.borderColor = color;
+      node.style.boxShadow = `0 0 15px ${color}`;
+      node.style.color = color;
+    } else {
+      node.classList.remove("selected");
+      node.style.borderColor = color;
+      node.style.boxShadow = "";
+      node.style.color = color;
+      node.style.opacity = "0.7";
+    }
+  });
+  // 类型节点 - 关键修复：未选中时使用 originalColor 恢复自身颜色，绝不变白
+  nodesCache.tags.forEach((node, tag) => {
+    const isActive = currentChoice.tags.includes(tag);
+    const color = node.originalColor || getTagColor(tag);
+    if (isActive) {
+      node.classList.add("selected");
+      node.style.border = `3px solid ${color}`;
+      node.style.boxShadow = `0 0 15px ${color}`;
+      node.style.color = color;
+      node.style.fontWeight = "bold";
+    } else {
+      node.classList.remove("selected");
+      node.style.border = `1px solid ${color}`;
+      node.style.boxShadow = "";
+      node.style.color = color;
+      node.style.fontWeight = "normal";
+      node.style.backgroundColor = "transparent";
+    }
+  });
+  updateMonthLinksSelection();
+  updateTagLinksSelection();
 }
 
 // ========== 6. 选择与粒子效果 ==========
@@ -1954,5 +1854,4 @@ async function initAll() {
   });
 }
 
-// 导出全局初始化函数
 window.initAll = initAll;

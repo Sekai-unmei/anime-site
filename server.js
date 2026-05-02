@@ -937,6 +937,7 @@ app.get("/api/check-profile-intro", (req, res) => {
 // ========== 邮件反馈（使用显式 SMTP + 本地文件备份） ==========
 // ========== 反馈接口（异步邮件 + 文件备份） ==========
 // ========== 反馈接口（存储到 MongoDB + 异步邮件通知） ==========
+// ========== 反馈接口（只等待数据库保存，邮件异步发送） ==========
 const emailTransporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
@@ -955,9 +956,9 @@ app.post("/api/report", async (req, res) => {
   }
 
   let saved = false;
-  let emailSent = false;
-  let errorMsg = null;
+  let saveError = null;
 
+  // 1. 保存到数据库（必须成功才响应成功）
   try {
     const feedback = new Feedback({
       type,
@@ -967,37 +968,76 @@ app.post("/api/report", async (req, res) => {
     });
     await feedback.save();
     saved = true;
+    console.log(`反馈已保存，ID: ${feedback._id}`);
   } catch (dbErr) {
-    console.error("保存失败:", dbErr);
-    return res.status(500).json({ success: false, error: "数据库保存失败" });
+    saveError = dbErr;
+    console.error("保存反馈到数据库失败:", dbErr);
+    return res
+      .status(500)
+      .json({ success: false, error: "数据库保存失败，请稍后重试" });
   }
 
-  // 尝试发送邮件（等待结果，但不影响响应）
-  try {
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 465,
-        secure: true,
-        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-      });
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: process.env.EMAIL_USER,
-        subject: "反馈",
-        text: description,
-      });
-      emailSent = true;
-    }
-  } catch (mailErr) {
-    console.error("邮件失败:", mailErr.message);
-  }
-
+  // 2. 立即返回成功（用户马上看到 Toast）
   res.json({
     success: true,
     saved: true,
-    emailSent: emailSent,
-    message: emailSent ? "已保存并邮件通知" : "已保存，但邮件发送失败",
+    message: "反馈已保存，管理员将尽快处理。",
+  });
+
+  // 3. 异步尝试发送邮件（不等待，不影响响应）
+  setImmediate(async () => {
+    try {
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        const typeMap = {
+          bug: "🐞 Bug报告",
+          optimize: "✨ 优化建议",
+          suggestion: "💡 意见",
+          question: "❓ 疑问",
+        };
+        const subject = typeMap[type] || "意见反馈";
+        let htmlContent = `
+          <h2>用户反馈</h2>
+          <p><strong>用户邮箱：</strong> ${user}</p>
+          <p><strong>类型：</strong> ${subject}</p>
+          <p><strong>描述：</strong></p>
+          <p>${description.replace(/\n/g, "<br>")}</p>
+        `;
+        let attachments = [];
+        if (imageBase64) {
+          const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
+          if (matches) {
+            const ext = matches[1];
+            const buffer = Buffer.from(matches[2], "base64");
+            attachments.push({
+              filename: `screenshot.${ext}`,
+              content: buffer,
+              contentType: `image/${ext}`,
+            });
+          } else {
+            try {
+              const buffer = Buffer.from(imageBase64, "base64");
+              attachments.push({
+                filename: "screenshot.png",
+                content: buffer,
+                contentType: "image/png",
+              });
+            } catch (err) {}
+          }
+        }
+        await emailTransporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: process.env.EMAIL_USER,
+          subject: `【反馈】${subject}`,
+          html: htmlContent,
+          attachments,
+        });
+        console.log("反馈邮件已发送");
+      } else {
+        console.warn("邮件未配置，仅保存到数据库");
+      }
+    } catch (mailErr) {
+      console.error("邮件发送失败（不影响反馈保存）:", mailErr.message);
+    }
   });
 });
 // ========== 管理后台：查看反馈列表（从 MongoDB 读取） ==========

@@ -61,7 +61,16 @@ const noteSchema = new mongoose.Schema({
   note: String,
 });
 const Note = mongoose.model("Note", noteSchema);
-
+// 反馈模型（存储用户提交的意见反馈）
+const feedbackSchema = new mongoose.Schema({
+  type: String,
+  description: String,
+  user: String,
+  imageBase64: String, // 可选，存储截图的 base64（可能很大，建议只存标记）
+  hasImage: Boolean,
+  createdAt: { type: Date, default: Date.now },
+});
+const Feedback = mongoose.model("Feedback", feedbackSchema);
 // 动漫模型
 const animeSchema = new mongoose.Schema(
   {
@@ -927,6 +936,7 @@ app.get("/api/check-profile-intro", (req, res) => {
 
 // ========== 邮件反馈（使用显式 SMTP + 本地文件备份） ==========
 // ========== 反馈接口（异步邮件 + 文件备份） ==========
+// ========== 反馈接口（存储到 MongoDB + 异步邮件通知） ==========
 const emailTransporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
@@ -947,72 +957,60 @@ app.post("/api/report", async (req, res) => {
   // 1. 立即返回成功，前端不再等待
   res.json({ success: true, note: "反馈已收到，感谢支持" });
 
-  // 2. 后台异步处理：保存文件 + 发送邮件
+  // 2. 后台异步处理：保存到数据库 + 发送邮件
   setImmediate(async () => {
     try {
-      // 准备邮件内容
-      const typeMap = {
-        bug: "🐞 Bug报告",
-        optimize: "✨ 优化建议",
-        suggestion: "💡 意见",
-        question: "❓ 疑问",
-      };
-      const subject = typeMap[type] || "意见反馈";
-      let htmlContent = `
-        <h2>用户反馈</h2>
-        <p><strong>用户邮箱：</strong> ${user}</p>
-        <p><strong>类型：</strong> ${subject}</p>
-        <p><strong>描述：</strong></p>
-        <p>${description.replace(/\n/g, "<br>")}</p>
-      `;
-      let attachments = [];
-      if (imageBase64) {
-        const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (matches) {
-          const ext = matches[1];
-          const buffer = Buffer.from(matches[2], "base64");
-          attachments.push({
-            filename: `screenshot.${ext}`,
-            content: buffer,
-            contentType: `image/${ext}`,
-          });
-        } else {
-          try {
-            const buffer = Buffer.from(imageBase64, "base64");
-            attachments.push({
-              filename: "screenshot.png",
-              content: buffer,
-              contentType: "image/png",
-            });
-          } catch (err) {}
-        }
-      }
+      // 保存到 MongoDB（可靠持久化）
+      const feedback = new Feedback({
+        type,
+        description,
+        user,
+        hasImage: !!imageBase64,
+        // 可选：如果图片很小，也可以存储 base64；但建议只存引用或标记，避免数据库过大
+        // 如果确实需要存储图片，可取消下面注释
+        // imageBase64: imageBase64 || null,
+      });
+      await feedback.save();
+      console.log(`反馈已保存到数据库，ID: ${feedback._id}`);
 
-      // 保存到本地文件（备份）
-      const FEEDBACK_DIR = path.join(__dirname, "feedbacks");
-      if (!fs.existsSync(FEEDBACK_DIR)) {
-        fs.mkdirSync(FEEDBACK_DIR, { recursive: true });
-      }
-      const fileName = `${Date.now()}_${user.replace(/[^a-zA-Z0-9]/g, "_")}.json`;
-      fs.writeFileSync(
-        path.join(FEEDBACK_DIR, fileName),
-        JSON.stringify(
-          {
-            type,
-            description,
-            user,
-            hasImage: !!imageBase64,
-            timestamp: new Date().toISOString(),
-          },
-          null,
-          2,
-        ),
-        "utf8",
-      );
-      console.log(`反馈已备份到文件: ${fileName}`);
-
-      // 尝试发送邮件（非阻塞）
+      // 尝试发送邮件（非阻塞，失败不影响响应）
       if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        const typeMap = {
+          bug: "🐞 Bug报告",
+          optimize: "✨ 优化建议",
+          suggestion: "💡 意见",
+          question: "❓ 疑问",
+        };
+        const subject = typeMap[type] || "意见反馈";
+        let htmlContent = `
+          <h2>用户反馈</h2>
+          <p><strong>用户邮箱：</strong> ${user}</p>
+          <p><strong>类型：</strong> ${subject}</p>
+          <p><strong>描述：</strong></p>
+          <p>${description.replace(/\n/g, "<br>")}</p>
+        `;
+        let attachments = [];
+        if (imageBase64) {
+          const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
+          if (matches) {
+            const ext = matches[1];
+            const buffer = Buffer.from(matches[2], "base64");
+            attachments.push({
+              filename: `screenshot.${ext}`,
+              content: buffer,
+              contentType: `image/${ext}`,
+            });
+          } else {
+            try {
+              const buffer = Buffer.from(imageBase64, "base64");
+              attachments.push({
+                filename: "screenshot.png",
+                content: buffer,
+                contentType: "image/png",
+              });
+            } catch (err) {}
+          }
+        }
         await emailTransporter.sendMail({
           from: process.env.EMAIL_USER,
           to: process.env.EMAIL_USER,
@@ -1022,7 +1020,7 @@ app.post("/api/report", async (req, res) => {
         });
         console.log("反馈邮件已发送");
       } else {
-        console.warn("邮件未配置，仅保存到文件");
+        console.warn("邮件未配置，仅保存到数据库");
       }
     } catch (err) {
       console.error("后台处理反馈失败:", err);
@@ -1030,110 +1028,26 @@ app.post("/api/report", async (req, res) => {
   });
 });
 
-app.post("/api/report", async (req, res) => {
-  console.log("收到反馈请求:", req.body);
-  // 立即返回成功，前端不再卡住
-  return res.json({ success: true, message: "反馈已收到（测试模式）" });
-  const { type, description, imageBase64 } = req.body;
-  const user = req.session.user || "匿名用户";
-  if (!description) return res.status(400).json({ error: "描述不能为空" });
-
-  const typeMap = {
-    bug: "🐞 Bug报告",
-    optimize: "✨ 优化建议",
-    suggestion: "💡 意见",
-    question: "❓ 疑问",
-  };
-  const subject = typeMap[type] || "意见反馈";
-  let htmlContent = `
-    <h2>用户反馈</h2>
-    <p><strong>用户邮箱：</strong> ${user}</p>
-    <p><strong>类型：</strong> ${subject}</p>
-    <p><strong>描述：</strong></p>
-    <p>${description.replace(/\n/g, "<br>")}</p>
-  `;
-  let attachments = [];
-  if (imageBase64) {
-    const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
-    if (matches) {
-      const ext = matches[1];
-      const buffer = Buffer.from(matches[2], "base64");
-      attachments.push({
-        filename: `screenshot.${ext}`,
-        content: buffer,
-        contentType: `image/${ext}`,
-      });
-    } else {
-      try {
-        const buffer = Buffer.from(imageBase64, "base64");
-        attachments.push({
-          filename: "screenshot.png",
-          content: buffer,
-          contentType: "image/png",
-        });
-      } catch (err) {}
-    }
+// ========== 管理后台：查看反馈列表（从 MongoDB 读取） ==========
+app.get("/admin/feedbacks", async (req, res) => {
+  const adminEmail = "kevin88ye88@gmail.com";
+  if (!req.session.user || req.session.user !== adminEmail) {
+    return res.status(403).send("无权限访问");
   }
-
-  // 本地备份目录
-  const FEEDBACK_DIR = path.join(__dirname, "feedbacks");
-  if (!fs.existsSync(FEEDBACK_DIR))
-    fs.mkdirSync(FEEDBACK_DIR, { recursive: true });
-
-  let mailSent = false;
-  let mailError = null;
-
-  // 尝试发送邮件
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    try {
-      await emailTransporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: process.env.EMAIL_USER,
-        subject: `【反馈】${subject}`,
-        html: htmlContent,
-        attachments,
-      });
-      mailSent = true;
-      console.log("反馈邮件已发送");
-    } catch (err) {
-      mailError = err;
-      console.error("邮件发送失败:", err.message);
-    }
-  } else {
-    console.warn("邮件未配置，将保存到本地文件");
-  }
-
-  // 无论是否成功，都保存一份到本地文件
   try {
-    const fileName = `${Date.now()}_${user.replace(/[^a-zA-Z0-9]/g, "_")}.json`;
-    fs.writeFileSync(
-      path.join(FEEDBACK_DIR, fileName),
-      JSON.stringify(
-        {
-          type,
-          description,
-          user,
-          hasImage: !!imageBase64,
-          mailSent,
-          mailError: mailError ? mailError.message : null,
-          timestamp: new Date().toISOString(),
-        },
-        null,
-        2,
-      ),
-      "utf8",
-    );
-    console.log(`反馈已保存到本地文件: ${fileName}`);
-  } catch (fileErr) {
-    console.error("保存反馈文件失败:", fileErr);
-  }
-
-  // 只要邮件发送或文件保存至少一项成功，就返回成功
-  if (mailSent || true) {
-    // 文件保存总是尝试，成功即整体成功
-    res.json({ success: true, note: mailSent ? "已邮件通知" : "已保存" });
-  } else {
-    res.status(500).json({ error: "保存反馈失败" });
+    const feedbacks = await Feedback.find().sort({ createdAt: -1 }).limit(100);
+    if (!feedbacks.length) {
+      return res.send("<p>暂无反馈数据</p>");
+    }
+    let html = `<h1>用户反馈列表 (共${feedbacks.length}条)</h1><ul>`;
+    for (const fb of feedbacks) {
+      html += `<li><strong>${fb.createdAt.toLocaleString()}</strong> - ${fb.user} - ${fb.type}<br>${fb.description.substring(0, 200)}${fb.description.length > 200 ? "..." : ""}</li>`;
+    }
+    html += "</ul>";
+    res.send(html);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("读取反馈失败");
   }
 });
 

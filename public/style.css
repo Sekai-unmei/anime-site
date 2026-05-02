@@ -459,13 +459,7 @@ body {
     color: #1E90FF;
     border-color: #1E90FF;
 }
-.node-item.selected {
-    border-color: #ffd700 !important;
-    box-shadow: 0 0 15px #ffd700;
-    color: #ffd700 !important;
-    text-shadow: 0 0 5px gold;
-    transition: all 0.2s ease;
-}
+
 #link-svg {
     z-index: 1;
 }

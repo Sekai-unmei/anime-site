@@ -980,7 +980,8 @@ function buildScene(state, centerX, centerY) {
         toggleMonth(s.m, s.x, s.y, s.color),
       );
       node.style.borderColor = s.color;
-      node.line = lineResult.line; // ✅ 保存连线元素到节点上
+      node.originalColor = s.color; // 保存原始颜色
+      node.line = lineResult.line; // 保存对应的连线元素
       nodesCache.months.set(s.m, node);
     });
   } else if (state === "type_grid") {
@@ -1079,7 +1080,7 @@ function buildScene(state, centerX, centerY) {
       const node = createNode(tag, nx, ny, "tag-node", () =>
         toggleTag(tag, nx, ny, myColor),
       );
-      node.line = lineResult.line; // ✅ 保存连线元素到节点上
+      node.line = lineResult.line; // 保存连线元素
       // 强制圆形边框样式
       node.style.border = `2px solid ${myColor}`;
       node.style.borderRadius = "50%";
@@ -1092,6 +1093,7 @@ function buildScene(state, centerX, centerY) {
       node.style.padding = "12px 16px";
       node.style.whiteSpace = "nowrap";
       node.style.fontSize = "14px";
+      node.originalColor = myColor; // 保存原始颜色
       nodesCache.tags.set(tag, node);
     });
   }
@@ -1175,29 +1177,65 @@ function updateTagLinksSelection() {
     }
   });
 }
-
 function updateNodeSelection(state) {
-  // 更新节点自身的选中样式
+  // 更新所有节点的高亮样式（使用自身颜色）
   nodesCache.years.forEach((node, y) => {
-    if (currentChoice.years.includes(y)) node.classList.add("selected");
-    else node.classList.remove("selected");
+    const isActive = currentChoice.years.includes(y);
+    if (isActive) {
+      node.classList.add("selected");
+      // 年份节点使用统一的青蓝色高亮（也可以自定义）
+      const color = "#66CCFF";
+      node.style.borderColor = color;
+      node.style.boxShadow = `0 0 15px ${color}`;
+      node.style.color = color;
+    } else {
+      node.classList.remove("selected");
+      node.style.borderColor = "";
+      node.style.boxShadow = "";
+      node.style.color = "";
+    }
   });
+
   nodesCache.months.forEach((node, m) => {
-    if (currentChoice.months.includes(m)) node.classList.add("selected");
-    else node.classList.remove("selected");
+    const isActive = currentChoice.months.includes(m);
+    const color = getMonthColor(m); // 获取月份自身的颜色
+    if (isActive) {
+      node.classList.add("selected");
+      node.style.borderColor = color;
+      node.style.boxShadow = `0 0 15px ${color}`;
+      node.style.color = color;
+    } else {
+      node.classList.remove("selected");
+      node.style.borderColor = ""; // 恢复原状（原样式已在创建时设置）
+      node.style.boxShadow = "";
+      node.style.color = "";
+    }
   });
+
   nodesCache.tags.forEach((node, tag) => {
-    if (currentChoice.tags.includes(tag)) node.classList.add("selected");
-    else node.classList.remove("selected");
+    const isActive = currentChoice.tags.includes(tag);
+    const color = getTagColor(tag); // 获取类型自身的颜色
+    if (isActive) {
+      node.classList.add("selected");
+      node.style.border = `2px solid ${color}`;
+      node.style.boxShadow = `0 0 15px ${color}`;
+      node.style.color = color;
+      // 可选：加粗文字
+      node.style.fontWeight = "bold";
+    } else {
+      node.classList.remove("selected");
+      // 恢复未选中时的样式（透明背景，细边框）
+      node.style.border = `1px solid ${color}`;
+      node.style.boxShadow = "";
+      node.style.color = color;
+      node.style.fontWeight = "normal";
+    }
   });
 
-  // 更新月份连线（删除重建，这个一直没问题，但为保险也可改成更新样式，此处保留）
-  rebuildMonthLinks();
-
-  // 更新类型连线（不再删除重建，只修改已有连线的样式）
+  // 直接更新连线的高亮样式（已经使用自身颜色，无需修改）
+  updateMonthLinksSelection();
   updateTagLinksSelection();
 }
-
 function rebuildMonthLinks() {
   if (!svgCache) return;
   // 只删除月份连线，不清除年份连线（年份连线 type="line"）

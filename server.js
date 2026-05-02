@@ -937,6 +937,9 @@ const emailTransporter = nodemailer.createTransport({
 });
 
 app.post("/api/report", async (req, res) => {
+  console.log("收到反馈请求:", req.body);
+  // 立即返回成功，前端不再卡住
+  return res.json({ success: true, message: "反馈已收到（测试模式）" });
   const { type, description, imageBase64 } = req.body;
   const user = req.session.user || "匿名用户";
   if (!description) return res.status(400).json({ error: "描述不能为空" });

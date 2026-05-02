@@ -739,8 +739,17 @@ if (window._commonLoaded) {
         console.log("【反馈】收到响应，HTTP 状态:", res.status);
         const data = await res.json();
         console.log("【反馈】响应数据:", data);
+        // 原有的 fetch 代码不变，只是在拿到 data 后：
         if (data.success) {
-          window.showToast("反馈已提交，感谢您的支持！");
+          if (data.emailSent === true) {
+            window.showToast("反馈已提交，邮件通知已发送");
+          } else if (data.emailSent === false) {
+            window.showToast(
+              "反馈已提交，但邮件通知发送失败。管理员将稍后查看。",
+            );
+          } else {
+            window.showToast("反馈已提交，感谢支持！");
+          }
           closeModal();
         } else {
           window.showToast("提交失败：" + (data.error || "请稍后重试"));

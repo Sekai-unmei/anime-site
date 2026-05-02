@@ -1,5 +1,4 @@
 console.log("开始执行 server.js (最终优化版)");
-const nodemailer = require("nodemailer");
 const express = require("express");
 const session = require("express-session");
 const crypto = require("crypto");
@@ -8,6 +7,7 @@ const path = require("path");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const { OAuth2Client } = require("google-auth-library");
+const sgMail = require("@sendgrid/mail"); // 新增 SendGrid 库
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -890,16 +890,14 @@ app.get("/api/check-profile-intro", (req, res) => {
   res.json({ play: false });
 });
 
-// ========== 反馈接口（只等待数据库保存，邮件异步发送） ==========
-const emailTransporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// ========== 反馈接口（数据库保存后立即返回，邮件通过 SendGrid 异步发送） ==========
+// 配置 SendGrid（从环境变量读取 API Key）
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  console.log("✓ SendGrid 已配置");
+} else {
+  console.warn("⚠️ 未设置 SENDGRID_API_KEY，邮件功能将不可用");
+}
 
 app.post("/api/report", async (req, res) => {
   const { type, description, imageBase64 } = req.body;
@@ -917,9 +915,9 @@ app.post("/api/report", async (req, res) => {
       hasImage: !!imageBase64,
     });
     await feedback.save();
-    console.log(`反馈已保存，ID: ${feedback._id}`);
+    console.log(`✓ 反馈已保存，ID: ${feedback._id}`);
   } catch (dbErr) {
-    console.error("保存反馈到数据库失败:", dbErr);
+    console.error("✗ 保存反馈到数据库失败:", dbErr);
     return res
       .status(500)
       .json({ success: false, error: "数据库保存失败，请稍后重试" });
@@ -932,56 +930,64 @@ app.post("/api/report", async (req, res) => {
     message: "反馈已保存，管理员将尽快处理。",
   });
 
-  // 3. 后台异步发送邮件（不阻塞响应）
+  // 3. 后台异步发送邮件（使用 SendGrid）
   setImmediate(async () => {
+    if (!process.env.SENDGRID_API_KEY) {
+      console.warn("! 未配置 SENDGRID_API_KEY，邮件未发送");
+      return;
+    }
+
     try {
-      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        const typeMap = {
-          bug: "🐞 Bug报告",
-          optimize: "✨ 优化建议",
-          suggestion: "💡 意见",
-          question: "❓ 疑问",
-        };
-        const subject = typeMap[type] || "意见反馈";
-        let htmlContent = `<h2>用户反馈</h2>
-          <p><strong>用户邮箱：</strong> ${user}</p>
-          <p><strong>类型：</strong> ${subject}</p>
-          <p><strong>描述：</strong></p>
-          <p>${description.replace(/\n/g, "<br>")}</p>`;
-        let attachments = [];
-        if (imageBase64) {
-          const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
-          if (matches) {
-            const buffer = Buffer.from(matches[2], "base64");
-            attachments.push({
-              filename: `screenshot.${matches[1]}`,
-              content: buffer,
-              contentType: `image/${matches[1]}`,
-            });
-          } else {
-            try {
-              const buffer = Buffer.from(imageBase64, "base64");
-              attachments.push({
-                filename: "screenshot.png",
-                content: buffer,
-                contentType: "image/png",
-              });
-            } catch (err) {}
-          }
+      const typeMap = {
+        bug: "🐞 Bug报告",
+        optimize: "✨ 优化建议",
+        suggestion: "💡 意见",
+        question: "❓ 疑问",
+      };
+      const subject = typeMap[type] || "意见反馈";
+      let htmlContent = `<h2>用户反馈</h2>
+        <p><strong>用户邮箱：</strong> ${user}</p>
+        <p><strong>类型：</strong> ${subject}</p>
+        <p><strong>描述：</strong></p>
+        <p>${description.replace(/\n/g, "<br>")}</p>`;
+
+      let attachments = [];
+      if (imageBase64) {
+        // 从 data:image/xxx;base64,... 中提取纯 base64 数据
+        const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (matches) {
+          attachments.push({
+            content: matches[2], // 纯 base64 字符串
+            filename: `screenshot.${matches[1]}`,
+            type: `image/${matches[1]}`,
+            disposition: "attachment",
+          });
+        } else {
+          // 如果不是标准 data URL，尝试直接当作 base64 使用
+          attachments.push({
+            content: imageBase64,
+            filename: "screenshot.png",
+            type: "image/png",
+            disposition: "attachment",
+          });
         }
-        await emailTransporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: process.env.EMAIL_USER,
-          subject: `【反馈】${subject}`,
-          html: htmlContent,
-          attachments,
-        });
-        console.log("反馈邮件已发送");
-      } else {
-        console.warn("邮件未配置，仅保存到数据库");
       }
+
+      const msg = {
+        to: "kevin88ye88@gmail.com", // 管理员邮箱
+        from: "kevin88ye88@gmail.com", // 必须在 SendGrid 中验证的发件人邮箱
+        subject: `【反馈】${subject}`,
+        html: htmlContent,
+        attachments: attachments,
+      };
+
+      await sgMail.send(msg);
+      console.log("✓ 反馈邮件已通过 SendGrid API 发送");
     } catch (mailErr) {
-      console.error("邮件发送失败（不影响反馈保存）:", mailErr.message);
+      console.error("✗ 邮件发送失败（不影响反馈保存）:", mailErr.message);
+      if (mailErr.response) {
+        console.error("SendGrid 详细错误:", mailErr.response.body);
+      }
     }
   });
 });

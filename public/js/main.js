@@ -804,8 +804,17 @@ function resetCameraToCenter() {
 
 function buildScene(state, centerX, centerY) {
   if (state === "root") {
-    // 确保根节点居中显示
     resetCameraToCenter();
+    // 确保相机最终位置正确（防止被后续操作覆盖）
+    setTimeout(() => {
+      const camera = document.getElementById("camera");
+      if (
+        camera &&
+        camera.style.transform !== `translate(${camX}px, ${camY}px)`
+      ) {
+        camera.style.transform = `translate(${camX}px, ${camY}px)`;
+      }
+    }, 50);
     createNode("时间", centerX - 150, centerY, "main circle", () =>
       renderArchive("time"),
     );
@@ -1665,7 +1674,6 @@ function showSection(id) {
       .querySelectorAll("#camera .year-frame-outer, #camera .year-frame-inner")
       .forEach((el) => el.remove());
     currentFrameBounds = null;
-    // 显示首页元素，隐藏 archive-stage
     document
       .querySelectorAll(".top-left, .search-area, .poem-right")
       .forEach((el) => (el.style.display = "block"));
@@ -1673,13 +1681,12 @@ function showSection(id) {
     document.getElementById("confirm-btn").style.display = "none";
   } else {
     // 进入 archive 模式
-    const camera = document.getElementById("camera");
-    if (camera) camera.style.transform = "translate(0px, 0px)";
     document
       .querySelectorAll(".top-left, .search-area, .poem-right")
       .forEach((el) => (el.style.display = "none"));
     document.getElementById("archive-stage").style.display = "block";
     document.getElementById("confirm-btn").style.display = "block";
+    // 重置相机偏移变量（不要手动设置 camera.style.transform）
     camX = 0;
     camY = 0;
     renderArchive("root");

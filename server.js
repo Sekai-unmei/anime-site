@@ -926,6 +926,7 @@ app.get("/api/check-profile-intro", (req, res) => {
 });
 
 // ========== 邮件反馈（使用显式 SMTP + 本地文件备份） ==========
+// ========== 反馈接口（异步邮件 + 文件备份） ==========
 const emailTransporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
@@ -934,6 +935,99 @@ const emailTransporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+});
+
+app.post("/api/report", async (req, res) => {
+  const { type, description, imageBase64 } = req.body;
+  const user = req.session.user || "匿名用户";
+  if (!description) {
+    return res.status(400).json({ error: "描述不能为空" });
+  }
+
+  // 1. 立即返回成功，前端不再等待
+  res.json({ success: true, note: "反馈已收到，感谢支持" });
+
+  // 2. 后台异步处理：保存文件 + 发送邮件
+  setImmediate(async () => {
+    try {
+      // 准备邮件内容
+      const typeMap = {
+        bug: "🐞 Bug报告",
+        optimize: "✨ 优化建议",
+        suggestion: "💡 意见",
+        question: "❓ 疑问",
+      };
+      const subject = typeMap[type] || "意见反馈";
+      let htmlContent = `
+        <h2>用户反馈</h2>
+        <p><strong>用户邮箱：</strong> ${user}</p>
+        <p><strong>类型：</strong> ${subject}</p>
+        <p><strong>描述：</strong></p>
+        <p>${description.replace(/\n/g, "<br>")}</p>
+      `;
+      let attachments = [];
+      if (imageBase64) {
+        const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (matches) {
+          const ext = matches[1];
+          const buffer = Buffer.from(matches[2], "base64");
+          attachments.push({
+            filename: `screenshot.${ext}`,
+            content: buffer,
+            contentType: `image/${ext}`,
+          });
+        } else {
+          try {
+            const buffer = Buffer.from(imageBase64, "base64");
+            attachments.push({
+              filename: "screenshot.png",
+              content: buffer,
+              contentType: "image/png",
+            });
+          } catch (err) {}
+        }
+      }
+
+      // 保存到本地文件（备份）
+      const FEEDBACK_DIR = path.join(__dirname, "feedbacks");
+      if (!fs.existsSync(FEEDBACK_DIR)) {
+        fs.mkdirSync(FEEDBACK_DIR, { recursive: true });
+      }
+      const fileName = `${Date.now()}_${user.replace(/[^a-zA-Z0-9]/g, "_")}.json`;
+      fs.writeFileSync(
+        path.join(FEEDBACK_DIR, fileName),
+        JSON.stringify(
+          {
+            type,
+            description,
+            user,
+            hasImage: !!imageBase64,
+            timestamp: new Date().toISOString(),
+          },
+          null,
+          2,
+        ),
+        "utf8",
+      );
+      console.log(`反馈已备份到文件: ${fileName}`);
+
+      // 尝试发送邮件（非阻塞）
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        await emailTransporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: process.env.EMAIL_USER,
+          subject: `【反馈】${subject}`,
+          html: htmlContent,
+          attachments,
+        });
+        console.log("反馈邮件已发送");
+      } else {
+        console.warn("邮件未配置，仅保存到文件");
+      }
+    } catch (err) {
+      console.error("后台处理反馈失败:", err);
+    }
+  });
 });
 
 app.post("/api/report", async (req, res) => {

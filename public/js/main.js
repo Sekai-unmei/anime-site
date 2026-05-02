@@ -802,7 +802,7 @@ function renderArchive(state) {
     currentFrameBounds = null;
     nodesCache = { years: new Map(), months: new Map(), tags: new Map() };
 
-    // ✅ 只在状态切换时清除所有连线（包括年份、月份、类型连线）
+    // ✅ 只在状态切换时清除所有连线（年份、月份、类型连线全部清除，随后由 buildScene 重新绘制）
     svgCache
       .querySelectorAll("line, linearGradient")
       .forEach((el) => el.remove());
@@ -816,7 +816,7 @@ function renderArchive(state) {
     }
     setTimeout(() => resizeCanvasToFit(200), 50);
   } else {
-    // --- 相同状态：只更新选择样式（不清除全部连线，只由 rebuildXXX 处理特定连线）---
+    // --- 相同状态：只更新选择样式（不清除全部连线）---
     updateNodeSelection(state);
     setTimeout(() => resizeCanvasToFit(200), 50);
   }

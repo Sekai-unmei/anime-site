@@ -959,99 +959,47 @@ app.post("/api/report", async (req, res) => {
   let errorMsg = null;
 
   try {
-    // 保存到 MongoDB（同步等待）
     const feedback = new Feedback({
       type,
       description,
       user,
       hasImage: !!imageBase64,
-      // 不存 base64 图片数据，避免数据库过大
     });
     await feedback.save();
     saved = true;
-    console.log(`反馈已保存到数据库，ID: ${feedback._id}`);
   } catch (dbErr) {
-    console.error("保存反馈到数据库失败:", dbErr);
-    errorMsg = "数据库保存失败，请稍后重试";
-    return res.status(500).json({ success: false, error: errorMsg });
+    console.error("保存失败:", dbErr);
+    return res.status(500).json({ success: false, error: "数据库保存失败" });
   }
 
-  // 尝试发送邮件（不阻塞响应，但我们会等待它完成以报告结果）
+  // 尝试发送邮件（等待结果，但不影响响应）
   try {
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      const typeMap = {
-        bug: "🐞 Bug报告",
-        optimize: "✨ 优化建议",
-        suggestion: "💡 意见",
-        question: "❓ 疑问",
-      };
-      const subject = typeMap[type] || "意见反馈";
-      let htmlContent = `
-        <h2>用户反馈</h2>
-        <p><strong>用户邮箱：</strong> ${user}</p>
-        <p><strong>类型：</strong> ${subject}</p>
-        <p><strong>描述：</strong></p>
-        <p>${description.replace(/\n/g, "<br>")}</p>
-      `;
-      let attachments = [];
-      if (imageBase64) {
-        const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (matches) {
-          const ext = matches[1];
-          const buffer = Buffer.from(matches[2], "base64");
-          attachments.push({
-            filename: `screenshot.${ext}`,
-            content: buffer,
-            contentType: `image/${ext}`,
-          });
-        } else {
-          try {
-            const buffer = Buffer.from(imageBase64, "base64");
-            attachments.push({
-              filename: "screenshot.png",
-              content: buffer,
-              contentType: "image/png",
-            });
-          } catch (err) {}
-        }
-      }
       const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
         port: 465,
         secure: true,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
+        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
       });
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: process.env.EMAIL_USER,
-        subject: `【反馈】${subject}`,
-        html: htmlContent,
-        attachments,
+        subject: "反馈",
+        text: description,
       });
       emailSent = true;
-      console.log("反馈邮件已发送");
-    } else {
-      console.warn("邮件未配置，未发送邮件");
     }
   } catch (mailErr) {
-    console.error("邮件发送失败:", mailErr.message);
-    // 邮件失败不影响整体成功，只记录状态
+    console.error("邮件失败:", mailErr.message);
   }
 
-  // 返回真实结果
   res.json({
     success: true,
     saved: true,
     emailSent: emailSent,
-    message: emailSent
-      ? "反馈已保存并将通过邮件通知"
-      : "反馈已保存，但邮件通知发送失败（您可以查看管理后台）",
+    message: emailSent ? "已保存并邮件通知" : "已保存，但邮件发送失败",
   });
 });
-
 // ========== 管理后台：查看反馈列表（从 MongoDB 读取） ==========
 app.get("/admin/feedbacks", async (req, res) => {
   const adminEmail = "kevin88ye88@gmail.com";

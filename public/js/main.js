@@ -582,7 +582,8 @@ function drawGradientLine(
   type = "line",
 ) {
   const svg = svgCache;
-  if (!svg) return { start: { x: x1, y: y1 }, end: { x: x2, y: y2 } };
+  if (!svg)
+    return { start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, line: null };
   const angle = Math.atan2(y2 - y1, x2 - x1);
   const sx = x1 + Math.cos(angle) * r1,
     sy = y1 + Math.sin(angle) * r1;
@@ -628,7 +629,8 @@ function drawGradientLine(
     line.style.opacity = "0.3";
   }
   svg.appendChild(line);
-  return { start: { x: sx, y: sy }, end: { x: ex, y: ey } };
+  // 🔥 返回 line 元素以便后续更新样式
+  return { start: { x: sx, y: sy }, end: { x: ex, y: ey }, line: line };
 }
 
 function createNode(txt, x, y, cls, onClick) {
@@ -963,7 +965,7 @@ function buildScene(state, centerX, centerY) {
       },
     ];
     layouts.forEach((s) => {
-      drawGradientLine(
+      const lineResult = drawGradientLine(
         anchorX,
         anchorY,
         s.x,
@@ -978,6 +980,7 @@ function buildScene(state, centerX, centerY) {
         toggleMonth(s.m, s.x, s.y, s.color),
       );
       node.style.borderColor = s.color;
+      node.line = lineResult.line; // ✅ 保存连线元素到节点上
       nodesCache.months.set(s.m, node);
     });
   } else if (state === "type_grid") {
@@ -1062,7 +1065,7 @@ function buildScene(state, centerX, centerY) {
       const nx = centerX + Math.cos(angle) * r,
         ny = centerY + Math.sin(angle) * r;
       const myColor = colors[i % colors.length];
-      drawGradientLine(
+      const lineResult = drawGradientLine(
         centerX,
         centerY,
         nx,
@@ -1076,6 +1079,7 @@ function buildScene(state, centerX, centerY) {
       const node = createNode(tag, nx, ny, "tag-node", () =>
         toggleTag(tag, nx, ny, myColor),
       );
+      node.line = lineResult.line; // ✅ 保存连线元素到节点上
       // 强制圆形边框样式
       node.style.border = `2px solid ${myColor}`;
       node.style.borderRadius = "50%";
@@ -1085,9 +1089,10 @@ function buildScene(state, centerX, centerY) {
       node.style.alignItems = "center";
       node.style.justifyContent = "center";
       node.style.width = "auto";
-      node.style.padding = "12px 16px"; // 适当内边距，让文字居中
+      node.style.padding = "12px 16px";
       node.style.whiteSpace = "nowrap";
       node.style.fontSize = "14px";
+      nodesCache.tags.set(tag, node);
     });
   }
 }
@@ -1132,6 +1137,43 @@ function resizeCanvasToFit(padding = 200) {
     window.particleSystem.resizeToFit();
   }
   console.log(`画布动态收缩至 ${newWidth} x ${newHeight}`);
+}
+/**
+ * 直接更新所有月份连线的选中样式（不删除重建）
+ */
+function updateMonthLinksSelection() {
+  nodesCache.months.forEach((node, m) => {
+    if (node.line) {
+      const isActive = currentChoice.months.includes(m);
+      const color = getMonthColor(m);
+      node.line.setAttribute("stroke-width", isActive ? "3" : "1.5");
+      node.line.style.opacity = isActive ? "1" : "0.3";
+      if (isActive) {
+        node.line.style.filter = `drop-shadow(0 0 8px ${color})`;
+      } else {
+        node.line.style.filter = "";
+      }
+    }
+  });
+}
+
+/**
+ * 直接更新所有类型连线的选中样式（不删除重建）
+ */
+function updateTagLinksSelection() {
+  nodesCache.tags.forEach((node, tag) => {
+    if (node.line) {
+      const isActive = currentChoice.tags.includes(tag);
+      const color = getTagColor(tag);
+      node.line.setAttribute("stroke-width", isActive ? "3" : "1.5");
+      node.line.style.opacity = isActive ? "1" : "0.3";
+      if (isActive) {
+        node.line.style.filter = `drop-shadow(0 0 8px ${color})`;
+      } else {
+        node.line.style.filter = "";
+      }
+    }
+  });
 }
 
 function updateNodeSelection(state) {

@@ -1,4 +1,4 @@
-// ==================== 公共函数（完整无删减，支持自定义头像） ====================
+// ==================== 公共函数（完整版，含反馈功能） ====================
 if (window._commonLoaded) {
   console.warn("common.js 已加载，跳过重复执行");
 } else {
@@ -17,7 +17,7 @@ if (window._commonLoaded) {
     }, duration);
   };
 
-  // 辅助：头像加载失败时的回退（仅用于显示默认灰图，不强制 Gravatar）
+  // 辅助：头像加载失败时的回退
   window.handleAvatarError = function (imgElement) {
     if (imgElement.src.includes("gravatar.com")) return;
     imgElement.src =
@@ -25,7 +25,7 @@ if (window._commonLoaded) {
     imgElement.onerror = null;
   };
 
-  // ---------- 带 session 的 fetch ----------
+  // 带 session 的 fetch
   window.authFetch = async function (url, options = {}) {
     options.credentials = "include";
     if (options.body && typeof options.body === "object") {
@@ -38,7 +38,7 @@ if (window._commonLoaded) {
     return fetch(url, options);
   };
 
-  // ---------- HTML 转义 ----------
+  // HTML 转义
   window.escapeHtml = function (str) {
     if (!str) return "";
     return String(str).replace(/[&<>]/g, function (m) {
@@ -49,7 +49,7 @@ if (window._commonLoaded) {
     });
   };
 
-  // ---------- 自定义模态框 ----------
+  // 自定义模态框
   window.showCustomModal = function (options) {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
@@ -107,7 +107,7 @@ if (window._commonLoaded) {
     });
   };
 
-  // ---------- 获取用户头像（带缓存，直接从服务器读取） ----------
+  // ---------- 获取用户头像（带缓存） ----------
   let avatarCache = {};
   window.getUserAvatar = async function (email) {
     if (avatarCache[email]) return avatarCache[email];
@@ -129,7 +129,7 @@ if (window._commonLoaded) {
     return "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp";
   };
 
-  // ---------- 获取当前用户信息（直接返回服务器数据，不做任何修改） ----------
+  // ---------- 获取当前用户信息 ----------
   let cachedUser = null;
   window.getCurrentUser = async function (forceRefresh = false) {
     if (!forceRefresh && cachedUser) return cachedUser;
@@ -137,14 +137,13 @@ if (window._commonLoaded) {
       const res = await fetch("/api/user/current", { credentials: "include" });
       if (res.ok) {
         cachedUser = await res.json();
-        // 完全信任服务器返回的头像（可能是用户上传的 Base64 或 Gravatar）
         return cachedUser;
       }
     } catch (e) {}
     return null;
   };
 
-  // 同步左下角头像（使用用户实际保存在服务器的头像）
+  // 同步左下角头像
   window.syncUserAvatar = async function () {
     const user = await window.getCurrentUser(true);
     if (!user) return;
@@ -182,7 +181,7 @@ if (window._commonLoaded) {
     }, 5000);
   };
 
-  // ---------- 加载通知列表 ----------
+  // 加载通知列表
   window.loadNotificationList = async function () {
     const container = document.getElementById("notificationList");
     if (!container) return;
@@ -496,14 +495,14 @@ if (window._commonLoaded) {
     }
   };
 
-  // ---------- 小红点更新 ----------
+  // 小红点更新
   let lastUnreadCount = 0;
   window.updateBadge = function (unreadCount) {
     const badge = document.getElementById("avatarBadge");
     if (badge) badge.style.display = unreadCount > 0 ? "block" : "none";
   };
 
-  // ---------- 轮询新消息 ----------
+  // 轮询新消息
   let pollIntervalId = null;
   window.checkNotifications = async function () {
     try {
@@ -549,7 +548,7 @@ if (window._commonLoaded) {
     }, 2000);
   };
 
-  // ---------- 侧边栏事件绑定 ----------
+  // 侧边栏事件绑定
   window.initSidebarEvents = function () {
     document
       .getElementById("closeSideMenuBtn")
@@ -587,28 +586,142 @@ if (window._commonLoaded) {
         if (e.key === "Enter") window.sendMessage();
       });
   };
-  // 统一初始化左下角头像（如果元素存在且用户已登录）
+
+  // 初始化左下角头像
   (function initAvatarIfNeeded() {
-    // 检查是否有头像元素
     const avatarIcon = document.getElementById("avatarIcon");
     if (!avatarIcon) return;
-
-    // 检查是否在登录页面（简单通过 URL 判断，或者直接调用 syncUserAvatar，它会自动处理未登录）
-    // syncUserAvatar 内部会调用 getCurrentUser，未登录时返回 null，不会有副作用
     syncUserAvatar();
   })();
 
-  // 自动初始化头像（如果页面有头像元素）
-  (function () {
-    if (document.getElementById("avatarIcon")) {
-      // 等待 DOM 完全加载后再执行，确保元素存在
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => syncUserAvatar());
-      } else {
-        syncUserAvatar();
-      }
-    }
-  })();
+  // ========== 新增：全局意见反馈功能 ==========
+  window.compressImage = function (file, maxWidth = 800, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              const reader2 = new FileReader();
+              reader2.onload = () => resolve(reader2.result);
+              reader2.readAsDataURL(blob);
+            },
+            "image/jpeg",
+            quality,
+          );
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
-  console.log("common.js 已加载完成");
+  window.initReportModal = function () {
+    const reportModal = document.getElementById("reportModal");
+    const reportType = document.getElementById("reportType");
+    const reportDesc = document.getElementById("reportDesc");
+    const reportImage = document.getElementById("reportImage");
+    const imagePreview = document.getElementById("imagePreview");
+    const submitReportBtn = document.getElementById("submitReportBtn");
+    const closeReportBtn = document.getElementById("closeReportBtn");
+    const feedbackBtn = document.getElementById("feedbackBtn");
+
+    if (!reportModal || !submitReportBtn) {
+      console.warn("反馈模态框或按钮不存在，跳过初始化");
+      return;
+    }
+
+    // 打开模态框
+    if (feedbackBtn) {
+      feedbackBtn.onclick = () => {
+        reportModal.style.display = "flex";
+      };
+    }
+
+    // 关闭模态框
+    const closeModal = () => {
+      reportModal.style.display = "none";
+      if (reportType) reportType.value = "bug";
+      if (reportDesc) reportDesc.value = "";
+      if (reportImage) reportImage.value = "";
+      if (imagePreview) imagePreview.innerHTML = "";
+    };
+    if (closeReportBtn) closeReportBtn.onclick = closeModal;
+    reportModal.onclick = (e) => {
+      if (e.target === reportModal) closeModal();
+    };
+
+    // 图片预览
+    if (reportImage) {
+      reportImage.onchange = function (e) {
+        const file = e.target.files[0];
+        if (file && imagePreview) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            imagePreview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:150px;border-radius:8px;border:1px solid #ffd700">`;
+          };
+          reader.readAsDataURL(file);
+        } else if (imagePreview) {
+          imagePreview.innerHTML = "";
+        }
+      };
+    }
+
+    // 提交反馈
+    submitReportBtn.onclick = async () => {
+      const type = reportType ? reportType.value : "bug";
+      const description = reportDesc ? reportDesc.value.trim() : "";
+      if (!description) {
+        window.showToast("请填写问题描述");
+        return;
+      }
+      const file = reportImage && reportImage.files[0];
+      let imageBase64 = null;
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) {
+          window.showToast("图片不能超过 10MB");
+          return;
+        }
+        imageBase64 = await window.compressImage(file);
+      }
+      try {
+        const res = await fetch("/api/report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            type,
+            description,
+            imageBase64: imageBase64 || null,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.showToast("反馈已提交，感谢您的支持！");
+          closeModal();
+        } else {
+          window.showToast("提交失败：" + (data.error || "请稍后重试"));
+        }
+      } catch (err) {
+        console.error(err);
+        window.showToast("网络错误，请重试");
+      }
+    };
+  };
+
+  console.log("common.js 已加载完成（含反馈功能）");
 }

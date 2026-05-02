@@ -736,6 +736,10 @@ function initDragSystem() {
   window.addEventListener("touchend", onPointerUp);
 }
 
+if (state === "root") {
+  resetCameraToCenter();
+}
+
 // ========== 5. 场景渲染与切换 ==========
 function renderArchive(state) {
   const camera = document.getElementById("camera");
@@ -767,11 +771,6 @@ function renderArchive(state) {
     window.particleSystem = new ParticleSystem();
   } else if (!camera.contains(window.particleSystem.canvas)) {
     camera.appendChild(window.particleSystem.canvas);
-  }
-
-  // ★ 关键：进入 root 状态时强制相机对准中心
-  if (state === "root") {
-    resetCameraToCenter();
   }
 
   // 状态切换时重建场景
@@ -809,7 +808,6 @@ function resetCameraToCenter() {
 
 function buildScene(state, centerX, centerY) {
   if (state === "root") {
-    moveCamera(centerX, centerY); // 可以保留，但 resetCameraToCenter 已经做了更好
     createNode("时间", centerX - 150, centerY, "main circle", () =>
       renderArchive("time"),
     );
@@ -1657,8 +1655,7 @@ function updateConfirmBtn(immediate = false) {
 function showSection(id) {
   const isArchive = id === "archive";
   if (!isArchive) {
-    // 离开 archive 模式时，重置相机并清除粒子、框架等
-    resetCamera();
+    // 离开 archive 模式时，清理粒子、框架等
     if (window.particleSystem) {
       if (window.particleSystem.linkInterval)
         clearInterval(window.particleSystem.linkInterval);
@@ -1678,13 +1675,13 @@ function showSection(id) {
     document.getElementById("confirm-btn").style.display = "none";
   } else {
     // 进入 archive 模式
-    // 进入 archive 模式
+    const camera = document.getElementById("camera");
+    if (camera) camera.style.transform = "translate(0px, 0px)";
     document
       .querySelectorAll(".top-left, .search-area, .poem-right")
       .forEach((el) => (el.style.display = "none"));
     document.getElementById("archive-stage").style.display = "block";
     document.getElementById("confirm-btn").style.display = "block";
-    // 重置相机偏移变量
     camX = 0;
     camY = 0;
     renderArchive("root");

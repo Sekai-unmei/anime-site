@@ -683,7 +683,8 @@ function initDragSystem() {
     startCamX = 0,
     startCamY = 0,
     isDragging = false,
-    dragThreshold = 8;
+    dragThreshold = 15;
+
   const onPointerDown = (e) => {
     const p = e.touches ? e.touches[0] : e;
     startX = p.clientX;
@@ -693,11 +694,17 @@ function initDragSystem() {
     isDragging = false;
     camera.style.transition = "none";
   };
+
   const onPointerMove = (e) => {
+    // ✅ 关键修复：根视图下禁止拖拽，防止点击时误移动
+    if (lastState === "root") return;
+
     const p = e.touches ? e.touches[0] : e;
     const dx = p.clientX - startX,
       dy = p.clientY - startY;
-    if (!isDragging && Math.hypot(dx, dy) > dragThreshold) isDragging = true;
+    if (!isDragging && Math.hypot(dx, dy) > dragThreshold) {
+      isDragging = true;
+    }
     if (isDragging) {
       e.preventDefault();
       camX = startCamX + dx;
@@ -705,10 +712,12 @@ function initDragSystem() {
       camera.style.transform = `translate(${camX}px, ${camY}px)`;
     }
   };
+
   const onPointerUp = () => {
     isDragging = false;
     camera.style.transition = "transform 0.6s ease-out";
   };
+
   stage.addEventListener("mousedown", onPointerDown);
   window.addEventListener("mousemove", onPointerMove);
   window.addEventListener("mouseup", onPointerUp);

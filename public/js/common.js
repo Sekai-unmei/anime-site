@@ -629,21 +629,21 @@ if (window._commonLoaded) {
       reader.readAsDataURL(file);
     });
   };
-
   window.initReportModal = function () {
     const reportModal = document.getElementById("reportModal");
+    const submitReportBtn = document.getElementById("submitReportBtn");
+    if (!reportModal || !submitReportBtn) {
+      console.warn("反馈模态框或按钮不存在，2秒后重试");
+      setTimeout(window.initReportModal, 2000);
+      return;
+    }
+    console.log("反馈模态框初始化成功，绑定事件");
     const reportType = document.getElementById("reportType");
     const reportDesc = document.getElementById("reportDesc");
     const reportImage = document.getElementById("reportImage");
     const imagePreview = document.getElementById("imagePreview");
-    const submitReportBtn = document.getElementById("submitReportBtn");
     const closeReportBtn = document.getElementById("closeReportBtn");
     const feedbackBtn = document.getElementById("feedbackBtn");
-
-    if (!reportModal || !submitReportBtn) {
-      console.warn("反馈模态框或按钮不存在，跳过初始化");
-      return;
-    }
 
     // 打开模态框
     if (feedbackBtn) {
@@ -681,24 +681,30 @@ if (window._commonLoaded) {
       };
     }
 
-    // 提交反馈
-    submitReportBtn.onclick = async () => {
-      const type = reportType ? reportType.value : "bug";
-      const description = reportDesc ? reportDesc.value.trim() : "";
-      if (!description) {
-        window.showToast("请填写问题描述");
-        return;
-      }
-      const file = reportImage && reportImage.files[0];
-      let imageBase64 = null;
-      if (file) {
-        if (file.size > 10 * 1024 * 1024) {
-          window.showToast("图片不能超过 10MB");
+    // 提交处理函数
+    const handleSubmit = async () => {
+      console.log("提交反馈被点击");
+      try {
+        const type = reportType ? reportType.value : "bug";
+        const description = reportDesc ? reportDesc.value.trim() : "";
+        if (!description) {
+          window.showToast("请填写问题描述");
           return;
         }
-        imageBase64 = await window.compressImage(file);
-      }
-      try {
+        const file = reportImage && reportImage.files[0];
+        let imageBase64 = null;
+        if (file) {
+          if (file.size > 10 * 1024 * 1024) {
+            window.showToast("图片不能超过 10MB");
+            return;
+          }
+          if (typeof window.compressImage === "function") {
+            imageBase64 = await window.compressImage(file);
+          } else {
+            window.showToast("图片处理失败，请刷新页面重试");
+            return;
+          }
+        }
         const res = await fetch("/api/report", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -717,11 +723,13 @@ if (window._commonLoaded) {
           window.showToast("提交失败：" + (data.error || "请稍后重试"));
         }
       } catch (err) {
-        console.error(err);
+        console.error("反馈提交错误:", err);
         window.showToast("网络错误，请重试");
       }
     };
+    // 移除旧监听并添加新监听
+    submitReportBtn.removeEventListener("click", handleSubmit);
+    submitReportBtn.addEventListener("click", handleSubmit);
   };
-
   console.log("common.js 已加载完成（含反馈功能）");
 }

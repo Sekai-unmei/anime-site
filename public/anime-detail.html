@@ -817,7 +817,6 @@
       let lastMessageIds = [];
 
       // ========== 加载动漫详情 ==========
-
       async function loadAnime() {
         const pathId = window.location.pathname.split("/").pop();
         if (!pathId) {
@@ -1196,24 +1195,37 @@
         });
       });
 
-      // ========== 启动 ==========
-      syncUserAvatar();
-      initSidebarEvents();
-      startPolling();
-      loadAnime();
-      modal.addEventListener("click", (e) => {
-        if (e.target === modal) closeModal();
-      });
-      window.addEventListener("profileUpdated", () => {
-        applyCommentColor();
-      });
-
-      // 初始化反馈模态框（使用 common.js 的全局函数）
-      if (typeof initReportModal === "function") {
-        initReportModal();
-      } else {
-        console.warn("initReportModal not found, 请检查 common.js");
+      // ========== 获取当前登录用户邮箱（异步，等待完成） ==========
+      async function fetchCurrentUserEmail() {
+        const user = await getCurrentUser();
+        if (user && user.email) {
+          currentUserEmail = user.email;
+          console.log("当前用户邮箱:", currentUserEmail);
+        } else {
+          console.warn("未获取到用户邮箱，删除按钮不可用");
+        }
       }
+
+      // ========== 启动（等待邮箱后再加载内容，确保删除按钮显示） ==========
+      (async function initPage() {
+        await fetchCurrentUserEmail(); // 等待邮箱获取完成
+        syncUserAvatar();
+        initSidebarEvents();
+        startPolling();
+        loadAnime(); // 此时 currentUserEmail 已有值，评论渲染时删除按钮会正确显示
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) closeModal();
+        });
+        window.addEventListener("profileUpdated", () => {
+          applyCommentColor();
+        });
+        // 初始化反馈模态框（common.js 提供的函数）
+        if (typeof initReportModal === "function") {
+          initReportModal();
+        } else {
+          console.warn("initReportModal not found, 请检查 common.js");
+        }
+      })();
     </script>
   </body>
 </html>

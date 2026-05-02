@@ -678,14 +678,34 @@ function initDragSystem() {
   const stage = document.getElementById("archive-stage"),
     camera = document.getElementById("camera");
   if (!stage || !camera) return;
+
   let startX = 0,
     startY = 0,
     startCamX = 0,
-    startCamY = 0,
-    isDragging = false,
-    dragThreshold = 15;
+    startCamY = 0;
+  let isDragging = false;
+  let dragThreshold = 8; // 移动超过此像素才判定为拖拽
+  let dragEnabled = false; // 当前是否允许拖拽（必须从背景按下）
+  let startTargetIsDraggable = false; // 按下的目标是否属于可拖拽背景
 
   const onPointerDown = (e) => {
+    // 根视图完全禁止拖拽
+    if (lastState === "root") return;
+
+    const target = e.target;
+    // 判断按下的元素是否属于可拖拽背景：不是节点，也不是年份框
+    const isDraggableBackground = !target.closest(
+      ".node-item, .year-frame-outer, .year-frame-inner, .tag-node, .month-node, .year-tag",
+    );
+
+    if (!isDraggableBackground) {
+      // 按在了按钮或节点上，不激活拖拽
+      dragEnabled = false;
+      return;
+    }
+
+    // 从背景开始，准备拖拽
+    dragEnabled = true;
     const p = e.touches ? e.touches[0] : e;
     startX = p.clientX;
     startY = p.clientY;
@@ -693,18 +713,21 @@ function initDragSystem() {
     startCamY = camY;
     isDragging = false;
     camera.style.transition = "none";
+    e.preventDefault(); // 避免选中文本
   };
 
   const onPointerMove = (e) => {
-    // ✅ 关键修复：根视图下禁止拖拽，防止点击时误移动
-    if (lastState === "root") return;
+    if (!dragEnabled) return; // 没有从背景按下，忽略移动
+    if (lastState === "root") return; // 根视图下不应有拖拽（安全兜底）
 
     const p = e.touches ? e.touches[0] : e;
     const dx = p.clientX - startX,
       dy = p.clientY - startY;
+
     if (!isDragging && Math.hypot(dx, dy) > dragThreshold) {
       isDragging = true;
     }
+
     if (isDragging) {
       e.preventDefault();
       camX = startCamX + dx;
@@ -714,6 +737,12 @@ function initDragSystem() {
   };
 
   const onPointerUp = () => {
+    if (!dragEnabled) {
+      dragEnabled = false;
+      return;
+    }
+    // 如果从未触发拖拽（即只是轻点背景），什么都不做
+    dragEnabled = false;
     isDragging = false;
     camera.style.transition = "transform 0.6s ease-out";
   };

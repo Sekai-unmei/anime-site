@@ -681,41 +681,64 @@ if (window._commonLoaded) {
       };
     }
 
-    // 提交处理函数
+    // 提交反馈处理函数（带详细日志和错误捕获）
     const handleSubmit = async () => {
-      console.log("提交反馈被点击");
+      console.log("【反馈】开始提交");
       try {
         const type = reportType ? reportType.value : "bug";
         const description = reportDesc ? reportDesc.value.trim() : "";
+        console.log("【反馈】类型:", type, "描述:", description);
         if (!description) {
           window.showToast("请填写问题描述");
           return;
         }
+
         const file = reportImage && reportImage.files[0];
         let imageBase64 = null;
         if (file) {
+          console.log(
+            "【反馈】检测到图片文件，大小:",
+            (file.size / 1024).toFixed(2),
+            "KB",
+          );
           if (file.size > 10 * 1024 * 1024) {
             window.showToast("图片不能超过 10MB");
             return;
           }
-          if (typeof window.compressImage === "function") {
-            imageBase64 = await window.compressImage(file);
-          } else {
-            window.showToast("图片处理失败，请刷新页面重试");
+          if (typeof window.compressImage !== "function") {
+            window.showToast("图片处理函数未加载，请刷新页面重试");
+            console.error("【反馈】compressImage 未定义");
             return;
           }
+          try {
+            console.log("【反馈】开始压缩图片...");
+            imageBase64 = await window.compressImage(file);
+            console.log("【反馈】压缩完成，Base64 长度:", imageBase64.length);
+          } catch (compressErr) {
+            console.error("【反馈】图片压缩失败:", compressErr);
+            window.showToast("图片处理失败，请换一张图片或重试");
+            return;
+          }
+        } else {
+          console.log("【反馈】无图片");
         }
+
+        const payload = { type, description, imageBase64: imageBase64 || null };
+        console.log(
+          "【反馈】发送请求 payload 类型:",
+          typeof payload,
+          "图片base64长度:",
+          payload.imageBase64 ? payload.imageBase64.length : 0,
+        );
         const res = await fetch("/api/report", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            type,
-            description,
-            imageBase64: imageBase64 || null,
-          }),
+          body: JSON.stringify(payload),
         });
+        console.log("【反馈】收到响应，HTTP 状态:", res.status);
         const data = await res.json();
+        console.log("【反馈】响应数据:", data);
         if (data.success) {
           window.showToast("反馈已提交，感谢您的支持！");
           closeModal();
@@ -723,11 +746,12 @@ if (window._commonLoaded) {
           window.showToast("提交失败：" + (data.error || "请稍后重试"));
         }
       } catch (err) {
-        console.error("反馈提交错误:", err);
-        window.showToast("网络错误，请重试");
+        console.error("【反馈】提交过程捕获异常:", err);
+        window.showToast("网络错误或服务器异常，请重试");
       }
     };
-    // 移除旧监听并添加新监听
+
+    // 移除旧监听，避免重复绑定
     submitReportBtn.removeEventListener("click", handleSubmit);
     submitReportBtn.addEventListener("click", handleSubmit);
   };

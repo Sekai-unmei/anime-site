@@ -106,9 +106,6 @@
     </div>
 
     <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        syncUserAvatar();
-      });
       async function loadRatingStats() {
         try {
           const res = await fetch("/api/anime/ratings-stats");

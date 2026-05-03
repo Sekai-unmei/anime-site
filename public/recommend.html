@@ -211,6 +211,11 @@
         background: #ffaa00;
         transform: scale(1.02);
       }
+      .expand-btn.disabled {
+        background: #888;
+        cursor: not-allowed;
+        transform: none;
+      }
     </style>
   </head>
 
@@ -241,12 +246,12 @@
       </div>
       <div id="mid-anime-list" class="anime-grid"></div>
 
-      <!-- 好看推荐区域：包含网格和展开按钮 -->
+      <!-- 好看推荐区域：包含网格和分页展开按钮 -->
       <div class="section-title good-title" id="good-title">🌸 好看推荐 🌸</div>
       <div id="good-anime-list" class="anime-grid"></div>
       <div id="expand-good-container" class="expand-btn-container">
         <button id="expand-good-btn" class="expand-btn">
-          展开全部好看动漫
+          展开更多好看动漫 (10)
         </button>
       </div>
 
@@ -272,10 +277,13 @@
       const tooltip = document.getElementById("tooltip");
       let hideTimeout = null;
 
-      // 存储各评级全部动漫（用于展开）
-      let allGodAnime = [];
-      let allMidAnime = [];
-      let allGoodAnime = [];
+      // 好看动漫分页相关变量
+      let goodCurrentPage = 1;
+      let goodTotalCount = 0;
+      let goodPageSize = 10; // 每次展开追加的数量
+      let goodInitialSize = 8; // 初始显示数量
+      let goodAllLoaded = false; // 是否已全部加载
+      let goodAnimeList = []; // 已经加载的所有好看动漫（用于追加渲染）
 
       async function loadUserRatings() {
         const res = await fetch("/api/user/ratings", {
@@ -300,20 +308,17 @@
         const res = await fetch("/api/anime/list?page=1&limit=1000");
         const data = await res.json();
         allAnime = data.data;
-        // 根据 rating 分类全部数据
-        allGodAnime = allAnime.filter((a) => a.rating === "神作");
-        allMidAnime = allAnime.filter((a) => a.rating === "神作之下-好看之上");
-        allGoodAnime = allAnime.filter((a) => a.rating === "好看");
       }
 
-      async function fetchAnimeByRating(rating, limit = 8) {
-        const url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=${limit}`;
+      // 通用分页请求函数（返回 { data, total }）
+      async function fetchAnimeByRating(rating, page, limit) {
+        const url = `/api/anime/list?rating=${encodeURIComponent(rating)}&page=${page}&limit=${limit}`;
         const res = await fetch(url);
         const data = await res.json();
-        return data.data.filter((a) => a.rating === rating);
+        return { data: data.data, total: data.total };
       }
 
-      // 通用渲染函数，可指定要渲染的动漫数组和容器ID
+      // 通用渲染函数（完全替换容器内容）
       function renderAnimeList(animes, containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -348,32 +353,68 @@
         }
       }
 
-      // 初始加载神作、好看、中间区域（各显示8个）
+      // 初始化加载神作和中间区域（保持原有简单加载，最多8个）
       async function loadRecommendations() {
         await loadUserRatings();
-        // 神作（取前8）
-        const godList = await fetchAnimeByRating("神作", 8);
-        renderAnimeList(godList, "god-anime-list");
-        // 中间（取前8）
-        const midList = await fetchAnimeByRating("神作之下-好看之上", 8);
-        renderAnimeList(midList, "mid-anime-list");
-        // 好看（取前8）
-        const goodList = await fetchAnimeByRating("好看", 8);
-        renderAnimeList(goodList, "good-anime-list");
+
+        // 神作（取前8个，不分页）
+        const godRes = await fetchAnimeByRating("神作", 1, 8);
+        renderAnimeList(godRes.data, "god-anime-list");
+
+        // 神作之下-好看之上（取前8个）
+        const midRes = await fetchAnimeByRating("神作之下-好看之上", 1, 8);
+        renderAnimeList(midRes.data, "mid-anime-list");
+
+        // 好看：初始加载8条，并记录总数和已加载列表
+        const firstRes = await fetchAnimeByRating("好看", 1, goodInitialSize);
+        goodTotalCount = firstRes.total;
+        goodAnimeList = [...firstRes.data];
+        renderAnimeList(goodAnimeList, "good-anime-list");
+
+        // 更新按钮状态
+        updateExpandButton();
+
         startGodParticles();
       }
 
-      // 展开全部好看动漫
-      function expandGoodList() {
-        // 使用已经存储的 allGoodAnime（全部好看动漫）
-        if (allGoodAnime.length === 0) {
-          // 如果还没加载，从 allAnime 中再次过滤确保
-          allGoodAnime = allAnime.filter((a) => a.rating === "好看");
+      // 加载更多好看动漫（追加10条）
+      async function loadMoreGood() {
+        if (goodAllLoaded) return;
+        const nextPage = goodCurrentPage + 1;
+        const { data, total } = await fetchAnimeByRating(
+          "好看",
+          nextPage,
+          goodPageSize,
+        );
+        if (data.length === 0) {
+          goodAllLoaded = true;
+          updateExpandButton();
+          return;
         }
-        renderAnimeList(allGoodAnime, "good-anime-list");
-        // 隐藏展开按钮
+        goodCurrentPage = nextPage;
+        goodTotalCount = total;
+        goodAnimeList = [...goodAnimeList, ...data];
+        renderAnimeList(goodAnimeList, "good-anime-list");
+        updateExpandButton();
+      }
+
+      // 更新展开按钮的显示文本和禁用状态
+      function updateExpandButton() {
         const btnContainer = document.getElementById("expand-good-container");
-        if (btnContainer) btnContainer.style.display = "none";
+        const btn = document.getElementById("expand-good-btn");
+        if (!btn) return;
+        const loadedCount = goodAnimeList.length;
+        const remaining = goodTotalCount - loadedCount;
+        if (remaining <= 0) {
+          btn.textContent = "已全部加载";
+          btn.disabled = true;
+          btn.classList.add("disabled");
+          return;
+        }
+        const nextBatch = Math.min(goodPageSize, remaining);
+        btn.textContent = `展开更多好看动漫 (${nextBatch})`;
+        btn.disabled = false;
+        btn.classList.remove("disabled");
       }
 
       function showTooltip(event) {
@@ -482,15 +523,14 @@
       tooltip.addEventListener("mouseleave", () =>
         tooltip.classList.remove("show"),
       );
-      // 展开按钮事件
       const expandBtn = document.getElementById("expand-good-btn");
       if (expandBtn) {
-        expandBtn.addEventListener("click", expandGoodList);
+        expandBtn.addEventListener("click", loadMoreGood);
       }
 
       (async () => {
-        await loadAllAnime(); // 获取全部数据并分类
-        await loadRecommendations(); // 初始渲染各区域前8个
+        await loadAllAnime();
+        await loadRecommendations();
       })();
     </script>
   </body>

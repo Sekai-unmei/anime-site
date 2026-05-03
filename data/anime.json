@@ -5701,11 +5701,11 @@
     "id": 440,
     "title": "女神异闻录5",
     "series_title": "女神异闻录",
-    "season": "",
-    "aliases": ["女神异闻录", "女神异闻录5"],
-    "description": "",
+    "season": "2018-4",
+    "aliases": ["女神异闻录", "女神异闻录5", "P5A"],
+    "description": "高中生主人公以“心之怪盗”身份，潜入异世界“宫殿”窃取恶人扭曲欲望的青春冒险故事",
     "recommend_text": "普通-战斗",
-    "image_url": "",
+    "image_url": "/images/普通/机架/女神异闻录/女神异闻录5.png",
     "rating": "普通",
     "genre": ["学校", "战斗", "守护灵"],
     "ratings": {
@@ -5721,13 +5721,46 @@
 
   {
     "id": 441,
-    "title": "女神异闻录5",
+    "title": "女神异闻录5 -THE DAY BREAKERS- PERSONA",
     "series_title": "女神异闻录",
-    "season": "",
-    "aliases": ["女神异闻录", "女神异闻录5"],
-    "description": "",
+    "season": "2016-9",
+    "aliases": [
+      "女神异闻录",
+      "女神异闻录5",
+      "P5A",
+      "女神异闻录5 -THE DAY BREAKERS- PERSONA",
+      "THE DAY BREAKERS- PERSONA"
+    ],
+    "description": "主人公雨宫莲等人组建“心之怪盗团”，白天作为高中生生活，夜晚通过面具力量在异世界殿堂改过自新、盗取恶人扭曲欲望的故事",
     "recommend_text": "普通-战斗",
-    "image_url": "",
+    "image_url": "/images/普通/机架/女神异闻录/THE DAY BREAKERS- PERSONA.png",
+    "rating": "普通",
+    "genre": ["学校", "战斗", "守护灵"],
+    "ratings": {
+      "神作": 0,
+      "好看": 0,
+      "普通": 0,
+      "无聊": 0,
+      "狗屎": 0,
+      "哲救世皇骗": 0
+    },
+    "user_ratings": {}
+  },
+  {
+    "id": 442,
+    "title": "女神异闻录5 Dark Sun…",
+    "series_title": "女神异闻录",
+    "season": "2018-10",
+    "aliases": [
+      "女神异闻录",
+      "女神异闻录5",
+      "P5A",
+      "女神异闻录5 Dark Sun…",
+      "女神异闻录5 漆黑的太阳"
+    ],
+    "description": "讲述怪盗团为揪出幕后真凶，针对新目标潜入魔宫的剧情",
+    "recommend_text": "普通-战斗",
+    "image_url": "/images/普通/机架/女神异闻录/THE DAY BREAKERS- PERSONA.png",
     "rating": "普通",
     "genre": ["学校", "战斗", "守护灵"],
     "ratings": {

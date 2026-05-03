@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <title>女神异闻录系列 - 动漫资料库</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      body {
+        margin: 0;
+        background: #000;
+        color: #fff;
+        font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      .overall-card {
+        background: #111;
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 40px;
+        display: flex;
+        gap: 30px;
+        align-items: center;
+        border: 1px solid #333;
+      }
+
+      .overall-card img {
+        width: 180px;
+        height: 260px;
+        object-fit: cover;
+        border-radius: 12px;
+      }
+
+      .overall-info h2 {
+        font-size: 2rem;
+        margin-bottom: 12px;
+        color: #ffd966;
+      }
+
+      .section {
+        margin-bottom: 50px;
+      }
+
+      .section h3 {
+        font-size: 1.8rem;
+        border-left: 5px solid #ffd966;
+        padding-left: 15px;
+        margin-bottom: 20px;
+      }
+
+      .card-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 25px;
+      }
+
+      .anime-card {
+        width: 200px;
+        background: #1a1a1a;
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .anime-card:hover {
+        transform: scale(1.02);
+      }
+
+      .anime-card img {
+        width: 100%;
+        height: 280px;
+        object-fit: cover;
+      }
+
+      .anime-card p {
+        text-align: center;
+        padding: 10px;
+        font-weight: bold;
+      }
+
+      .back-btn {
+        display: inline-block;
+        margin-top: 30px;
+        padding: 10px 24px;
+        background: #ffd966;
+        color: #000;
+        border-radius: 40px;
+        text-decoration: none;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <!-- 整体介绍卡片（从数据库读取系列第一作或手动指定） -->
+      <div class="overall-card" id="overall"></div>
+
+      <!-- 按观看顺序排列的作品列表 -->
+      <div class="section">
+        <h3>🎭 女神异闻录 · 动画全系列</h3>
+        <div class="card-grid" id="animeGrid"></div>
+      </div>
+
+      <a href="/" class="back-btn">← 返回首页</a>
+    </div>
+
+    <script src="/js/common.js"></script>
+    <script>
+      const SERIES_TITLE = "女神异闻录";
+
+      // 自定义排序顺序：优先按数字（3/4/5）排序，同代内按时间/版本顺序
+      function getSortKey(title) {
+        // 提取主要代数关键字：P3, P4, P5, Persona 3,4,5 等
+        let order = 999;
+        if (title.includes("3") || title.includes("P3")) order = 1;
+        else if (title.includes("4") || title.includes("P4")) order = 2;
+        else if (title.includes("5") || title.includes("P5")) order = 3;
+        // 剧场版内部顺序：春生→仲夏骑士之梦→秋降→冬日重生
+        if (title.includes("春生")) order = 1.1;
+        if (title.includes("仲夏")) order = 1.2;
+        if (title.includes("秋降")) order = 1.3;
+        if (title.includes("冬日重生")) order = 1.4;
+        // 黄金版/Factor of Hope 放在原版后面
+        if (title.includes("黄金版")) order = 2.1;
+        if (title.includes("Factor of Hope")) order = 2.2;
+        // P5动画顺序：原版 → Dark Sun… → THE DAY BREAKERS
+        if (title === "女神异闻录5") order = 3.1;
+        if (title.includes("Dark Sun")) order = 3.2;
+        if (title.includes("THE DAY BREAKERS")) order = 3.3;
+        return order;
+      }
+
+      async function loadAnimeData() {
+        try {
+          const res = await fetch(
+            `/api/anime/series?title=${encodeURIComponent(SERIES_TITLE)}`,
+          );
+          const all = await res.json();
+          if (!all.length) {
+            document.getElementById("overall").innerHTML =
+              '<div style="color:red">未找到女神异闻录相关动漫</div>';
+            return;
+          }
+
+          // 找出作为“整体介绍”的作品（优先使用最早的一部或手动指定）
+          let overallAnime = all.find((a) => a.id === 192); // 192是“女神异闻录 圣洁之魂”
+          if (!overallAnime) overallAnime = all[0];
+          if (overallAnime) {
+            document.getElementById("overall").innerHTML = `
+              <img src="${overallAnime.image_url}" onerror="this.src='/images/placeholder.png'">
+              <div class="overall-info">
+                <h2>📖 女神异闻录 · 动画系列</h2>
+                <p>${overallAnime.description || "暂无简介"}</p>
+                <p>⭐ 推荐度：${overallAnime.rating} &nbsp; | &nbsp; 🏷️ ${overallAnime.genre?.join(" · ") || "奇幻 / 校园 / 战斗"}</p>
+              </div>
+            `;
+          }
+
+          // 排除整体介绍的那一条（避免重复），再按自定义顺序排序
+          let animes = all.filter((a) => a.id !== overallAnime?.id);
+          animes.sort((a, b) => getSortKey(a.title) - getSortKey(b.title));
+
+          const container = document.getElementById("animeGrid");
+          container.innerHTML = "";
+
+          animes.forEach((anime) => {
+            const card = document.createElement("div");
+            card.className = "anime-card";
+            card.innerHTML = `
+              <img src="${anime.image_url}" onerror="this.src='/images/placeholder.png'">
+              <p>${anime.title}</p>
+            `;
+            card.addEventListener("click", () => {
+              window.location.href = `/anime/${anime._id}`;
+            });
+            container.appendChild(card);
+          });
+
+          if (animes.length === 0) {
+            container.innerHTML = "<p>暂无相关条目</p>";
+          }
+        } catch (err) {
+          console.error("加载失败", err);
+          document.getElementById("overall").innerHTML =
+            '<div style="color:red">加载失败，请刷新重试</div>';
+        }
+      }
+
+      syncUserAvatar(); // 同步左下角头像
+      loadAnimeData();
+    </script>
+  </body>
+</html>

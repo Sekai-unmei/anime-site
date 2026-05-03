@@ -236,8 +236,17 @@
         <div id="search-anime-list" class="anime-grid"></div>
         <hr style="margin: 40px 0; border-color: #333" />
       </div>
+
+      <!-- 神作区域 -->
       <div class="section-title god-title" id="god-title">✨ 神作推荐 ✨</div>
       <div id="god-anime-list" class="anime-grid"></div>
+      <div id="expand-god-container" class="expand-btn-container">
+        <button id="expand-god-btn" class="expand-btn">
+          展开更多神作 (10)
+        </button>
+      </div>
+
+      <!-- 神作之下-好看之上区域 -->
       <div
         class="section-title"
         style="color: #b19cd9; text-shadow: 0 0 10px #b19cd9"
@@ -245,14 +254,15 @@
         ✨ 神作之下-好看之上 ✨
       </div>
       <div id="mid-anime-list" class="anime-grid"></div>
+      <div id="expand-mid-container" class="expand-btn-container">
+        <button id="expand-mid-btn" class="expand-btn">展开更多 (10)</button>
+      </div>
 
-      <!-- 好看推荐区域：包含网格和分页展开按钮 -->
+      <!-- 好看区域 -->
       <div class="section-title good-title" id="good-title">🌸 好看推荐 🌸</div>
       <div id="good-anime-list" class="anime-grid"></div>
       <div id="expand-good-container" class="expand-btn-container">
-        <button id="expand-good-btn" class="expand-btn">
-          展开更多好看动漫 (10)
-        </button>
+        <button id="expand-good-btn" class="expand-btn">展开更多 (10)</button>
       </div>
 
       <div class="circle-buttons">
@@ -277,13 +287,42 @@
       const tooltip = document.getElementById("tooltip");
       let hideTimeout = null;
 
-      // 好看动漫分页相关变量
-      let goodCurrentPage = 1;
-      let goodTotalCount = 0;
-      let goodPageSize = 10; // 每次展开追加的数量
-      let goodInitialSize = 8; // 初始显示数量
-      let goodAllLoaded = false; // 是否已全部加载
-      let goodAnimeList = []; // 已经加载的所有好看动漫（用于追加渲染）
+      // 三个区域的分页状态
+      const sections = {
+        god: {
+          rating: "神作",
+          containerId: "god-anime-list",
+          btnId: "expand-god-btn",
+          initLimit: 8,
+          pageSize: 10,
+          currentPage: 1,
+          total: 0,
+          loadedData: [],
+          allLoaded: false,
+        },
+        mid: {
+          rating: "神作之下-好看之上",
+          containerId: "mid-anime-list",
+          btnId: "expand-mid-btn",
+          initLimit: 8,
+          pageSize: 10,
+          currentPage: 1,
+          total: 0,
+          loadedData: [],
+          allLoaded: false,
+        },
+        good: {
+          rating: "好看",
+          containerId: "good-anime-list",
+          btnId: "expand-good-btn",
+          initLimit: 8,
+          pageSize: 10,
+          currentPage: 1,
+          total: 0,
+          loadedData: [],
+          allLoaded: false,
+        },
+      };
 
       async function loadUserRatings() {
         const res = await fetch("/api/user/ratings", {
@@ -310,7 +349,7 @@
         allAnime = data.data;
       }
 
-      // 通用分页请求函数（返回 { data, total }）
+      // 分页请求动漫列表（按rating）
       async function fetchAnimeByRating(rating, page, limit) {
         const url = `/api/anime/list?rating=${encodeURIComponent(rating)}&page=${page}&limit=${limit}`;
         const res = await fetch(url);
@@ -318,12 +357,12 @@
         return { data: data.data, total: data.total };
       }
 
-      // 通用渲染函数（完全替换容器内容）
-      function renderAnimeList(animes, containerId) {
-        const container = document.getElementById(containerId);
+      // 渲染指定区域的动漫列表（完全替换）
+      function renderSectionAnime(section) {
+        const container = document.getElementById(section.containerId);
         if (!container) return;
         container.innerHTML = "";
-        for (const anime of animes) {
+        for (const anime of section.loadedData) {
           const animeIdNum = Number(anime.id);
           const userRating = userRatingMap.get(animeIdNum) || null;
           let ratingMarkHtml = userRating
@@ -353,68 +392,76 @@
         }
       }
 
-      // 初始化加载神作和中间区域（保持原有简单加载，最多8个）
-      async function loadRecommendations() {
-        await loadUserRatings();
-
-        // 神作（取前8个，不分页）
-        const godRes = await fetchAnimeByRating("神作", 1, 8);
-        renderAnimeList(godRes.data, "god-anime-list");
-
-        // 神作之下-好看之上（取前8个）
-        const midRes = await fetchAnimeByRating("神作之下-好看之上", 1, 8);
-        renderAnimeList(midRes.data, "mid-anime-list");
-
-        // 好看：初始加载8条，并记录总数和已加载列表
-        const firstRes = await fetchAnimeByRating("好看", 1, goodInitialSize);
-        goodTotalCount = firstRes.total;
-        goodAnimeList = [...firstRes.data];
-        renderAnimeList(goodAnimeList, "good-anime-list");
-
-        // 更新按钮状态
-        updateExpandButton();
-
-        startGodParticles();
-      }
-
-      // 加载更多好看动漫（追加10条）
-      async function loadMoreGood() {
-        if (goodAllLoaded) return;
-        const nextPage = goodCurrentPage + 1;
-        const { data, total } = await fetchAnimeByRating(
-          "好看",
-          nextPage,
-          goodPageSize,
-        );
-        if (data.length === 0) {
-          goodAllLoaded = true;
-          updateExpandButton();
-          return;
-        }
-        goodCurrentPage = nextPage;
-        goodTotalCount = total;
-        goodAnimeList = [...goodAnimeList, ...data];
-        renderAnimeList(goodAnimeList, "good-anime-list");
-        updateExpandButton();
-      }
-
-      // 更新展开按钮的显示文本和禁用状态
-      function updateExpandButton() {
-        const btnContainer = document.getElementById("expand-good-container");
-        const btn = document.getElementById("expand-good-btn");
+      // 更新某个区域的按钮文字和状态
+      function updateSectionButton(section) {
+        const btn = document.getElementById(section.btnId);
         if (!btn) return;
-        const loadedCount = goodAnimeList.length;
-        const remaining = goodTotalCount - loadedCount;
+        const loadedCount = section.loadedData.length;
+        const remaining = section.total - loadedCount;
         if (remaining <= 0) {
           btn.textContent = "已全部加载";
           btn.disabled = true;
           btn.classList.add("disabled");
+          section.allLoaded = true;
           return;
         }
-        const nextBatch = Math.min(goodPageSize, remaining);
-        btn.textContent = `展开更多好看动漫 (${nextBatch})`;
+        const nextBatch = Math.min(section.pageSize, remaining);
+        const label =
+          section.rating === "神作"
+            ? "神作"
+            : section.rating === "好看"
+              ? "好看"
+              : "作品";
+        btn.textContent = `展开更多${label} (${nextBatch})`;
         btn.disabled = false;
         btn.classList.remove("disabled");
+      }
+
+      // 初始化某个区域：加载第一页数据，保存到loadedData，渲染，更新按钮
+      async function initSection(section) {
+        const res = await fetchAnimeByRating(
+          section.rating,
+          1,
+          section.initLimit,
+        );
+        section.loadedData = res.data;
+        section.total = res.total;
+        section.currentPage = 1;
+        section.allLoaded = section.loadedData.length >= section.total;
+        renderSectionAnime(section);
+        updateSectionButton(section);
+      }
+
+      // 加载某个区域的更多数据（追加下一页）
+      async function loadMore(section) {
+        if (section.allLoaded) return;
+        const nextPage = section.currentPage + 1;
+        const res = await fetchAnimeByRating(
+          section.rating,
+          nextPage,
+          section.pageSize,
+        );
+        if (res.data.length === 0) {
+          section.allLoaded = true;
+          updateSectionButton(section);
+          return;
+        }
+        section.currentPage = nextPage;
+        section.total = res.total;
+        section.loadedData = [...section.loadedData, ...res.data];
+        renderSectionAnime(section);
+        updateSectionButton(section);
+      }
+
+      async function loadRecommendations() {
+        await loadUserRatings();
+        // 并行初始化三个区域
+        await Promise.all([
+          initSection(sections.god),
+          initSection(sections.mid),
+          initSection(sections.good),
+        ]);
+        startGodParticles();
       }
 
       function showTooltip(event) {
@@ -512,7 +559,17 @@
         searchDiv.style.display = "block";
       }
 
-      // 事件绑定
+      // 绑定展开按钮事件
+      document
+        .getElementById("expand-god-btn")
+        ?.addEventListener("click", () => loadMore(sections.god));
+      document
+        .getElementById("expand-mid-btn")
+        ?.addEventListener("click", () => loadMore(sections.mid));
+      document
+        .getElementById("expand-good-btn")
+        ?.addEventListener("click", () => loadMore(sections.good));
+
       document
         .getElementById("search-input")
         ?.addEventListener("input", (e) => {
@@ -523,10 +580,6 @@
       tooltip.addEventListener("mouseleave", () =>
         tooltip.classList.remove("show"),
       );
-      const expandBtn = document.getElementById("expand-good-btn");
-      if (expandBtn) {
-        expandBtn.addEventListener("click", loadMoreGood);
-      }
 
       (async () => {
         await loadAllAnime();

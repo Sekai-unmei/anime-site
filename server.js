@@ -294,6 +294,7 @@ const ALLOWED_EMAILS = [
   "hulijie032@gmail.com",
   "yaowilliam811@gmail.com",
   "qiujiyuan80@gmail.com",
+  "ziyang20050828@gmail.com",
 ];
 
 app.post("/auth/google/token", async (req, res) => {

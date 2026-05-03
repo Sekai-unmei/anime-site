@@ -158,9 +158,7 @@
           });
         }
       }
-      document.addEventListener("DOMContentLoaded", () => {
-        syncUserAvatar();
-      });
+
       function truncate(str, maxLen) {
         if (!str) return "";
         return str.length > maxLen ? str.substring(0, maxLen) + "..." : str;

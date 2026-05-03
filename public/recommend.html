@@ -393,6 +393,7 @@
       }
 
       // 更新某个区域的按钮文字和状态
+      // 更新某个区域的按钮文字和状态
       function updateSectionButton(section) {
         const btn = document.getElementById(section.btnId);
         if (!btn) return;
@@ -406,17 +407,10 @@
           return;
         }
         const nextBatch = Math.min(section.pageSize, remaining);
-        const label =
-          section.rating === "神作"
-            ? "神作"
-            : section.rating === "好看"
-              ? "好看"
-              : "作品";
-        btn.textContent = `展开更多${label} (${nextBatch})`;
+        btn.textContent = `展开更多 (${nextBatch})`;
         btn.disabled = false;
         btn.classList.remove("disabled");
       }
-
       // 初始化某个区域：加载第一页数据，保存到loadedData，渲染，更新按钮
       async function initSection(section) {
         const res = await fetchAnimeByRating(

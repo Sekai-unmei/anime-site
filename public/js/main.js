@@ -249,21 +249,45 @@ function initSearchBox() {
     if (e.key === "Enter") {
       const val = newBox.value.trim();
       if (!val) return;
+
+      // 转换为小写用于关键词匹配
+      const lowerVal = val.toLowerCase();
+
+      // JOJO 系列关键词
       const jojoKeywords = [
         "jo",
         "jojo",
         "jojo的奇妙冒险",
-        "jojo's bizarre adventure",
-        "jojo的奇妙",
-        "ジョジョ",
+        "jojo的冒险 ",
+        "jojo的妙妙屋",
       ];
-      const lowerVal = val.toLowerCase();
+      // 女神异闻录系列关键词
+      const personaKeywords = [
+        "女神异闻录",
+        "女神",
+        "p3",
+        "p4",
+        "p5",
+        "persona3",
+        "persona4",
+        "persona5",
+      ];
+
       const isJojo = jojoKeywords.some((kw) =>
         lowerVal.includes(kw.toLowerCase()),
       );
+      const isPersona = personaKeywords.some((kw) =>
+        lowerVal.includes(kw.toLowerCase()),
+      );
+
       if (isJojo) {
-        window.location.href = `/series.html?title=${encodeURIComponent("jojo的奇妙冒险")}`;
+        // 跳转到 JOJO 系列页面（位于 /系列/ 目录下）
+        window.location.href = `/系列/series.html?title=${encodeURIComponent("jojo的奇妙冒险")}`;
+      } else if (isPersona) {
+        // 跳转到女神异闻录系列页面
+        window.location.href = `/系列/女神异闻录.html`;
       } else {
+        // 普通搜索跳转
         window.location.href = `/search.html?keyword=${encodeURIComponent(val)}`;
       }
     }

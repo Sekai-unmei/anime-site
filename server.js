@@ -291,7 +291,9 @@ const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const ALLOWED_EMAILS = [
   "kevin88ye88@gmail.com",
   "darkmaster1212xixi@gmail.com",
-  "ye.kevin@sassettiperuzzi.edu.it",
+  "hulijie032@gmail.com",
+  "yaowilliam811@gmail.com",
+  "qiujiyuan80@gmail.com",
 ];
 
 app.post("/auth/google/token", async (req, res) => {

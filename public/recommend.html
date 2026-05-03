@@ -55,7 +55,6 @@
         from {
           text-shadow: 0 0 5px #66ccff;
         }
-
         to {
           text-shadow: 0 0 20px #0066cc;
         }
@@ -186,11 +185,31 @@
           transform: translateY(0) scale(1);
           opacity: 0.8;
         }
-
         100% {
           transform: translateY(-150px) scale(0);
           opacity: 0;
         }
+      }
+
+      /* 展开按钮样式 */
+      .expand-btn-container {
+        text-align: center;
+        margin-top: 30px;
+      }
+      .expand-btn {
+        background: #ffd700;
+        color: #000;
+        border: none;
+        padding: 10px 30px;
+        border-radius: 40px;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .expand-btn:hover {
+        background: #ffaa00;
+        transform: scale(1.02);
       }
     </style>
   </head>
@@ -221,8 +240,16 @@
         ✨ 神作之下-好看之上 ✨
       </div>
       <div id="mid-anime-list" class="anime-grid"></div>
+
+      <!-- 好看推荐区域：包含网格和展开按钮 -->
       <div class="section-title good-title" id="good-title">🌸 好看推荐 🌸</div>
       <div id="good-anime-list" class="anime-grid"></div>
+      <div id="expand-good-container" class="expand-btn-container">
+        <button id="expand-good-btn" class="expand-btn">
+          展开全部好看动漫
+        </button>
+      </div>
+
       <div class="circle-buttons">
         <div class="circle-btn" onclick="location.href = '/popular.html'">
           🔥 人气
@@ -244,6 +271,12 @@
       let godParticleInterval = null;
       const tooltip = document.getElementById("tooltip");
       let hideTimeout = null;
+
+      // 存储各评级全部动漫（用于展开）
+      let allGodAnime = [];
+      let allMidAnime = [];
+      let allGoodAnime = [];
+
       async function loadUserRatings() {
         const res = await fetch("/api/user/ratings", {
           credentials: "include",
@@ -257,32 +290,31 @@
           });
         }
       }
+
       function truncate(str, maxLen) {
         if (!str) return "";
         return str.length > maxLen ? str.substring(0, maxLen) + "..." : str;
       }
+
       async function loadAllAnime() {
         const res = await fetch("/api/anime/list?page=1&limit=1000");
         const data = await res.json();
         allAnime = data.data;
+        // 根据 rating 分类全部数据
+        allGodAnime = allAnime.filter((a) => a.rating === "神作");
+        allMidAnime = allAnime.filter((a) => a.rating === "神作之下-好看之上");
+        allGoodAnime = allAnime.filter((a) => a.rating === "好看");
       }
+
       async function fetchAnimeByRating(rating, limit = 8) {
         const url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=${limit}`;
         const res = await fetch(url);
         const data = await res.json();
         return data.data.filter((a) => a.rating === rating);
       }
-      async function loadRecommendations() {
-        await loadUserRatings();
-        const godList = await fetchAnimeByRating("神作", 8);
-        renderAnime(godList, "god-anime-list");
-        const goodList = await fetchAnimeByRating("好看", 8);
-        renderAnime(goodList, "good-anime-list");
-        const midList = await fetchAnimeByRating("神作之下-好看之上", 8);
-        renderAnime(midList, "mid-anime-list");
-        startGodParticles();
-      }
-      function renderAnime(animes, containerId) {
+
+      // 通用渲染函数，可指定要渲染的动漫数组和容器ID
+      function renderAnimeList(animes, containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
         container.innerHTML = "";
@@ -315,6 +347,35 @@
           container.appendChild(card);
         }
       }
+
+      // 初始加载神作、好看、中间区域（各显示8个）
+      async function loadRecommendations() {
+        await loadUserRatings();
+        // 神作（取前8）
+        const godList = await fetchAnimeByRating("神作", 8);
+        renderAnimeList(godList, "god-anime-list");
+        // 中间（取前8）
+        const midList = await fetchAnimeByRating("神作之下-好看之上", 8);
+        renderAnimeList(midList, "mid-anime-list");
+        // 好看（取前8）
+        const goodList = await fetchAnimeByRating("好看", 8);
+        renderAnimeList(goodList, "good-anime-list");
+        startGodParticles();
+      }
+
+      // 展开全部好看动漫
+      function expandGoodList() {
+        // 使用已经存储的 allGoodAnime（全部好看动漫）
+        if (allGoodAnime.length === 0) {
+          // 如果还没加载，从 allAnime 中再次过滤确保
+          allGoodAnime = allAnime.filter((a) => a.rating === "好看");
+        }
+        renderAnimeList(allGoodAnime, "good-anime-list");
+        // 隐藏展开按钮
+        const btnContainer = document.getElementById("expand-good-container");
+        if (btnContainer) btnContainer.style.display = "none";
+      }
+
       function showTooltip(event) {
         clearTimeout(hideTimeout);
         const img = event.currentTarget;
@@ -339,6 +400,7 @@
         tooltip.style.top = top + "px";
         tooltip.style.visibility = "visible";
       }
+
       function startGodParticles() {
         if (godParticleInterval) clearInterval(godParticleInterval);
         const title = document.getElementById("god-title");
@@ -409,6 +471,7 @@
         searchDiv.style.display = "block";
       }
 
+      // 事件绑定
       document
         .getElementById("search-input")
         ?.addEventListener("input", (e) => {
@@ -419,9 +482,15 @@
       tooltip.addEventListener("mouseleave", () =>
         tooltip.classList.remove("show"),
       );
+      // 展开按钮事件
+      const expandBtn = document.getElementById("expand-good-btn");
+      if (expandBtn) {
+        expandBtn.addEventListener("click", expandGoodList);
+      }
+
       (async () => {
-        await loadAllAnime();
-        await loadRecommendations();
+        await loadAllAnime(); // 获取全部数据并分类
+        await loadRecommendations(); // 初始渲染各区域前8个
       })();
     </script>
   </body>

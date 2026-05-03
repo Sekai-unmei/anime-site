@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 const MONGO_URI =
-  "mongodb+srv://render_user:Render2024@animer-sj.vjdntz9.mongodb.net/anime_db?retryWrites=true&w=majority&serverSelectionTimeoutMS=5000";
+  "mongodb+srv://render_user:Render2024@animer-sj.vjdntz9.mongodb.net/anime_db?retryWrites=true&w=majority";
 
 const animeSchema = new mongoose.Schema(
   {},
@@ -13,20 +13,29 @@ const Anime = mongoose.model("Anime", animeSchema);
 
 (async () => {
   try {
-    console.log("🔌 正在连接 MongoDB...");
     await mongoose.connect(MONGO_URI);
     console.log("✅ 数据库连接成功");
 
     const dataPath = path.join(__dirname, "data", "anime.json");
-    console.log(`📂 读取文件: ${dataPath}`);
     const rawData = fs.readFileSync(dataPath, "utf8");
     const animeData = JSON.parse(rawData);
     console.log(`📄 从文件读取到 ${animeData.length} 条动漫数据`);
 
     let added = 0,
-      updated = 0;
+      updated = 0,
+      skipped = 0;
+
     for (const newAnime of animeData) {
-      let existing = await Anime.findOne({ id: newAnime.id }).lean();
+      // 跳过 id 无效的条目
+      if (!newAnime.id || typeof newAnime.id !== "number") {
+        console.log(
+          `⚠️ 跳过无效条目（缺少 id）: ${newAnime.title || "未知标题"}`,
+        );
+        skipped++;
+        continue;
+      }
+
+      const existing = await Anime.findOne({ id: newAnime.id }).lean();
       if (!existing) {
         await Anime.create(newAnime);
         console.log(`✅ 新增 《${newAnime.title}》 (id: ${newAnime.id})`);
@@ -59,7 +68,9 @@ const Anime = mongoose.model("Anime", animeSchema);
       updated++;
     }
 
-    console.log(`🎉 完成！新增 ${added} 条，更新 ${updated} 条`);
+    console.log(
+      `🎉 完成！新增 ${added} 条，更新 ${updated} 条，跳过 ${skipped} 条`,
+    );
     process.exit(0);
   } catch (err) {
     console.error("❌ 出错:", err);

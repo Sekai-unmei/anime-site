@@ -55,14 +55,14 @@
       }
 
       .sub-category {
-        padding-left: 40px;
+        padding-left: 20px; /* 原为 40px，减小左间距，使文字更靠左 */
         font-size: 0.85rem;
         color: #888;
         display: none;
       }
 
       .sub-sub-category {
-        padding-left: 60px;
+        padding-left: 40px; /* 子子分类也相应左移 */
         font-size: 0.8rem;
         color: #666;
         display: none;
@@ -88,13 +88,22 @@
         justify-content: space-between;
       }
 
-      .toggle-icon {
-        margin-right: 8px;
-        font-size: 0.7rem;
+      /* 调整 toggle-icon 放在右边 */
+      .category-item {
+        flex-direction: row-reverse; /* 让 toggle-icon 位于右侧 */
+        justify-content: flex-start; /* 改为从左边开始排列，但顺序反转后 link 在前，toggle 在后 */
+        gap: 8px;
+      }
+      .category-item .toggle-icon {
+        margin-right: 0;
+        margin-left: auto; /* 推到头 */
+        cursor: pointer;
         width: 18px;
         text-align: center;
-        cursor: pointer;
         user-select: none;
+      }
+      .category-item a {
+        flex: 1; /* 链接占据剩余空间，点击区域更大 */
       }
 
       .content {
@@ -175,6 +184,20 @@
     </div>
     <script src="/js/common.js"></script>
     <script>
+      // ---------- 显示名称到实际数据库字段的映射 ----------
+      // 解决“无聊”等分类与数据库 rating 值不一致的问题
+      const ratingMapping = {
+        神作: "神作",
+        "神作之下-好看之上": "神作之下-好看之上",
+        好看: "好看",
+        还行: "还行",
+        普通: "普通",
+        无聊: "浪费时间", // 关键：用户界面的“无聊”对应数据库中的“浪费时间”
+        屎: "屎",
+        H: "H",
+      };
+
+      // 分类树定义（显示名称）
       const categoryTree = [
         { name: "神作", children: [] },
         { name: "神作之下-好看之上", children: [] },
@@ -212,34 +235,43 @@
         { name: "屎", children: [] },
         { name: "H", children: [] },
       ];
+
       let allAnime = [];
+
       async function loadTotalCount() {
         const res = await fetch("/api/anime/list?limit=1");
         const data = await res.json();
         document.getElementById("total-count").innerHTML =
           `📊 动漫总数：${data.total}`;
       }
+
       async function loadSeriesCount() {
         const res = await fetch("/api/anime/series-count");
         const data = await res.json();
         document.getElementById("series-count").innerHTML =
           `📚 系列数量：${data.count}`;
       }
-      function showAllByRating(rating) {
-        fetch(`/api/anime/list?rating=${encodeURIComponent(rating)}&limit=1000`)
+
+      // 显示某个 rating 的所有动漫（使用映射后的实际 rating）
+      function showAllByRating(displayRating) {
+        const actualRating = ratingMapping[displayRating] || displayRating;
+        fetch(
+          `/api/anime/list?rating=${encodeURIComponent(actualRating)}&limit=1000`,
+        )
           .then((res) => res.json())
           .then((data) => renderAnime(data.data));
       }
-      function showAnimeByFilter(rating, tagsStr) {
-        let url = `/api/anime/list?rating=${encodeURIComponent(rating)}&limit=1000`;
+
+      // 显示符合 rating + tag 的动漫（使用映射后的实际 rating）
+      function showAnimeByFilter(displayRating, tagsStr) {
+        const actualRating = ratingMapping[displayRating] || displayRating;
+        let url = `/api/anime/list?rating=${encodeURIComponent(actualRating)}&limit=1000`;
         if (tagsStr) url += `&tag=${encodeURIComponent(tagsStr)}`;
         fetch(url)
           .then((res) => res.json())
           .then((data) => renderAnime(data.data));
       }
-      document.addEventListener("DOMContentLoaded", () => {
-        syncUserAvatar();
-      });
+
       function renderAnime(animes) {
         const grid = document.getElementById("anime-grid");
         grid.innerHTML = "";
@@ -262,6 +294,7 @@
           grid.appendChild(card);
         });
       }
+
       function buildSidebar() {
         const container = document.getElementById("category-tree");
         container.innerHTML = "";
@@ -270,6 +303,7 @@
           mainDiv.className = "main-category";
           mainDiv.textContent = main.name;
           mainDiv.setAttribute("data-rating", main.name);
+          // 特殊分类：没有子分类的单独直接点击
           const isSpecial =
             main.name === "神作" ||
             main.name === "神作之下-好看之上" ||
@@ -327,8 +361,8 @@
                     subSubDiv.style.display = isVisible ? "none" : "block";
                     toggleSpan.textContent = isVisible ? "▶" : "▼";
                   });
-                  itemDiv.appendChild(toggleSpan);
-                  itemDiv.appendChild(link);
+                  itemDiv.appendChild(link); // 链接在前
+                  itemDiv.appendChild(toggleSpan); // 三角形在后（右侧）
                   subDiv.appendChild(itemDiv);
                   subDiv.appendChild(subSubDiv);
                 } else {
@@ -340,6 +374,7 @@
                     else if (rating) showAllByRating(rating);
                   });
                   itemDiv.appendChild(link);
+                  // 没有子分类时不需要三角形，但为了对齐，不添加 toggleSpan
                   subDiv.appendChild(itemDiv);
                 }
               });
@@ -360,10 +395,12 @@
           }
         });
       }
+
       (async () => {
         await loadTotalCount();
         await loadSeriesCount();
         buildSidebar();
+        // 默认显示“神作”
         showAllByRating("神作");
       })();
     </script>

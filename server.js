@@ -1,4 +1,4 @@
-console.log("开始执行 server.js (最终优化版)");
+console.log("开始执行 server.js (黑名单版)");
 const express = require("express");
 const session = require("express-session");
 const crypto = require("crypto");
@@ -7,7 +7,7 @@ const path = require("path");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const { OAuth2Client } = require("google-auth-library");
-const sgMail = require("@sendgrid/mail"); // 新增 SendGrid 库
+const sgMail = require("@sendgrid/mail");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,6 +22,15 @@ const userSchema = new mongoose.Schema({
   joinDate: String,
 });
 const User = mongoose.model("User", userSchema);
+
+// 黑名单模型
+const blacklistSchema = new mongoose.Schema({
+  email: { type: String, unique: true, required: true },
+  reason: { type: String, default: "违规访问" },
+  addedAt: { type: Date, default: Date.now },
+  addedBy: String,
+});
+const Blacklist = mongoose.model("Blacklist", blacklistSchema);
 
 const friendSchema = new mongoose.Schema({
   user: String,
@@ -62,7 +71,6 @@ const noteSchema = new mongoose.Schema({
 });
 const Note = mongoose.model("Note", noteSchema);
 
-// 反馈模型（存储用户提交的意见反馈）
 const feedbackSchema = new mongoose.Schema({
   type: String,
   description: String,
@@ -72,7 +80,6 @@ const feedbackSchema = new mongoose.Schema({
 });
 const Feedback = mongoose.model("Feedback", feedbackSchema);
 
-// 动漫模型
 const animeSchema = new mongoose.Schema(
   {
     id: { type: Number, unique: true },
@@ -119,7 +126,6 @@ const animeSchema = new mongoose.Schema(
 animeSchema.index({ id: 1 });
 const Anime = mongoose.model("Anime", animeSchema);
 
-// 独立的投票集合
 const voteSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   animeId: { type: Number, required: true },
@@ -133,7 +139,7 @@ const voteSchema = new mongoose.Schema({
 voteSchema.index({ userId: 1, animeId: 1 }, { unique: true });
 const Vote = mongoose.model("Vote", voteSchema);
 
-// ========== 2. 连接 MongoDB 并执行数据迁移 ==========
+// ========== 2. 连接 MongoDB ==========
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
   console.error("❌ 未设置 MONGO_URI 环境变量");
@@ -235,6 +241,12 @@ async function areFriends(user1, user2) {
   return count > 0;
 }
 
+// 检查邮箱是否在黑名单中
+async function isBlacklisted(email) {
+  const entry = await Blacklist.findOne({ email });
+  return !!entry;
+}
+
 // ========== 中间件 ==========
 app.use(
   session({
@@ -246,6 +258,27 @@ app.use(
 );
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
+
+// 全局黑名单拦截中间件（针对已登录用户，若被拉黑则强制登出并跳转）
+app.use(async (req, res, next) => {
+  if (req.session && req.session.user) {
+    const black = await isBlacklisted(req.session.user);
+    if (black) {
+      // 销毁 session
+      req.session.destroy((err) => {
+        if (err) console.error("销毁会话失败", err);
+        // 如果请求的是 API，返回 403 状态码
+        if (req.path.startsWith("/api/")) {
+          return res.status(403).json({ error: "您的账号已被禁止访问" });
+        }
+        // 否则重定向到禁止页面
+        return res.redirect("/unauthorized.html");
+      });
+      return;
+    }
+  }
+  next();
+});
 
 // ========== 头像上传 ==========
 const AVATAR_DIR = path.join(__dirname, "public/avatars");
@@ -284,19 +317,10 @@ app.get("/api/user/current", async (req, res) => {
   });
 });
 
-// ========== Google OAuth ==========
+// ========== Google OAuth (解除白名单，增加黑名单) ==========
 const GOOGLE_CLIENT_ID =
   "1046534438268-vmrn92gmqjgdu0ro037d2nhsfmnq63ao.apps.googleusercontent.com";
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-const ALLOWED_EMAILS = [
-  "kevin88ye88@gmail.com",
-  "darkmaster1212xixi@gmail.com",
-  "hulijie032@gmail.com",
-  "yaowilliam811@gmail.com",
-  "qiujiyuan80@gmail.com",
-  "ziyang20050828@gmail.com",
-  "arseniodegrazia@gmail.com",
-];
 
 app.post("/auth/google/token", async (req, res) => {
   const { token } = req.body;
@@ -309,8 +333,17 @@ app.post("/auth/google/token", async (req, res) => {
     });
     const payload = ticket.getPayload();
     const email = payload.email;
-    if (!ALLOWED_EMAILS.includes(email))
-      return res.json({ success: false, message: "您的邮箱未被授权访问" });
+
+    // 检查黑名单
+    if (await isBlacklisted(email)) {
+      return res.json({
+        success: false,
+        message: "您的账号已被禁止访问",
+        redirect: "/unauthorized.html",
+      });
+    }
+
+    // 未在白名单内，允许登录（之前需要白名单，现在完全开放）
     const googleAvatar = payload.picture || null;
     let user = await getOrCreateUserInfo(email);
     if (googleAvatar && !user.googleAvatar) user.googleAvatar = googleAvatar;
@@ -321,6 +354,7 @@ app.post("/auth/google/token", async (req, res) => {
     if (googleAvatar && isDefaultAvatar) user.avatar = googleAvatar;
     if (!user.username) user.username = email.split("@")[0];
     await user.save();
+
     req.session.user = email;
     req.session.playAudio = true;
     res.json({ success: true });
@@ -894,8 +928,7 @@ app.get("/api/check-profile-intro", (req, res) => {
   res.json({ play: false });
 });
 
-// ========== 反馈接口（数据库保存后立即返回，邮件通过 SendGrid 异步发送） ==========
-// 配置 SendGrid（从环境变量读取 API Key）
+// ========== 反馈接口 ==========
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
   console.log("✓ SendGrid 已配置");
@@ -910,7 +943,6 @@ app.post("/api/report", async (req, res) => {
     return res.status(400).json({ error: "描述不能为空" });
   }
 
-  // 1. 保存到数据库（必须成功才响应）
   try {
     const feedback = new Feedback({
       type,
@@ -927,20 +959,14 @@ app.post("/api/report", async (req, res) => {
       .json({ success: false, error: "数据库保存失败，请稍后重试" });
   }
 
-  // 2. 立即返回成功，让前端不再等待
   res.json({
     success: true,
     saved: true,
     message: "反馈已保存，管理员将尽快处理。",
   });
 
-  // 3. 后台异步发送邮件（使用 SendGrid）
   setImmediate(async () => {
-    if (!process.env.SENDGRID_API_KEY) {
-      console.warn("! 未配置 SENDGRID_API_KEY，邮件未发送");
-      return;
-    }
-
+    if (!process.env.SENDGRID_API_KEY) return;
     try {
       const typeMap = {
         bug: "🐞 Bug报告",
@@ -957,17 +983,15 @@ app.post("/api/report", async (req, res) => {
 
       let attachments = [];
       if (imageBase64) {
-        // 从 data:image/xxx;base64,... 中提取纯 base64 数据
         const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
         if (matches) {
           attachments.push({
-            content: matches[2], // 纯 base64 字符串
+            content: matches[2],
             filename: `screenshot.${matches[1]}`,
             type: `image/${matches[1]}`,
             disposition: "attachment",
           });
         } else {
-          // 如果不是标准 data URL，尝试直接当作 base64 使用
           attachments.push({
             content: imageBase64,
             filename: "screenshot.png",
@@ -978,8 +1002,8 @@ app.post("/api/report", async (req, res) => {
       }
 
       const msg = {
-        to: "kevin88ye88@gmail.com", // 管理员邮箱
-        from: "kevin88ye88@gmail.com", // 必须在 SendGrid 中验证的发件人邮箱
+        to: "kevin88ye88@gmail.com",
+        from: "kevin88ye88@gmail.com",
         subject: `【反馈】${subject}`,
         html: htmlContent,
         attachments: attachments,
@@ -989,17 +1013,148 @@ app.post("/api/report", async (req, res) => {
       console.log("✓ 反馈邮件已通过 SendGrid API 发送");
     } catch (mailErr) {
       console.error("✗ 邮件发送失败（不影响反馈保存）:", mailErr.message);
-      if (mailErr.response) {
-        console.error("SendGrid 详细错误:", mailErr.response.body);
-      }
     }
   });
 });
 
+// ========== 黑名单管理 API（仅管理员） ==========
+const ADMIN_EMAIL = "kevin88ye88@gmail.com";
+
+// 管理员中间件
+function isAdmin(req, res, next) {
+  if (!req.session.user || req.session.user !== ADMIN_EMAIL) {
+    return res.status(403).json({ error: "无权限，仅管理员可操作" });
+  }
+  next();
+}
+
+// 获取黑名单列表
+app.get("/api/admin/blacklist", isAdmin, async (req, res) => {
+  const list = await Blacklist.find().sort({ addedAt: -1 });
+  res.json(list);
+});
+
+// 添加黑名单
+app.post("/api/admin/blacklist", isAdmin, async (req, res) => {
+  const { email, reason } = req.body;
+  if (!email) return res.status(400).json({ error: "缺少邮箱" });
+  const existing = await Blacklist.findOne({ email });
+  if (existing) return res.status(409).json({ error: "邮箱已在黑名单中" });
+  await Blacklist.create({
+    email,
+    reason: reason || "管理员手动添加",
+    addedBy: req.session.user,
+  });
+  // 如果该用户当前已登录，强制登出（中间件会在下一个请求中处理）
+  res.json({ success: true });
+});
+
+// 移除黑名单
+app.delete("/api/admin/blacklist", isAdmin, async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "缺少邮箱" });
+  const result = await Blacklist.deleteOne({ email });
+  if (result.deletedCount === 0)
+    return res.status(404).json({ error: "未找到该邮箱" });
+  res.json({ success: true });
+});
+
+// 简易黑名单管理页面（仅管理员可访问）
+app.get("/admin/blacklist", (req, res) => {
+  if (!req.session.user || req.session.user !== ADMIN_EMAIL) {
+    return res.status(403).send("无权访问");
+  }
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>黑名单管理</title>
+      <style>
+        body { background: #0a0a0a; color: #eee; font-family: monospace; padding: 2rem; }
+        h1 { color: #ffd700; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+        th, td { border: 1px solid #444; padding: 8px 12px; text-align: left; }
+        th { background: #1a1a1a; }
+        input, button { padding: 8px; margin: 4px; background: #222; color: #fff; border: 1px solid #666; }
+        button { cursor: pointer; background: #333; }
+        button:hover { background: #ffd700; color: #000; }
+        .add-form { margin: 20px 0; background: #111; padding: 15px; border-radius: 8px; }
+      </style>
+    </head>
+    <body>
+      <h1>⚔️ 黑名单管理</h1>
+      <div class="add-form">
+        <input type="text" id="blockEmail" placeholder="要拉黑的邮箱" style="width: 300px;">
+        <input type="text" id="blockReason" placeholder="原因（可选）" style="width: 300px;">
+        <button id="addBtn">➕ 加入黑名单</button>
+      </div>
+      <div id="list"></div>
+      <script>
+        async function loadList() {
+          const res = await fetch('/api/admin/blacklist');
+          const data = await res.json();
+          const container = document.getElementById('list');
+          if (!data.length) {
+            container.innerHTML = '<p>暂无黑名单记录</p>';
+            return;
+          }
+          let html = '<table><tr><th>邮箱</th><th>原因</th><th>添加时间</th><th>操作</th></tr>';
+          data.forEach(item => {
+            html += \`
+              <tr>
+                <td>\${item.email}</td>
+                <td>\${item.reason || '-'}</td>
+                <td>\${new Date(item.addedAt).toLocaleString()}</td>
+                <td><button onclick="removeBlacklist('\${item.email}')">移除</button></td>
+              </tr>
+            \`;
+          });
+          html += '</table>';
+          container.innerHTML = html;
+        }
+        async function removeBlacklist(email) {
+          if (!confirm(\`确定将 \${email} 移出黑名单吗？\`)) return;
+          const res = await fetch('/api/admin/blacklist', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          if (res.ok) {
+            alert('已移出黑名单');
+            loadList();
+          } else {
+            alert('操作失败');
+          }
+        }
+        document.getElementById('addBtn').onclick = async () => {
+          const email = document.getElementById('blockEmail').value.trim();
+          const reason = document.getElementById('blockReason').value.trim();
+          if (!email) return alert('请输入邮箱');
+          const res = await fetch('/api/admin/blacklist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, reason })
+          });
+          if (res.ok) {
+            alert('已加入黑名单，该用户下次登录将被拒绝');
+            document.getElementById('blockEmail').value = '';
+            document.getElementById('blockReason').value = '';
+            loadList();
+          } else {
+            alert('添加失败，可能已存在');
+          }
+        };
+        loadList();
+      </script>
+    </body>
+    </html>
+  `);
+});
+
 // ========== 管理后台：查看反馈列表 ==========
 app.get("/admin/feedbacks", async (req, res) => {
-  const adminEmail = "kevin88ye88@gmail.com";
-  if (!req.session.user || req.session.user !== adminEmail) {
+  if (!req.session.user || req.session.user !== ADMIN_EMAIL) {
     return res.status(403).send("无权限访问");
   }
   try {

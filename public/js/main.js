@@ -250,7 +250,6 @@ function initSearchBox() {
       const val = newBox.value.trim();
       if (!val) return;
 
-      // 转换为小写用于关键词匹配
       const lowerVal = val.toLowerCase();
 
       // JOJO 系列关键词
@@ -272,6 +271,18 @@ function initSearchBox() {
         "persona4",
         "persona5",
       ];
+      // Fate 系列关键词
+      const fateKeywords = [
+        "fate",
+        "命运之夜",
+        "命运守护夜",
+        "fate zero",
+        "fate stay night",
+        "ubw",
+        "hf",
+        "天之杯",
+        "魔法少女伊莉雅",
+      ];
 
       const isJojo = jojoKeywords.some((kw) =>
         lowerVal.includes(kw.toLowerCase()),
@@ -279,15 +290,18 @@ function initSearchBox() {
       const isPersona = personaKeywords.some((kw) =>
         lowerVal.includes(kw.toLowerCase()),
       );
+      const isFate = fateKeywords.some((kw) =>
+        lowerVal.includes(kw.toLowerCase()),
+      );
 
       if (isJojo) {
-        // 跳转到 JOJO 系列页面（位于 /系列/ 目录下）
         window.location.href = `/系列/series.html?title=${encodeURIComponent("jojo的奇妙冒险")}`;
       } else if (isPersona) {
-        // 跳转到女神异闻录系列页面
         window.location.href = `/系列/女神异闻录.html`;
+      } else if (isFate) {
+        // 跳转到 Fate 系列页面（您已提供的 fate.html）
+        window.location.href = `/fate.html`;
       } else {
-        // 普通搜索跳转
         window.location.href = `/search.html?keyword=${encodeURIComponent(val)}`;
       }
     }

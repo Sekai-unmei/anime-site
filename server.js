@@ -247,6 +247,17 @@ async function isBlacklisted(email) {
   return !!entry;
 }
 
+// 防XSS辅助函数
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/[&<>]/g, function (m) {
+    if (m === "&") return "&amp;";
+    if (m === "<") return "&lt;";
+    if (m === ">") return "&gt;";
+    return m;
+  });
+}
+
 // ========== 中间件 ==========
 app.use(
   session({
@@ -343,7 +354,7 @@ app.post("/auth/google/token", async (req, res) => {
       });
     }
 
-    // 未在白名单内，允许登录（之前需要白名单，现在完全开放）
+    // 未在黑名单内，允许登录
     const googleAvatar = payload.picture || null;
     let user = await getOrCreateUserInfo(email);
     if (googleAvatar && !user.googleAvatar) user.googleAvatar = googleAvatar;
@@ -373,6 +384,14 @@ app.get("/logout", (req, res) => {
 });
 
 // ========== 静态页面路由 ==========
+// 直接服务 public 目录下的所有文件（HTML, CSS, JS, 图片等）
+app.use(express.static("public"));
+
+// 特别确保 fate.html 和 series.html 等自定义页面能被访问
+app.get("/fate.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/fate.html"));
+});
+
 app.get("/", (req, res) => {
   res.setHeader(
     "Cache-Control",
@@ -389,7 +408,7 @@ app.get("/anime/:id", (req, res) =>
 );
 app.get("/login-failed", (req, res) => res.redirect("/unauthorized.html"));
 
-// ========== 动漫相关接口 ==========
+// ========== 动漫相关接口（保持原有代码） ==========
 app.get("/api/anime/list", async (req, res) => {
   let {
     page = 1,
@@ -574,7 +593,7 @@ app.post("/api/anime/unrate", async (req, res) => {
   }
 });
 
-// ========== 评论接口 ==========
+// ========== 评论接口（保持原有代码） ==========
 app.post("/api/anime/:id/comment", async (req, res) => {
   try {
     const anime = await findAnimeByIdentifier(req.params.id);
@@ -732,7 +751,7 @@ app.post("/api/user/reset-avatar", async (req, res) => {
   res.json({ success: true, avatarUrl: defaultAvatar });
 });
 
-// ========== 好友系统 ==========
+// ========== 好友系统（保持原有代码） ==========
 app.post("/api/friends/request", async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: "未登录" });
   const fromUser = req.session.user;
@@ -1045,7 +1064,6 @@ app.post("/api/admin/blacklist", isAdmin, async (req, res) => {
     reason: reason || "管理员手动添加",
     addedBy: req.session.user,
   });
-  // 如果该用户当前已登录，强制登出（中间件会在下一个请求中处理）
   res.json({ success: true });
 });
 
@@ -1059,7 +1077,7 @@ app.delete("/api/admin/blacklist", isAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
-// 简易黑名单管理页面（仅管理员可访问）
+// 黑名单管理页面（仅管理员可访问）
 app.get("/admin/blacklist", (req, res) => {
   if (!req.session.user || req.session.user !== ADMIN_EMAIL) {
     return res.status(403).send("无权访问");
@@ -1099,7 +1117,7 @@ app.get("/admin/blacklist", (req, res) => {
             container.innerHTML = '<p>暂无黑名单记录</p>';
             return;
           }
-          let html = '<table><tr><th>邮箱</th><th>原因</th><th>添加时间</th><th>操作</th></tr>';
+          let html = '<table><tr><th>邮箱</th><th>原因</th><th>添加时间</th><th>操作</th><tr>';
           data.forEach(item => {
             html += \`
               <tr>
@@ -1150,6 +1168,66 @@ app.get("/admin/blacklist", (req, res) => {
     </body>
     </html>
   `);
+});
+
+// ========== 管理后台：查看所有已访问用户 ==========
+app.get("/admin/users", async (req, res) => {
+  if (!req.session.user || req.session.user !== ADMIN_EMAIL) {
+    return res.status(403).send("无权限访问");
+  }
+  try {
+    const users = await User.find().sort({ joinDate: -1 });
+    if (!users.length) {
+      return res.send("<p>暂无用户数据</p>");
+    }
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>已访问用户列表</title>
+        <style>
+          body { background: #0a0a0a; color: #eee; font-family: system-ui, sans-serif; padding: 2rem; }
+          h1 { color: #ffd700; }
+          table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+          th, td { border: 1px solid #444; padding: 8px 12px; text-align: left; }
+          th { background: #1a1a1a; color: #ffd700; }
+          img { border-radius: 50%; width: 40px; height: 40px; object-fit: cover; }
+          .back-link { display: inline-block; margin-bottom: 20px; color: #ffd700; text-decoration: none; border: 1px solid #ffd700; padding: 6px 12px; border-radius: 30px; }
+        </style>
+      </head>
+      <body>
+        <a href="/admin/blacklist" class="back-link">← 黑名单管理</a>
+        <a href="/" class="back-link" style="margin-left: 10px;">← 返回首页</a>
+        <h1>📋 已登录用户列表 (共${users.length}人)</h1>
+        <table>
+          <thead>
+            <tr><th>头像</th><th>邮箱</th><th>用户名</th><th>注册/首次登录时间</th><th>个人简介</th></tr>
+          </thead>
+          <tbody>
+    `;
+    for (const u of users) {
+      html += `
+        <tr>
+          <td><img src="${u.avatar || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp"}" onerror="this.src='https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp'"></td>
+          <td>${escapeHtml(u.email)}</td>
+          <td>${escapeHtml(u.username || "-")}</td>
+          <td>${u.joinDate ? new Date(u.joinDate).toLocaleString() : "-"}</td>
+          <td>${escapeHtml(u.bio || "-")}</td>
+        </tr>
+      `;
+    }
+    html += `
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+    res.send(html);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("读取用户数据失败");
+  }
 });
 
 // ========== 管理后台：查看反馈列表 ==========

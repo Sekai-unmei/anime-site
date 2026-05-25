@@ -389,7 +389,7 @@ app.use(express.static("public"));
 
 // 特别确保 fate.html 和 series.html 等自定义页面能被访问
 app.get("/fate.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "public/fate.html"));
+  res.sendFile(path.join(__dirname, "public/系列/fate.html"));
 });
 
 app.get("/", (req, res) => {

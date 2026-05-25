@@ -25,7 +25,6 @@
         margin: 0 auto;
         padding: 2rem 1.5rem;
       }
-      /* 头部导航 */
       .page-header {
         display: flex;
         justify-content: space-between;
@@ -63,7 +62,6 @@
         background: #ffd966;
         color: #0a0a0a;
       }
-      /* 介绍卡片 */
       .intro-card {
         background: linear-gradient(145deg, #11181f, #0a0f12);
         border-left: 5px solid #d9a13b;
@@ -82,7 +80,6 @@
         color: #ffd966;
         margin-top: 0.8rem;
       }
-      /* 分组样式 */
       .series-group {
         margin-bottom: 3rem;
       }
@@ -243,54 +240,44 @@
 
     <script src="/js/common.js"></script>
     <script>
-      // ------------------------------
-      // 预定义分组 + 内部详细排序（基于作品ID，确保顺序符合推荐）
-      // 分组顺序严格按照展示顺序：主线核心 -> 正传/外传系列 -> FGO主线动画 -> 魔法少女伊莉雅 -> 搞笑日常嘉年华
-      // 每个分组内按照剧情/视觉顺序排列
-      // ------------------------------
+      // 预定义分组及内部ID顺序（与之前保持一致）
       const GROUP_CONFIG = [
         {
           id: "main_story",
           name: "⚔️ 圣杯战争 · 主线核心轨迹",
-          desc: "零之起点 → 无限剑制 → 天之杯。这四部构成型月最核心的动画体验，推荐按此顺序观看。",
-          // 内部顺序依据 id 列表: Zero(669,670) -> UBW(664,665) -> HF三部曲(666,667,668) -> Fate/stay night 2006(671)
+          desc: "零之起点 → 无限剑制 → 天之杯。这四部构成型月最核心的动画体验。",
           orderIds: [669, 670, 664, 665, 666, 667, 668, 671],
         },
         {
           id: "extend_series",
           name: "🌙 正传衍生 · 魔术师与从者们",
-          desc: "包含Apocrypha、Extra、strange Fake、事件簿等，拓宽月世界版图。",
-          orderIds: [674, 675, 672, 673, 683, 690], // FA, Extra, 奇异赝品1+2, 二世事件簿+特别篇
+          desc: "包含Apocrypha、Extra、strange Fake、事件簿等。",
+          orderIds: [674, 675, 672, 673, 683, 690],
         },
         {
           id: "fgo_anime",
           name: "📀 Fate/Grand Order 人理修复篇",
-          desc: "改编自手游主线，从序章到第七特异点·巴比伦尼亚，终局所罗门，领略人类史诗。",
-          orderIds: [684, 685, 686, 687, 688, 689], // First Order, moonlight, 绝对魔兽战线, 卡美洛前篇+后篇, 所罗门
+          desc: "改编自手游主线，从序章到第七特异点·巴比伦尼亚，终局所罗门。",
+          orderIds: [684, 685, 686, 687, 688, 689],
         },
         {
           id: "prisma_illya",
           name: "✨ 魔法少女☆伊莉雅 (平行世界)",
-          desc: "伊莉雅成为魔法少女的平行世界，温馨搞笑与热血并存，建议主线之后观看。",
-          orderIds: [676, 677, 678, 679, 680, 681, 682], // 第一季, 2wei, 2wei Herz, 3rei, 雪下的誓言, Licht, 百变嘉年华
+          desc: "伊莉雅成为魔法少女的平行世界，温馨搞笑与热血并存。",
+          orderIds: [676, 677, 678, 679, 680, 681, 682],
         },
         {
           id: "comedy_carnival",
           name: "🎭 英灵日常 · 嘉年华 & 泡面番",
-          desc: "治愈+爆笑，卫宫家的饭、幻想嘉年华、FGO搞笑短片，放松必备。",
-          orderIds: [656, 691, 692, 693, 694, 695], // 卫宫家今天的饭, 幻想嘉年华, FGO嘉年华, 爱因兹贝伦咨询室, 从漫画了解FGO, 藤丸立香想不明白
+          desc: "治愈+爆笑，卫宫家的饭、幻想嘉年华、FGO搞笑短片。",
+          orderIds: [656, 691, 692, 693, 694, 695],
         },
       ];
 
-      // 所有识别为Fate系列的作品集合（存储完整对象）
-      let allFateAnimes = [];
-
-      // 辅助函数: 判断一部动漫是否属于Fate宇宙
       function isFateRelated(anime) {
         if (!anime) return false;
         const title = (anime.title || "").toLowerCase();
         const series = (anime.series_title || "").toLowerCase();
-        // 关键词匹配 Fate, 魔法少女伊莉雅, 卫宫家的饭, 君主·埃尔梅罗, 幻想嘉年华等
         const fateKeywords = [
           "fate",
           "命运之夜",
@@ -304,35 +291,24 @@
           "grand carnival",
           "爱因兹贝伦咨询室",
         ];
-        if (
-          fateKeywords.some((kw) => title.includes(kw) || series.includes(kw))
-        )
-          return true;
-        // 额外排查部分特别标题 （绝对魔兽战线等已经包含fate关键词）
-        return false;
+        return fateKeywords.some(
+          (kw) => title.includes(kw) || series.includes(kw),
+        );
       }
 
-      // 获取所有动漫数据，然后过滤Fate系列
       async function fetchAllAnime() {
         try {
-          // 为了获取全部，使用高limit, 由于总条目约600+，直接拿全部效率尚可
           const res = await fetch("/api/anime/list?page=1&limit=600", {
             credentials: "include",
           });
           const json = await res.json();
-          if (json.data && Array.isArray(json.data)) {
-            return json.data;
-          } else {
-            console.warn("接口返回异常", json);
-            return [];
-          }
+          return json.data && Array.isArray(json.data) ? json.data : [];
         } catch (err) {
           console.error("获取动漫列表失败", err);
           return [];
         }
       }
 
-      // 将接口里 id 转成数字存储 (anime.id 可能是数字或字符串)
       function normalizeAnime(anime) {
         return {
           ...anime,
@@ -341,93 +317,19 @@
         };
       }
 
-      // 根据预定义分组排序渲染
-      function renderGroups(animeMap) {
-        const container = document.getElementById("fate-content");
-        container.innerHTML = "";
-
-        for (let group of GROUP_CONFIG) {
-          const groupDiv = document.createElement("div");
-          groupDiv.className = "series-group";
-
-          // 标题区
-          const titleHtml = `
-                <div class="group-title">
-                    ${group.name}
-                    <span>${group.orderIds.length}</span>
-                </div>
-                <div class="group-desc">${group.desc}</div>
-            `;
-          groupDiv.innerHTML = titleHtml;
-          const gridDiv = document.createElement("div");
-          gridDiv.className = "anime-grid";
-
-          // 按照 orderIds 的顺序添加卡片
-          let hasAny = false;
-          for (let aid of group.orderIds) {
-            const anime = animeMap.get(aid);
-            if (anime) {
-              hasAny = true;
-              const card = createCardElement(anime);
-              gridDiv.appendChild(card);
-            }
-          }
-
-          // 如果该组没有任何数据（比如数据库缺失部分）, 补一句提示
-          if (!hasAny) {
-            const placeholder = document.createElement("div");
-            placeholder.style.cssText =
-              "color:#777; padding:1rem; text-align:center; grid-column:1/-1;";
-            placeholder.innerText =
-              "⚠️ 该分组暂时没有记录到动画资料，请稍后再观测。";
-            gridDiv.appendChild(placeholder);
-          }
-
-          groupDiv.appendChild(gridDiv);
-          container.appendChild(groupDiv);
-        }
-
-        // 额外处理未被上述分组收录的Fate作品（作为补充区域，兜底）
-        const allGroupIds = new Set();
-        GROUP_CONFIG.forEach((g) =>
-          g.orderIds.forEach((id) => allGroupIds.add(id)),
-        );
-        const ungrouped = [];
-        for (let [id, anime] of animeMap.entries()) {
-          if (!allGroupIds.has(id) && isFateRelated(anime)) {
-            ungrouped.push(anime);
-          }
-        }
-        if (ungrouped.length > 0) {
-          const extraDiv = document.createElement("div");
-          extraDiv.className = "series-group";
-          extraDiv.innerHTML = `
-                <div class="group-title">
-                    🧩 其他观测记录 · 月之残响
-                    <span>${ungrouped.length}</span>
-                </div>
-                <div class="group-desc">未被自动分组的Fate关联作品，但同样值得一睹。</div>
-            `;
-          const extraGrid = document.createElement("div");
-          extraGrid.className = "anime-grid";
-          // 按年份简单排序
-          ungrouped.sort((a, b) =>
-            (a.season || "").localeCompare(b.season || ""),
-          );
-          ungrouped.forEach((anime) => {
-            extraGrid.appendChild(createCardElement(anime));
-          });
-          extraDiv.appendChild(extraGrid);
-          container.appendChild(extraDiv);
-        }
+      function escapeHtml(str) {
+        if (!str) return "";
+        return str.replace(/[&<>]/g, function (m) {
+          if (m === "&") return "&amp;";
+          if (m === "<") return "&lt;";
+          if (m === ">") return "&gt;";
+          return m;
+        });
       }
 
-      // 创建单个卡片DOM，带占位图与评分标记（用户自己的投票可显示）
       function createCardElement(anime) {
         const card = document.createElement("div");
         card.className = "anime-card";
-
-        // 图片URL处理，避免破损
         let imgUrl = anime.image_url;
         if (
           !imgUrl ||
@@ -437,13 +339,11 @@
         ) {
           imgUrl = "/images/default.jpg";
         }
-        // 年份提取（从season字段取年份）
         let yearText = "";
         if (anime.season) {
           const match = anime.season.match(/^(\d{4})/);
           if (match) yearText = match[1];
         }
-        // 用户评分徽章（若当前用户已评分，显示简标）
         let ratingMark = "";
         if (anime.currentUserRating) {
           const emojiMap = {
@@ -455,11 +355,9 @@
           };
           ratingMark = `<div class="rating-badge">${emojiMap[anime.currentUserRating] || "✓"}</div>`;
         }
-        // 简短描述 (截取)
         let description = anime.description || "记录于圣杯战争文献，暂无简介。";
         if (description.length > 80)
           description = description.slice(0, 78) + "…";
-
         card.innerHTML = `
             <div class="card-img-wrapper">
                 <img class="card-img" src="${imgUrl}" alt="${escapeHtml(anime.title)}" loading="lazy" onerror="this.src='/images/default.jpg'">
@@ -473,35 +371,70 @@
                 <div class="card-desc">${escapeHtml(description)}</div>
             </div>
         `;
-
-        // 点击跳转详情，用mongo _id 或者数字id均可
         const detailId = anime._id || anime.id;
         if (detailId) {
-          card.addEventListener("click", (e) => {
-            e.stopPropagation();
+          card.addEventListener("click", () => {
             window.location.href = `/anime/${detailId}`;
           });
         }
         return card;
       }
 
-      // 简单防XSS
-      function escapeHtml(str) {
-        if (!str) return "";
-        return str
-          .replace(/[&<>]/g, function (m) {
-            if (m === "&") return "&amp;";
-            if (m === "<") return "&lt;";
-            if (m === ">") return "&gt;";
-            return m;
-          })
-          .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function (c) {
-            return c;
-          });
+      function renderGroups(animeMap) {
+        const container = document.getElementById("fate-content");
+        container.innerHTML = "";
+        for (let group of GROUP_CONFIG) {
+          const groupDiv = document.createElement("div");
+          groupDiv.className = "series-group";
+          groupDiv.innerHTML = `<div class="group-title">${group.name}<span>${group.orderIds.length}</span></div><div class="group-desc">${group.desc}</div>`;
+          const gridDiv = document.createElement("div");
+          gridDiv.className = "anime-grid";
+          let hasAny = false;
+          for (let aid of group.orderIds) {
+            const anime = animeMap.get(aid);
+            if (anime) {
+              hasAny = true;
+              gridDiv.appendChild(createCardElement(anime));
+            }
+          }
+          if (!hasAny) {
+            const placeholder = document.createElement("div");
+            placeholder.style.cssText =
+              "color:#777; padding:1rem; text-align:center; grid-column:1/-1;";
+            placeholder.innerText =
+              "⚠️ 该分组暂时没有记录到动画资料，请稍后再观测。";
+            gridDiv.appendChild(placeholder);
+          }
+          groupDiv.appendChild(gridDiv);
+          container.appendChild(groupDiv);
+        }
+        // 未被分组的Fate作品（兜底）
+        const allGroupIds = new Set();
+        GROUP_CONFIG.forEach((g) =>
+          g.orderIds.forEach((id) => allGroupIds.add(id)),
+        );
+        const ungrouped = [];
+        for (let [id, anime] of animeMap.entries()) {
+          if (!allGroupIds.has(id) && isFateRelated(anime))
+            ungrouped.push(anime);
+        }
+        if (ungrouped.length) {
+          const extraDiv = document.createElement("div");
+          extraDiv.className = "series-group";
+          extraDiv.innerHTML = `<div class="group-title">🧩 其他观测记录 · 月之残响<span>${ungrouped.length}</span></div><div class="group-desc">未被自动分组的Fate关联作品，但同样值得一睹。</div>`;
+          const extraGrid = document.createElement("div");
+          extraGrid.className = "anime-grid";
+          ungrouped.sort((a, b) =>
+            (a.season || "").localeCompare(b.season || ""),
+          );
+          ungrouped.forEach((anime) =>
+            extraGrid.appendChild(createCardElement(anime)),
+          );
+          extraDiv.appendChild(extraGrid);
+          container.appendChild(extraDiv);
+        }
       }
 
-      // 从数组构建Map，且补充上用户的当前评分（需要在请求时已经包含？默认API可返回currentUserRating）
-      // 由于我们之前调用的是 /api/anime/list 已经包含了 currentUserRating, 不需要额外请求。
       async function initFatePage() {
         const container = document.getElementById("fate-content");
         try {
@@ -511,38 +444,17 @@
               '<div class="error-msg">⚠️ 无法获取观测数据，请检查网络或稍后重试。</div>';
             return;
           }
-          // 筛选出所有Fate系列作品
           const fateList = allAnimeList.filter((anime) => isFateRelated(anime));
           if (fateList.length === 0) {
             container.innerHTML =
               '<div class="error-msg">目前未检索到Fate系列数据，请联系管理员补充圣杯文献。</div>';
             return;
           }
-          // 构建 id -> anime 映射（数字id为准）
           const animeMap = new Map();
           fateList.forEach((anime) => {
             const norm = normalizeAnime(anime);
-            if (!isNaN(norm.numericId)) {
-              animeMap.set(norm.numericId, norm);
-            } else {
-              // 极少数id异常仍保留备用 (但数据库都应存在id)
-              console.warn("发现id异常", anime.title, anime.id);
-            }
+            if (!isNaN(norm.numericId)) animeMap.set(norm.numericId, norm);
           });
-
-          // 额外确保一些可能由于ID缺失的知名Fate作品未被漏掉，手动关联
-          // 但是依据数据库，所有Fate条目ID都稳定在664~695区段以及656等，上述筛选已覆盖，无需特别操作。
-
-          // 校验预分组里的必要id是否存在于animeMap，若缺失则给出log但继续渲染
-          for (let group of GROUP_CONFIG) {
-            for (let aid of group.orderIds) {
-              if (!animeMap.has(aid)) {
-                console.log(
-                  `分组 ${group.name} 缺少id ${aid}, 可能需要数据库补充相应条目`,
-                );
-              }
-            }
-          }
           renderGroups(animeMap);
         } catch (err) {
           console.error(err);
@@ -551,12 +463,7 @@
         }
       }
 
-      // 额外添加图片懒加载辅助，顺便利用common.js已有的公共方法
-      if (typeof window.syncUserAvatar === "function") {
-        window.syncUserAvatar(); // 同步用户信息无关紧要，确保不报错即可
-      }
-
-      // 启动
+      if (typeof window.syncUserAvatar === "function") window.syncUserAvatar();
       initFatePage();
     </script>
   </body>

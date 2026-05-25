@@ -275,14 +275,11 @@ app.use(async (req, res, next) => {
   if (req.session && req.session.user) {
     const black = await isBlacklisted(req.session.user);
     if (black) {
-      // 销毁 session
       req.session.destroy((err) => {
         if (err) console.error("销毁会话失败", err);
-        // 如果请求的是 API，返回 403 状态码
         if (req.path.startsWith("/api/")) {
           return res.status(403).json({ error: "您的账号已被禁止访问" });
         }
-        // 否则重定向到禁止页面
         return res.redirect("/unauthorized.html");
       });
       return;
@@ -328,7 +325,7 @@ app.get("/api/user/current", async (req, res) => {
   });
 });
 
-// ========== Google OAuth (解除白名单，增加黑名单) ==========
+// ========== Google OAuth (黑名单模式) ==========
 const GOOGLE_CLIENT_ID =
   "1046534438268-vmrn92gmqjgdu0ro037d2nhsfmnq63ao.apps.googleusercontent.com";
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -345,7 +342,7 @@ app.post("/auth/google/token", async (req, res) => {
     const payload = ticket.getPayload();
     const email = payload.email;
 
-    // 检查黑名单
+    // 检查黑名单（禁止列表中的邮箱登录）
     if (await isBlacklisted(email)) {
       return res.json({
         success: false,
@@ -354,7 +351,7 @@ app.post("/auth/google/token", async (req, res) => {
       });
     }
 
-    // 未在黑名单内，允许登录
+    // 未在黑名单内，允许登录（所有其他邮箱均可登录）
     const googleAvatar = payload.picture || null;
     let user = await getOrCreateUserInfo(email);
     if (googleAvatar && !user.googleAvatar) user.googleAvatar = googleAvatar;
@@ -384,10 +381,8 @@ app.get("/logout", (req, res) => {
 });
 
 // ========== 静态页面路由 ==========
-// 直接服务 public 目录下的所有文件（HTML, CSS, JS, 图片等）
 app.use(express.static("public"));
 
-// 特别确保 fate.html 和 series.html 等自定义页面能被访问
 app.get("/fate.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public/系列/fate.html"));
 });
@@ -408,7 +403,7 @@ app.get("/anime/:id", (req, res) =>
 );
 app.get("/login-failed", (req, res) => res.redirect("/unauthorized.html"));
 
-// ========== 动漫相关接口（保持原有代码） ==========
+// ========== 动漫相关接口 ==========
 app.get("/api/anime/list", async (req, res) => {
   let {
     page = 1,
@@ -593,7 +588,7 @@ app.post("/api/anime/unrate", async (req, res) => {
   }
 });
 
-// ========== 评论接口（保持原有代码） ==========
+// ========== 评论接口 ==========
 app.post("/api/anime/:id/comment", async (req, res) => {
   try {
     const anime = await findAnimeByIdentifier(req.params.id);
@@ -751,7 +746,7 @@ app.post("/api/user/reset-avatar", async (req, res) => {
   res.json({ success: true, avatarUrl: defaultAvatar });
 });
 
-// ========== 好友系统（保持原有代码） ==========
+// ========== 好友系统 ==========
 app.post("/api/friends/request", async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: "未登录" });
   const fromUser = req.session.user;
@@ -1039,7 +1034,6 @@ app.post("/api/report", async (req, res) => {
 // ========== 黑名单管理 API（仅管理员） ==========
 const ADMIN_EMAIL = "kevin88ye88@gmail.com";
 
-// 管理员中间件
 function isAdmin(req, res, next) {
   if (!req.session.user || req.session.user !== ADMIN_EMAIL) {
     return res.status(403).json({ error: "无权限，仅管理员可操作" });
@@ -1047,13 +1041,11 @@ function isAdmin(req, res, next) {
   next();
 }
 
-// 获取黑名单列表
 app.get("/api/admin/blacklist", isAdmin, async (req, res) => {
   const list = await Blacklist.find().sort({ addedAt: -1 });
   res.json(list);
 });
 
-// 添加黑名单
 app.post("/api/admin/blacklist", isAdmin, async (req, res) => {
   const { email, reason } = req.body;
   if (!email) return res.status(400).json({ error: "缺少邮箱" });
@@ -1067,7 +1059,6 @@ app.post("/api/admin/blacklist", isAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
-// 移除黑名单
 app.delete("/api/admin/blacklist", isAdmin, async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "缺少邮箱" });
@@ -1077,7 +1068,6 @@ app.delete("/api/admin/blacklist", isAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
-// 黑名单管理页面（仅管理员可访问）
 app.get("/admin/blacklist", (req, res) => {
   if (!req.session.user || req.session.user !== ADMIN_EMAIL) {
     return res.status(403).send("无权访问");
@@ -1117,7 +1107,7 @@ app.get("/admin/blacklist", (req, res) => {
             container.innerHTML = '<p>暂无黑名单记录</p>';
             return;
           }
-          let html = '<table><tr><th>邮箱</th><th>原因</th><th>添加时间</th><th>操作</th><tr>';
+          let html = '<table><tr><th>邮箱</th><th>原因</th><th>添加时间</th><th>操作</th></tr>';
           data.forEach(item => {
             html += \`
               <tr>

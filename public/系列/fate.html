@@ -2,7 +2,10 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    />
     <title>Fate系列 · 观测者推荐顺序 | 动漫资料库</title>
     <link rel="stylesheet" href="/style.css" />
     <style>
@@ -270,24 +273,32 @@
         },
       ];
 
-      async function fetchAllAnime() {
+      // 获取所有Fate相关动漫（通过系列标题 + 标题关键词）
+      async function fetchFateAnime() {
+        // 方法1：通过 series 接口获取系列名为 "Fate" 或 "fate" 的作品
+        let fateSeries = [];
         try {
-          const res = await fetch("/api/anime/list?page=1&limit=600", {
+          const res = await fetch(`/api/anime/series?title=Fate`, {
             credentials: "include",
           });
-          const json = await res.json();
-          return json.data && Array.isArray(json.data) ? json.data : [];
-        } catch (err) {
-          console.error("获取动漫列表失败", err);
-          return [];
+          fateSeries = await res.json();
+        } catch (e) {
+          console.warn("series接口失败", e);
         }
-      }
 
-      function isFateRelated(anime) {
-        if (!anime) return false;
-        const title = (anime.title || "").toLowerCase();
-        const series = (anime.series_title || "").toLowerCase();
-        const keywords = [
+        // 方法2：通过 list 接口获取标题包含 fate 的作品（补充遗漏）
+        let allAnime = [];
+        try {
+          const listRes = await fetch("/api/anime/list?page=1&limit=600", {
+            credentials: "include",
+          });
+          const listJson = await listRes.json();
+          if (listJson.data) allAnime = listJson.data;
+        } catch (e) {
+          console.warn("list接口失败", e);
+        }
+
+        const titleKeywords = [
           "fate",
           "命运之夜",
           "魔法少女☆伊莉雅",
@@ -301,7 +312,33 @@
           "爱因兹贝伦咨询室",
           "grand order",
         ];
-        return keywords.some((kw) => title.includes(kw) || series.includes(kw));
+
+        const fromSeries = fateSeries.filter((anime) => {
+          const title = (anime.title || "").toLowerCase();
+          const series = (anime.series_title || "").toLowerCase();
+          return (
+            series.includes("fate") ||
+            titleKeywords.some(
+              (kw) => title.includes(kw) || series.includes(kw),
+            )
+          );
+        });
+
+        const fromList = allAnime.filter((anime) => {
+          const title = (anime.title || "").toLowerCase();
+          const series = (anime.series_title || "").toLowerCase();
+          return titleKeywords.some(
+            (kw) => title.includes(kw) || series.includes(kw),
+          );
+        });
+
+        // 合并去重（基于 _id）
+        const map = new Map();
+        [...fromSeries, ...fromList].forEach((anime) => {
+          if (anime._id && !map.has(anime._id.toString()))
+            map.set(anime._id.toString(), anime);
+        });
+        return Array.from(map.values());
       }
 
       function getGroupIndex(anime) {
@@ -376,16 +413,10 @@
       async function initFatePage() {
         const container = document.getElementById("fate-content");
         try {
-          const allAnimeList = await fetchAllAnime();
-          if (!allAnimeList || allAnimeList.length === 0) {
+          const fateList = await fetchFateAnime();
+          if (!fateList.length) {
             container.innerHTML =
-              '<div class="error-msg">⚠️ 无法获取观测数据，请检查网络或稍后重试。</div>';
-            return;
-          }
-          const fateList = allAnimeList.filter((anime) => isFateRelated(anime));
-          if (fateList.length === 0) {
-            container.innerHTML =
-              '<div class="error-msg">目前未检索到Fate系列数据，请联系管理员补充圣杯文献。</div>';
+              '<div class="error-msg">⚠️ 未检索到Fate系列数据，请确保数据库中已导入动漫数据。</div>';
             return;
           }
 
@@ -397,11 +428,8 @@
 
           for (const anime of fateList) {
             const idx = getGroupIndex(anime);
-            if (idx >= 0) {
-              groups[idx].animes.push(anime);
-            } else {
-              unmatched.push(anime);
-            }
+            if (idx >= 0) groups[idx].animes.push(anime);
+            else unmatched.push(anime);
           }
 
           container.innerHTML = "";
@@ -446,7 +474,7 @@
 
           if (container.children.length === 0) {
             container.innerHTML =
-              '<div class="error-msg">未找到任何Fate作品，请检查数据库。</div>';
+              '<div class="error-msg">未找到任何Fate作品，请检查数据库是否已导入数据。</div>';
           }
         } catch (err) {
           console.error(err);

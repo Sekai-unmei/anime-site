@@ -286,6 +286,8 @@
 
       // 获取动漫列表（直接使用后端 keyword 搜索）
       async function fetchFateAnime() {
+        // 方法1：使用 keyword 搜索
+        let animeList = [];
         try {
           const res = await fetch(
             "/api/anime/list?page=1&limit=600&keyword=Fate",
@@ -293,14 +295,50 @@
               credentials: "include",
             },
           );
+          console.log("keyword 搜索响应状态:", res.status);
           const json = await res.json();
-          const animeList = json.data || [];
-          console.log(`获取到 ${animeList.length} 部 Fate 相关作品`, animeList);
-          return animeList;
+          if (json.data && json.data.length) {
+            animeList = json.data;
+            console.log("✅ keyword 搜索获取到", animeList.length, "部作品");
+          } else {
+            console.warn("keyword 搜索返回空数据，尝试全量获取");
+          }
         } catch (e) {
-          console.error("获取 Fate 数据失败", e);
-          return [];
+          console.error("keyword 搜索失败", e);
         }
+
+        // 方法2：如果 keyword 没拿到，降级为获取全量数据再过滤
+        if (animeList.length === 0) {
+          try {
+            const res2 = await fetch("/api/anime/list?page=1&limit=1000", {
+              credentials: "include",
+            });
+            const json2 = await res2.json();
+            const all = json2.data || [];
+            console.log("全量获取到", all.length, "部动漫，开始过滤 Fate");
+            // 过滤规则：series_title 包含 "fate" 或 title 包含 "fate" 或 aliases 包含 "fate"
+            animeList = all.filter((anime) => {
+              const series = (anime.series_title || "").toLowerCase();
+              const title = (anime.title || "").toLowerCase();
+              const aliases = (anime.aliases || []).join(" ").toLowerCase();
+              return (
+                series.includes("fate") ||
+                title.includes("fate") ||
+                aliases.includes("fate")
+              );
+            });
+            console.log("✅ 过滤后得到", animeList.length, "部 Fate 作品");
+          } catch (e) {
+            console.error("全量获取失败", e);
+          }
+        }
+
+        // 去重（避免重复）
+        const map = new Map();
+        animeList.forEach((a) => {
+          if (a._id) map.set(a._id.toString(), a);
+        });
+        return Array.from(map.values());
       }
 
       // 分组索引

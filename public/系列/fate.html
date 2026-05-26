@@ -187,9 +187,7 @@
       </div>
       <footer>观测者 · 圣杯战争编年史</footer>
     </div>
-
     <script>
-      // 独立版本的 escapeHtml
       function escapeHtml(str) {
         if (!str) return "";
         return String(str).replace(/[&<>]/g, function (m) {
@@ -199,8 +197,6 @@
           return m;
         });
       }
-
-      // 分组规则（与原来一致）
       const GROUP_RULES = [
         {
           name: "⚔️ 圣杯战争 · 主线核心轨迹",
@@ -283,65 +279,24 @@
           exclude: [],
         },
       ];
-
-      // 获取动漫列表（直接使用后端 keyword 搜索）
       async function fetchFateAnime() {
-        // 方法1：使用 keyword 搜索
-        let animeList = [];
         try {
           const res = await fetch(
             "/api/anime/list?page=1&limit=600&keyword=Fate",
-            {
-              credentials: "include",
-            },
+            { credentials: "include" },
           );
-          console.log("keyword 搜索响应状态:", res.status);
           const json = await res.json();
-          if (json.data && json.data.length) {
-            animeList = json.data;
-            console.log("✅ keyword 搜索获取到", animeList.length, "部作品");
-          } else {
-            console.warn("keyword 搜索返回空数据，尝试全量获取");
-          }
+          const list = json.data || [];
+          console.log(
+            `✅ 获取到 ${list.length} 部 Fate 作品`,
+            list.map((a) => a.title),
+          );
+          return list;
         } catch (e) {
-          console.error("keyword 搜索失败", e);
+          console.error("获取失败", e);
+          return [];
         }
-
-        // 方法2：如果 keyword 没拿到，降级为获取全量数据再过滤
-        if (animeList.length === 0) {
-          try {
-            const res2 = await fetch("/api/anime/list?page=1&limit=1000", {
-              credentials: "include",
-            });
-            const json2 = await res2.json();
-            const all = json2.data || [];
-            console.log("全量获取到", all.length, "部动漫，开始过滤 Fate");
-            // 过滤规则：series_title 包含 "fate" 或 title 包含 "fate" 或 aliases 包含 "fate"
-            animeList = all.filter((anime) => {
-              const series = (anime.series_title || "").toLowerCase();
-              const title = (anime.title || "").toLowerCase();
-              const aliases = (anime.aliases || []).join(" ").toLowerCase();
-              return (
-                series.includes("fate") ||
-                title.includes("fate") ||
-                aliases.includes("fate")
-              );
-            });
-            console.log("✅ 过滤后得到", animeList.length, "部 Fate 作品");
-          } catch (e) {
-            console.error("全量获取失败", e);
-          }
-        }
-
-        // 去重（避免重复）
-        const map = new Map();
-        animeList.forEach((a) => {
-          if (a._id) map.set(a._id.toString(), a);
-        });
-        return Array.from(map.values());
       }
-
-      // 分组索引
       function getGroupIndex(anime) {
         const title = (anime.title || "").toLowerCase();
         const desc = (anime.description || "").toLowerCase();
@@ -358,20 +313,17 @@
         }
         return -1;
       }
-
-      // 创建卡片
       function createCardElement(anime) {
         const card = document.createElement("div");
         card.className = "anime-card";
-        let imgUrl = anime.image_url;
+        let imgUrl = anime.image_url || "/images/default.jpg";
         if (
           !imgUrl ||
           imgUrl === "" ||
           imgUrl.startsWith("publc/") ||
           imgUrl === "/images/default.jpg"
-        ) {
+        )
           imgUrl = "/images/default.jpg";
-        }
         let yearText = "";
         if (anime.season) {
           const match = anime.season.match(/^(\d{4})/);
@@ -380,27 +332,17 @@
         let description = anime.description || "记录于圣杯战争文献，暂无简介。";
         if (description.length > 80)
           description = description.slice(0, 78) + "…";
-
-        card.innerHTML = `
-      <div><img class="card-img" src="${imgUrl}" alt="${escapeHtml(anime.title)}" loading="lazy" onerror="this.src='/images/default.jpg'"></div>
-      <div class="card-info">
-        <div class="card-title">
-          <span>${escapeHtml(anime.title)}</span>
-          ${yearText ? `<span class="card-year">${yearText}</span>` : ""}
-        </div>
-        <div class="card-desc">${escapeHtml(description)}</div>
-      </div>
-    `;
+        card.innerHTML = `<div><img class="card-img" src="${imgUrl}" alt="${escapeHtml(anime.title)}" loading="lazy" onerror="this.src='/images/default.jpg'"></div>
+      <div class="card-info"><div class="card-title"><span>${escapeHtml(anime.title)}</span>${yearText ? `<span class="card-year">${yearText}</span>` : ""}</div>
+      <div class="card-desc">${escapeHtml(description)}</div></div>`;
         const detailId = anime._id || anime.id;
-        if (detailId) {
-          card.addEventListener("click", () => {
-            window.location.href = `/anime/${detailId}`;
-          });
-        }
+        if (detailId)
+          card.addEventListener(
+            "click",
+            () => (window.location.href = `/anime/${detailId}`),
+          );
         return card;
       }
-
-      // 初始化页面
       async function initFatePage() {
         const container = document.getElementById("fate-content");
         try {
@@ -411,7 +353,6 @@
             return;
           }
           fateList.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
-
           const groups = GROUP_RULES.map((rule) => ({ ...rule, animes: [] }));
           const unmatched = [];
           for (const anime of fateList) {
@@ -419,16 +360,12 @@
             if (idx >= 0) groups[idx].animes.push(anime);
             else unmatched.push(anime);
           }
-
           container.innerHTML = "";
           for (const group of groups) {
             if (group.animes.length === 0) continue;
             const groupDiv = document.createElement("div");
             groupDiv.className = "series-group";
-            groupDiv.innerHTML = `
-          <div class="group-title">${group.name}<span class="group-count">${group.animes.length}</span></div>
-          <div class="group-desc">${group.desc}</div>
-        `;
+            groupDiv.innerHTML = `<div class="group-title">${group.name}<span class="group-count">${group.animes.length}</span></div><div class="group-desc">${group.desc}</div>`;
             const gridDiv = document.createElement("div");
             gridDiv.className = "anime-grid";
             group.animes.forEach((anime) =>
@@ -437,11 +374,10 @@
             groupDiv.appendChild(gridDiv);
             container.appendChild(groupDiv);
           }
-          if (unmatched.length > 0) {
+          if (unmatched.length) {
             const extraDiv = document.createElement("div");
             extraDiv.className = "series-group";
-            extraDiv.innerHTML = `<div class="group-title">🧩 其他观测记录 · 月之残响<span class="group-count">${unmatched.length}</span></div>
-                              <div class="group-desc">未被自动分组的Fate关联作品，但同样值得一睹。</div>`;
+            extraDiv.innerHTML = `<div class="group-title">🧩 其他观测记录 · 月之残响<span class="group-count">${unmatched.length}</span></div><div class="group-desc">未被自动分组的Fate关联作品，但同样值得一睹。</div>`;
             const extraGrid = document.createElement("div");
             extraGrid.className = "anime-grid";
             unmatched.forEach((anime) =>
@@ -450,17 +386,15 @@
             extraDiv.appendChild(extraGrid);
             container.appendChild(extraDiv);
           }
-          if (container.children.length === 0) {
+          if (container.children.length === 0)
             container.innerHTML =
               '<div class="error-msg">未找到任何Fate作品，请检查数据库是否已导入数据。</div>';
-          }
         } catch (err) {
           console.error(err);
           container.innerHTML =
             '<div class="error-msg">观测系统出现错误，请刷新页面重试。</div>';
         }
       }
-
       initFatePage();
     </script>
   </body>

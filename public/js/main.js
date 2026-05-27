@@ -299,7 +299,7 @@ function initSearchBox() {
       } else if (isPersona) {
         window.location.href = `/series/女神异闻录.html`;
       } else if (isFate) {
-        window.location.href = `/fate.html`; // 这个路径不变，因为 /fate.html 服务器端已指向新位置
+        window.location.href = `/series/fate.html`;
       } else {
         window.location.href = `/search.html?keyword=${encodeURIComponent(val)}`;
       }

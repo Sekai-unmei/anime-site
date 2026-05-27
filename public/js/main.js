@@ -295,12 +295,11 @@ function initSearchBox() {
       );
 
       if (isJojo) {
-        window.location.href = `/系列/series.html?title=${encodeURIComponent("jojo的奇妙冒险")}`;
+        window.location.href = `/series/jojo.html?title=${encodeURIComponent("jojo的奇妙冒险")}`;
       } else if (isPersona) {
-        window.location.href = `/系列/女神异闻录.html`;
+        window.location.href = `/series/女神异闻录.html`;
       } else if (isFate) {
-        // 跳转到 Fate 系列页面（您已提供的 fate.html）
-        window.location.href = `/fate.html`;
+        window.location.href = `/fate.html`; // 这个路径不变，因为 /fate.html 服务器端已指向新位置
       } else {
         window.location.href = `/search.html?keyword=${encodeURIComponent(val)}`;
       }

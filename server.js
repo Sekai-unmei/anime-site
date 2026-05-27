@@ -384,7 +384,7 @@ app.get("/logout", (req, res) => {
 app.use(express.static("public"));
 
 app.get("/fate.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "public/系列/fate.html"));
+  res.sendFile(path.join(__dirname, "public/series/fate.html"));
 });
 
 app.get("/", (req, res) => {

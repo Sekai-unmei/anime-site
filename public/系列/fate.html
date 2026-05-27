@@ -2,378 +2,103 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Fate系列 · 观测者推荐顺序</title>
-    <link rel="stylesheet" href="/style.css" />
+    <title>Fate 系列 - 观测站</title>
     <style>
-      /* 干净的重置样式，只用于本页面 */
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
       body {
         background: #0a0a0a;
         color: #eee;
-        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-family: system-ui;
         padding: 2rem;
       }
-      .fate-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        margin-bottom: 2rem;
-        border-bottom: 1px solid #2a2a2a;
-        padding-bottom: 1rem;
-        flex-wrap: wrap;
-      }
-      .fate-header h1 {
-        font-size: 2rem;
-        background: linear-gradient(135deg, #e6b422, #c79b2e);
-        background-clip: text;
-        -webkit-background-clip: text;
-        color: transparent;
-      }
-      .back-home {
+      .card {
         background: #1e1e1e;
-        padding: 0.5rem 1.2rem;
-        border-radius: 40px;
-        text-decoration: none;
-        color: #ffd966;
-        border: 1px solid #ffd966;
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 1rem 0;
       }
-      .back-home:hover {
-        background: #ffd966;
-        color: #0a0a0a;
-      }
-      .intro-card {
-        background: #11181f;
-        border-left: 5px solid #d9a13b;
-        padding: 1.2rem 2rem;
-        border-radius: 24px;
-        margin-bottom: 2rem;
-      }
-      .group-section {
-        margin-bottom: 3rem;
-      }
-      .group-title {
-        font-size: 1.8rem;
-        border-left: 5px solid #e6b422;
-        padding-left: 18px;
-        margin-bottom: 0.5rem;
-      }
-      .group-desc {
-        color: #aaa;
-        margin-left: 23px;
-        margin-bottom: 1rem;
-      }
-      .anime-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
         gap: 20px;
       }
-      .anime-card {
-        background: #151515;
-        border-radius: 12px;
-        overflow: hidden;
-        cursor: pointer;
-        transition: 0.2s;
-        border: 1px solid #262626;
+      .anime {
+        width: 180px;
+        background: #111;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
       }
-      .anime-card:hover {
-        transform: translateY(-5px);
-        border-color: #e6b422;
-      }
-      .anime-card img {
+      .anime img {
         width: 100%;
-        aspect-ratio: 2 / 3;
+        height: 240px;
         object-fit: cover;
-        background: #2c2c2c;
+        border-radius: 6px;
       }
-      .anime-card p {
-        padding: 0.8rem;
-        text-align: center;
-        font-weight: bold;
-      }
-      .error-msg {
-        text-align: center;
+      .error {
         color: #ff8888;
-        padding: 2rem;
-      }
-      .loading {
-        text-align: center;
-        padding: 3rem;
-        color: #ffd966;
-      }
-      footer {
-        text-align: center;
-        margin-top: 3rem;
-        padding: 1rem;
-        border-top: 1px solid #222;
-        color: #555;
-      }
-      @media (max-width: 720px) {
-        body {
-          padding: 1rem;
-        }
-        .group-title {
-          font-size: 1.4rem;
-        }
       }
     </style>
   </head>
   <body>
-    <div class="fate-header">
-      <div>
-        <h1>✧ Fate 观测序列 ✧</h1>
-        <p>根据英灵殿推荐 · 正确打开月世界的观看手册</p>
-      </div>
-      <a href="/" class="back-home">← 返回观测站</a>
-    </div>
-
-    <div class="intro-card">
-      <p>✨ 「非粉丝向观影指南」—— 以「剧情时间线 + 最佳体验顺序」综合整理。</p>
-      <p>📖 点击任意卡片跳转至详细观测档案。</p>
-      <div style="font-weight: bold; color: #ffd966; margin-top: 0.8rem">
-        ⭐ 推荐顺序：Zero → UBW → HF → 二世事件簿 → FGO → 伊莉雅 → 嘉年华
-      </div>
-    </div>
-
-    <div id="app">
-      <div class="loading">⚡ 正在从穹顶数据库调取 Fate 系列记录...</div>
-    </div>
-
-    <footer>观测者 · 圣杯战争编年史</footer>
+    <h1>✧ Fate 观测序列 ✧</h1>
+    <div id="status">正在加载数据...</div>
+    <div id="result" class="grid"></div>
 
     <script>
-      // ======================= 完全独立脚本 =======================
-      // 分组规则
-      const GROUP_RULES = [
-        {
-          name: "⚔️ 圣杯战争 · 主线核心轨迹",
-          desc: "零之起点 → 无限剑制 → 天之杯",
-          keywords: [
-            "zero",
-            "ubw",
-            "unlimited blade",
-            "heaven's feel",
-            "天之杯",
-            "命运之夜",
-            "fate/stay night",
-            "hf",
-          ],
-          exclude: [
-            "嘉年华",
-            "carnival",
-            "魔法少女",
-            "prisma",
-            "grand order",
-            "fgo",
-            "埃尔梅罗",
-            "事件簿",
-            "卫宫家的饭",
-          ],
-        },
-        {
-          name: "🌙 正传衍生 · 魔术师与从者们",
-          desc: "Apocrypha、Extra、strange Fake、事件簿等",
-          keywords: [
-            "apocrypha",
-            "extra",
-            "strange fake",
-            "埃尔梅罗",
-            "事件簿",
-            "君主",
-            "last encore",
-          ],
-          exclude: [],
-        },
-        {
-          name: "📀 Fate/Grand Order 人理修复篇",
-          desc: "序章到第七特异点·巴比伦尼亚，终局所罗门",
-          keywords: [
-            "grand order",
-            "fgo",
-            "巴比伦尼亚",
-            "卡美洛",
-            "所罗门",
-            "first order",
-            "绝对魔兽战线",
-            "神圣圆桌",
-          ],
-          exclude: [],
-        },
-        {
-          name: "✨ 魔法少女☆伊莉雅 (平行世界)",
-          desc: "伊莉雅的魔法少女平行世界",
-          keywords: [
-            "魔法少女☆伊莉雅",
-            "魔法少女伊莉雅",
-            "prisma",
-            "illya",
-            "雪下的誓言",
-            "licht",
-          ],
-          exclude: [],
-        },
-        {
-          name: "🎭 英灵日常 · 嘉年华 & 泡面番",
-          desc: "卫宫家的饭、幻想嘉年华、FGO搞笑短片",
-          keywords: [
-            "卫宫家的饭",
-            "嘉年华",
-            "carnival",
-            "从漫画了解",
-            "藤丸立香",
-            "爱因兹贝伦咨询室",
-          ],
-          exclude: [],
-        },
-      ];
+      (async function () {
+        const statusDiv = document.getElementById("status");
+        const resultDiv = document.getElementById("result");
+        try {
+          // 请求 Fate 相关动漫
+          const url = "/api/anime/list?page=1&limit=100&keyword=Fate";
+          console.log("请求:", url);
+          const res = await fetch(url, { credentials: "include" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          const list = json.data || [];
+          console.log("获取到数据:", list.length);
+          if (list.length === 0) {
+            statusDiv.innerHTML = "⚠️ 未检索到任何 Fate 数据，请检查数据库。";
+            return;
+          }
+          statusDiv.innerHTML = `✅ 找到 ${list.length} 部作品，正在展示...`;
+          // 清空并渲染卡片
+          resultDiv.innerHTML = "";
+          for (let anime of list) {
+            const card = document.createElement("div");
+            card.className = "anime";
+            // 获取图片（兼容多种字段）
+            let imgUrl =
+              anime.image_url ||
+              anime.cover ||
+              anime.images?.jpg?.image_url ||
+              "/images/default.jpg";
+            card.innerHTML = `
+                        <img src="${imgUrl}" onerror="this.src='/images/default.jpg'">
+                        <div><strong>${escapeHtml(anime.title)}</strong></div>
+                        <div style="font-size:0.8rem;color:#aaa;">${anime.season || ""}</div>
+                    `;
+            card.addEventListener("click", () => {
+              const id = anime._id || anime.id;
+              if (id) window.location.href = `/anime/${id}`;
+            });
+            resultDiv.appendChild(card);
+          }
+        } catch (err) {
+          console.error(err);
+          statusDiv.innerHTML = `<span class="error">加载失败: ${err.message}</span>`;
+        }
+      })();
 
-      // HTML 转义
       function escapeHtml(str) {
         if (!str) return "";
-        return String(str).replace(/[&<>]/g, function (m) {
+        return str.replace(/[&<>]/g, function (m) {
           if (m === "&") return "&amp;";
           if (m === "<") return "&lt;";
           if (m === ">") return "&gt;";
           return m;
         });
       }
-
-      // 获取图片 URL（兼容多种字段名）
-      function getImageUrl(anime) {
-        // 尝试常见的字段
-        if (anime.image_url) return anime.image_url;
-        if (anime.cover) return anime.cover;
-        if (anime.images && anime.images.jpg && anime.images.jpg.image_url)
-          return anime.images.jpg.image_url;
-        if (anime.poster) return anime.poster;
-        if (anime.pic) return anime.pic;
-        return "/images/default.jpg";
-      }
-
-      // 创建单个卡片
-      function createCard(anime) {
-        const card = document.createElement("div");
-        card.className = "anime-card";
-        const imgUrl = getImageUrl(anime);
-        const yearText = anime.season
-          ? (anime.season.match(/^\d{4}/) || [])[0] || ""
-          : "";
-        const description = (
-          anime.description || "记录于圣杯战争文献，暂无简介。"
-        ).slice(0, 80);
-        card.innerHTML = `
-      <img src="${imgUrl}" alt="${escapeHtml(anime.title)}" loading="lazy" onerror="this.src='/images/default.jpg'">
-      <p>${escapeHtml(anime.title)}${yearText ? `<br><span style="font-size:0.7rem;color:#888;">${yearText}</span>` : ""}</p>
-    `;
-        const detailId = anime._id || anime.id;
-        if (detailId)
-          card.addEventListener(
-            "click",
-            () => (window.location.href = `/anime/${detailId}`),
-          );
-        return card;
-      }
-
-      async function init() {
-        const app = document.getElementById("app");
-        try {
-          const res = await fetch(
-            "/api/anime/list?page=1&limit=600&keyword=Fate",
-            { credentials: "include" },
-          );
-          const json = await res.json();
-          const allAnime = json.data || [];
-
-          // ========== 调试：打印第一条数据结构 ==========
-          if (allAnime.length > 0) {
-            console.log("✅ 成功获取数据，共", allAnime.length, "条");
-            console.log("第一条数据样例:", allAnime[0]);
-            console.log("字段检查 - image_url:", allAnime[0].image_url);
-          } else {
-            console.warn("⚠️ 未获取到任何动漫数据");
-            app.innerHTML =
-              '<div class="error-msg">⚠️ 未检索到Fate系列数据，请确保数据库中已导入动漫数据。</div>';
-            return;
-          }
-
-          // 分组
-          const groups = GROUP_RULES.map((rule) => ({ ...rule, animes: [] }));
-          const unmatched = [];
-
-          for (const anime of allAnime) {
-            const title = (anime.title || "").toLowerCase();
-            const desc = (anime.description || "").toLowerCase();
-            let matched = false;
-            for (let i = 0; i < groups.length; i++) {
-              const rule = groups[i];
-              if (
-                rule.exclude.some(
-                  (kw) => title.includes(kw) || desc.includes(kw),
-                )
-              )
-                continue;
-              if (
-                rule.keywords.some(
-                  (kw) => title.includes(kw) || desc.includes(kw),
-                )
-              ) {
-                rule.animes.push(anime);
-                matched = true;
-                break;
-              }
-            }
-            if (!matched) unmatched.push(anime);
-          }
-
-          // 渲染
-          app.innerHTML = "";
-          for (const group of groups) {
-            if (group.animes.length === 0) continue;
-            const section = document.createElement("div");
-            section.className = "group-section";
-            section.innerHTML = `
-          <div class="group-title">${group.name}</div>
-          <div class="group-desc">${group.desc}</div>
-          <div class="anime-grid" id="grid-${group.name.replace(/\s/g, "")}"></div>
-        `;
-            const grid = section.querySelector(".anime-grid");
-            group.animes.forEach((anime) =>
-              grid.appendChild(createCard(anime)),
-            );
-            app.appendChild(section);
-          }
-
-          if (unmatched.length > 0) {
-            const otherSection = document.createElement("div");
-            otherSection.className = "group-section";
-            otherSection.innerHTML = `
-          <div class="group-title">🧩 其他观测记录 · 月之残响</div>
-          <div class="group-desc">未被自动分组的Fate关联作品，但同样值得一睹。</div>
-          <div class="anime-grid" id="grid-other"></div>
-        `;
-            const otherGrid = otherSection.querySelector(".anime-grid");
-            unmatched.forEach((anime) =>
-              otherGrid.appendChild(createCard(anime)),
-            );
-            app.appendChild(otherSection);
-          }
-
-          if (app.children.length === 0) {
-            app.innerHTML =
-              '<div class="error-msg">未找到任何Fate作品，请检查数据库是否已导入数据。</div>';
-          }
-        } catch (err) {
-          console.error("加载出错:", err);
-          app.innerHTML =
-            '<div class="error-msg">观测系统出现错误，请刷新页面重试。</div>';
-        }
-      }
-
-      init();
     </script>
   </body>
 </html>

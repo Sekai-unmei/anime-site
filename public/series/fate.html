@@ -1,104 +1,23 @@
 <!doctype html>
-<html lang="zh-CN">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <title>Fate 系列 - 观测站</title>
-    <style>
-      body {
-        background: #0a0a0a;
-        color: #eee;
-        font-family: system-ui;
-        padding: 2rem;
-      }
-      .card {
-        background: #1e1e1e;
-        border-radius: 12px;
-        padding: 1rem;
-        margin: 1rem 0;
-      }
-      .grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-      }
-      .anime {
-        width: 180px;
-        background: #111;
-        border-radius: 8px;
-        padding: 10px;
-        text-align: center;
-      }
-      .anime img {
-        width: 100%;
-        height: 240px;
-        object-fit: cover;
-        border-radius: 6px;
-      }
-      .error {
-        color: #ff8888;
-      }
-    </style>
+    <title>Fate 测试</title>
   </head>
   <body>
-    <h1>✧ Fate 观测序列 ✧</h1>
-    <div id="status">正在加载数据...</div>
-    <div id="result" class="grid"></div>
-
+    <pre id="out">加载中...</pre>
     <script>
-      (async function () {
-        const statusDiv = document.getElementById("status");
-        const resultDiv = document.getElementById("result");
-        try {
-          // 请求 Fate 相关动漫
-          const url = "/api/anime/list?page=1&limit=100&keyword=Fate";
-          console.log("请求:", url);
-          const res = await fetch(url, { credentials: "include" });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const json = await res.json();
-          const list = json.data || [];
-          console.log("获取到数据:", list.length);
-          if (list.length === 0) {
-            statusDiv.innerHTML = "⚠️ 未检索到任何 Fate 数据，请检查数据库。";
-            return;
-          }
-          statusDiv.innerHTML = `✅ 找到 ${list.length} 部作品，正在展示...`;
-          // 清空并渲染卡片
-          resultDiv.innerHTML = "";
-          for (let anime of list) {
-            const card = document.createElement("div");
-            card.className = "anime";
-            // 获取图片（兼容多种字段）
-            let imgUrl =
-              anime.image_url ||
-              anime.cover ||
-              anime.images?.jpg?.image_url ||
-              "/images/default.jpg";
-            card.innerHTML = `
-                        <img src="${imgUrl}" onerror="this.src='/images/default.jpg'">
-                        <div><strong>${escapeHtml(anime.title)}</strong></div>
-                        <div style="font-size:0.8rem;color:#aaa;">${anime.season || ""}</div>
-                    `;
-            card.addEventListener("click", () => {
-              const id = anime._id || anime.id;
-              if (id) window.location.href = `/anime/${id}`;
-            });
-            resultDiv.appendChild(card);
-          }
-        } catch (err) {
-          console.error(err);
-          statusDiv.innerHTML = `<span class="error">加载失败: ${err.message}</span>`;
-        }
-      })();
-
-      function escapeHtml(str) {
-        if (!str) return "";
-        return str.replace(/[&<>]/g, function (m) {
-          if (m === "&") return "&amp;";
-          if (m === "<") return "&lt;";
-          if (m === ">") return "&gt;";
-          return m;
+      fetch("/api/anime/list?keyword=Fate&limit=5", { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => {
+          document.getElementById("out").innerHTML =
+            "✅ 成功！数量：" +
+            d.data.length +
+            "\n第一条：" +
+            JSON.stringify(d.data[0], null, 2);
+        })
+        .catch((e) => {
+          document.getElementById("out").innerHTML = "❌ 错误：" + e.message;
         });
-      }
     </script>
   </body>
 </html>
